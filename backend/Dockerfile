@@ -20,7 +20,7 @@ RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --opti
 COPY backend/ .
 
 RUN composer dump-autoload --optimize \
-    && mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
+    && mkdir -p storage/framework/{sessions,views,cache/data} storage/logs bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8080
