@@ -24,6 +24,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -71,6 +72,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Railway's edge proxy terminates TLS and forwards plain HTTP to the
+        // container, so the request Laravel sees always looks like http://.
+        // Force https so url()/route() generate the correct public scheme
+        // (e.g. webhook URLs shown in Settings) instead of trusting the
+        // request's apparent scheme.
+        if (str_starts_with(config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
+
         RateLimiter::for('widget', function (Request $request) {
             return Limit::perMinute(30)->by($request->header('X-Widget-Key') ?? $request->ip());
         });
