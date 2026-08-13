@@ -10,11 +10,6 @@ declare global {
 
 let echo: Echo<"reverb"> | null = null;
 
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 export function getEcho(): Echo<"reverb"> {
   if (echo) return echo;
 
@@ -31,14 +26,13 @@ export function getEcho(): Echo<"reverb"> {
     authEndpoint: "http://localhost:8000/broadcasting/auth",
     authorizer: (channel: { name: string }) => ({
       authorize: (socketId: string, callback: (error: Error | null, data: ChannelAuthorizationData | null) => void) => {
-        const xsrfToken = getCookie("XSRF-TOKEN");
+        const token = typeof window !== "undefined" ? window.localStorage.getItem("auth_token") : null;
         fetch("http://localhost:8000/broadcasting/auth", {
           method: "POST",
-          credentials: "include",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
             Accept: "application/json",
-            ...(xsrfToken ? { "X-XSRF-TOKEN": xsrfToken } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: new URLSearchParams({ socket_id: socketId, channel_name: channel.name }),
         })

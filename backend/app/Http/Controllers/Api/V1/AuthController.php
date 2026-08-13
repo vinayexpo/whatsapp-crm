@@ -50,10 +50,13 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
-        $request->session()->regenerate();
+
+        $user = Auth::user();
+        $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
-            'data' => new UserResource($request->user()),
+            'data' => new UserResource($user),
+            'token' => $token,
         ]);
     }
 
@@ -87,20 +90,17 @@ class AuthController extends Controller
         ]);
         $user->assignRole('superadmin');
 
-        Auth::login($user);
-        $request->session()->regenerate();
+        $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
             'data' => new UserResource($user),
+            'token' => $token,
         ], 201);
     }
 
     public function logout(Request $request): JsonResponse
     {
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out.']);
     }

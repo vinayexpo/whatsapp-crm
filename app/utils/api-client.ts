@@ -59,9 +59,19 @@ class ApiError extends Error {
   }
 }
 
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+const AUTH_TOKEN_STORAGE_KEY = "auth_token";
+
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+}
+
+function setAuthToken(token: string): void {
+  window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+}
+
+function clearAuthToken(): void {
+  window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 }
 
 async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -70,15 +80,14 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   if (options.body) {
     headers.set("Content-Type", "application/json");
   }
-  const xsrfToken = getCookie("XSRF-TOKEN");
-  if (xsrfToken) {
-    headers.set("X-XSRF-TOKEN", xsrfToken);
+  const token = getAuthToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
-    credentials: "include",
   });
 
   if (response.status === 204) {
@@ -94,24 +103,21 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   return body as T;
 }
 
-async function getCsrfCookie(): Promise<void> {
-  await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
-    credentials: "include",
-    headers: { Accept: "application/json" },
-  });
-}
-
 async function login(email: string, password: string): Promise<TeamMember> {
-  await getCsrfCookie();
-  const { data } = await apiRequest<{ data: TeamMember }>("/api/v1/auth/login", {
+  const { data, token } = await apiRequest<{ data: TeamMember; token: string }>("/api/v1/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+  setAuthToken(token);
   return data;
 }
 
 async function logout(): Promise<void> {
-  await apiRequest("/api/v1/auth/logout", { method: "POST" });
+  try {
+    await apiRequest("/api/v1/auth/logout", { method: "POST" });
+  } finally {
+    clearAuthToken();
+  }
 }
 
 async function bootstrapStatus(): Promise<boolean> {
@@ -120,11 +126,11 @@ async function bootstrapStatus(): Promise<boolean> {
 }
 
 async function setupSuperadmin(superadmin: { name: string; email: string; password: string }): Promise<TeamMember> {
-  await getCsrfCookie();
-  const { data } = await apiRequest<{ data: TeamMember }>("/api/v1/auth/setup-superadmin", {
+  const { data, token } = await apiRequest<{ data: TeamMember; token: string }>("/api/v1/auth/setup-superadmin", {
     method: "POST",
     body: JSON.stringify(superadmin),
   });
+  setAuthToken(token);
   return data;
 }
 
@@ -163,7 +169,6 @@ async function me(): Promise<TeamMember> {
 }
 
 async function updateProfile(updates: { name?: string; avatar?: File }): Promise<TeamMember> {
-  await getCsrfCookie();
   const formData = new FormData();
   if (updates.name) {
     formData.append("name", updates.name);
@@ -173,16 +178,15 @@ async function updateProfile(updates: { name?: string; avatar?: File }): Promise
   }
 
   const headers = new Headers({ Accept: "application/json" });
-  const xsrfToken = getCookie("XSRF-TOKEN");
-  if (xsrfToken) {
-    headers.set("X-XSRF-TOKEN", xsrfToken);
+  const token = getAuthToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
     method: "POST",
     body: formData,
     headers,
-    credentials: "include",
   });
 
   const body = await response.json().catch(() => null);
@@ -195,18 +199,16 @@ async function updateProfile(updates: { name?: string; avatar?: File }): Promise
 }
 
 async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
-  await getCsrfCookie();
   const headers = new Headers({ Accept: "application/json" });
-  const xsrfToken = getCookie("XSRF-TOKEN");
-  if (xsrfToken) {
-    headers.set("X-XSRF-TOKEN", xsrfToken);
+  const token = getAuthToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     body: formData,
     headers,
-    credentials: "include",
   });
 
   const body = await response.json().catch(() => null);
@@ -220,14 +222,13 @@ async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
 
 async function apiDownload(path: string): Promise<Blob> {
   const headers = new Headers({ Accept: "*/*" });
-  const xsrfToken = getCookie("XSRF-TOKEN");
-  if (xsrfToken) {
-    headers.set("X-XSRF-TOKEN", xsrfToken);
+  const token = getAuthToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers,
-    credentials: "include",
   });
 
   if (!response.ok) {
@@ -1034,7 +1035,6 @@ async function unsubscribeFromPush(endpoint: string): Promise<void> {
 }
 
 export const apiClient = {
-  getCsrfCookie,
   login,
   logout,
   me,
