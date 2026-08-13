@@ -43,6 +43,9 @@ import type {
   WhatsappCall,
 } from "~/data/types";
 
+// VITE_API_URL is a build-time Vite var — it must be set on the Railway
+// frontend service and the service redeployed with a fresh build (a
+// variable-only change reuses Railway's cached image) for changes to apply.
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://mintcream-jellyfish-201700.hostingersite.com";
 
 class ApiError extends Error {
