@@ -60,6 +60,8 @@ class ApiConnectionController extends Controller
                 'access_token' => $accessToken,
                 'twilio_account_sid' => $twilioAccountSid,
                 'twilio_phone_number' => $twilioPhoneNumber,
+                'account_name' => $apiConnection->label,
+                'identifier' => $twilioPhoneNumber,
                 'connected_at' => now(),
             ]);
         } elseif ($data['status'] === 'connected') {
@@ -84,12 +86,16 @@ class ApiConnectionController extends Controller
                 'waba_id' => $wabaId,
                 'phone_number_id' => $phoneNumberId,
                 'instagram_account_id' => $instagramAccountId,
+                'account_name' => $apiConnection->label,
+                'identifier' => $accountId,
                 'connected_at' => now(),
             ]);
         } else {
             $apiConnection->update([
                 'status' => 'disconnected',
                 'access_token' => null,
+                'account_name' => 'Not connected',
+                'identifier' => 'Not connected',
                 'connected_at' => null,
             ]);
         }

@@ -2,23 +2,24 @@
 
 namespace Database\Seeders;
 
-use App\Models\Company;
+use App\Models\ApiConnection;
 use Illuminate\Database\Seeder;
 
 class PipelineStagesForAllCompaniesSeeder extends Seeder
 {
     public function run(): void
     {
-        $companyIds = Company::query()->pluck('id');
+        // pipeline_stages.id is a single global primary key (not composite
+        // with company_id), so these rows can only ever be owned by one
+        // company at a time — matching the same limitation in
+        // ProcessInboundWhatsAppMessage, which resolves the company from the
+        // single whatsapp ApiConnection rather than per-contact. Seed for
+        // that same company so inbound-message contact creation and the
+        // Pipeline UI agree on which company owns the rows.
+        $companyId = ApiConnection::withoutGlobalScopes()
+            ->where('channel', 'whatsapp')
+            ->value('company_id');
 
-        if ($companyIds->isEmpty()) {
-            (new PipelineStagesSeeder)->run();
-
-            return;
-        }
-
-        foreach ($companyIds as $companyId) {
-            (new PipelineStagesSeeder($companyId))->run();
-        }
+        (new PipelineStagesSeeder($companyId))->run();
     }
 }
