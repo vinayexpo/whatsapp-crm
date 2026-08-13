@@ -1,0 +1,82 @@
+.errorBoundary {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  font-family: sans-serif;
+  color-scheme: light dark;
+  background-color: light-dark(#f3f4f6, #0d0f14);
+}
+
+.errorContainer {
+  text-align: center;
+  max-width: 70%;
+  width: 100%;
+  padding: 3rem 2.5rem;
+  border-radius: 1rem;
+  background: light-dark(#ffffff, #161a25);
+  border: 1px solid light-dark(#e5e7eb, #252b3b);
+}
+
+.errorTitle {
+  font-weight: bold;
+  color: light-dark(#111827, #f3f4f6);
+  margin-bottom: 0.5rem;
+}
+
+.errorDetails {
+  color: light-dark(#6b7280, #9ca3af);
+  margin-bottom: 1.25rem;
+}
+
+.errorStackWrapper {
+  position: relative;
+}
+
+.stackHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stackLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: light-dark(#9ca3af, #9ca3af);
+}
+
+.copyButton {
+  padding: 0.3rem 0.75rem;
+  background: transparent;
+  border: 1px solid light-dark(#d4d4d4, #1f2937);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: light-dark(#6b7280, #9ca3af);
+}
+
+.copyButton:hover {
+  border-color: light-dark(#d1d5db, #374151);
+  color: light-dark(#374151, #d1d5db);
+}
+
+.copyButton:active {
+  color: light-dark(#111827, #f3f4f6);
+}
+
+.errorStack {
+  margin-top: 1rem;
+  text-align: start;
+  overflow: auto;
+  font-size: 0.875rem;
+  padding: 1rem;
+  background: light-dark(#f9fafb, #0d0f14);
+  border-radius: 0.375rem;
+  border: 1px solid light-dark(#e5e7eb, #1f2937);
+  color: light-dark(#374151, #d1d5db);
+  max-height: 20rem;
+}

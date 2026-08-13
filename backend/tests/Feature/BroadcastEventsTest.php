@@ -1,0 +1,99 @@
+<?php
+
+use App\Events\ConversationUpdated;
+use App\Events\MessageReceived;
+use App\Events\MessageStatusUpdated;
+use App\Jobs\ProcessInboundWhatsAppMessage;
+use App\Jobs\SimulateMessageDeliveryTick;
+use App\Models\Contact;
+use App\Models\Conversation;
+use App\Models\Message;
+use App\Models\User;
+use App\Models\WebhookEvent;
+use Database\Seeders\PipelineStagesSeeder;
+use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\Event;
+
+beforeEach(function () {
+    $this->seed(PipelineStagesSeeder::class);
+});
+
+it('broadcasts MessageReceived and ConversationUpdated when an inbound whatsapp message is processed', function () {
+    Event::fake([MessageReceived::class, ConversationUpdated::class]);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'contacts' => [['wa_id' => '15550001111', 'profile' => ['name' => 'Broadcast Tester']]],
+                        'messages' => [[
+                            'from' => '15550001111',
+                            'id' => 'wamid.BCAST1',
+                            'timestamp' => (string) now()->timestamp,
+                            'text' => ['body' => 'Hello'],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    Event::assertDispatched(MessageReceived::class);
+    Event::assertDispatched(ConversationUpdated::class);
+});
+
+it('broadcasts MessageStatusUpdated when a status webhook updates a message', function () {
+    Event::fake([MessageStatusUpdated::class]);
+
+    $message = Message::factory()->create(['external_message_id' => 'wamid.STATUSB', 'status' => 'sent']);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'statuses' => [['id' => 'wamid.STATUSB', 'status' => 'delivered']],
+                    ],
+                ]],
+            ]],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    Event::assertDispatched(MessageStatusUpdated::class, function ($e) use ($message) {
+        return $e->message->id === $message->id;
+    });
+});
+
+it('broadcasts MessageStatusUpdated during a simulated delivery tick', function () {
+    Event::fake([MessageStatusUpdated::class]);
+
+    $message = Message::factory()->create(['status' => 'sent']);
+
+    (new SimulateMessageDeliveryTick($message->id, 'delivered'))->handle();
+
+    expect($message->fresh()->status)->toBe('delivered');
+    Event::assertDispatched(MessageStatusUpdated::class);
+});
+
+it('broadcasts ConversationUpdated when an agent sends an outbound message', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+    Event::fake([ConversationUpdated::class]);
+
+    $agent = User::factory()->create();
+    $agent->assignRole('agent');
+    $contact = Contact::factory()->create();
+    $conversation = Conversation::factory()->create(['contact_id' => $contact->id]);
+
+    $this->actingAs($agent)
+        ->postJson("/api/v1/conversations/{$conversation->uuid}/messages", ['text' => 'On my way'])
+        ->assertCreated();
+
+    Event::assertDispatched(ConversationUpdated::class);
+});

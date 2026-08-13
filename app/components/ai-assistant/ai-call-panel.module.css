@@ -1,0 +1,67 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-height: 0;
+  padding: 32px 20px;
+  gap: 20px;
+}
+
+.orb {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 30%, rgba(0, 168, 132, 0.35), rgba(0, 168, 132, 0.08));
+  border: 2px solid rgba(0, 168, 132, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.orbListening {
+  box-shadow: 0 0 0 8px rgba(0, 168, 132, 0.12);
+  transform: scale(1.04);
+}
+
+.orbSpeaking {
+  box-shadow: 0 0 0 8px rgba(124, 77, 255, 0.14);
+  border-color: rgba(124, 77, 255, 0.4);
+  transform: scale(1.06);
+}
+
+.transcript {
+  width: 100%;
+  max-width: 560px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 4px 8px;
+}
+
+.transcriptRow {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.transcriptRowUser {
+  justify-content: flex-end;
+}
+
+.transcriptBubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--mui-palette-background-paper, #fff);
+  border: 1px solid var(--mui-palette-divider, #e0e0e0);
+  font-size: 0.85rem;
+}
+
+.transcriptBubbleUser {
+  background: rgba(0, 168, 132, 0.12);
+  border-color: transparent;
+}

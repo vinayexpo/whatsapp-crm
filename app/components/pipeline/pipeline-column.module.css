@@ -1,0 +1,18 @@
+.column {
+  width: 280px;
+  flex-shrink: 0;
+  background-color: var(--mui-palette-background-default, #f4f7f6);
+  border-radius: 16px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+}
+
+.dropZone {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 80px;
+  border-radius: 12px;
+  transition: background-color 0.15s ease;
+}
