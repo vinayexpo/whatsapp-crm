@@ -14,10 +14,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-COPY composer.json composer.lock ./
+COPY backend/composer.json backend/composer.lock ./
 RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader
 
-COPY . .
+COPY backend/ .
 
 RUN composer dump-autoload --optimize \
     && mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \

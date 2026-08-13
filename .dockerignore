@@ -4,5 +4,12 @@ build
 .env
 .env.*
 !.env.example
-backend
+backend/vendor
+backend/node_modules
+backend/storage/logs
+backend/storage/framework/cache
+backend/storage/framework/sessions
+backend/storage/framework/views
+backend/public/build
+backend/public/hot
 .git
