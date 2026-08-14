@@ -182,6 +182,35 @@ class WhatsappCallController extends Controller
         ]);
     }
 
+    public function requestCallPermission(WhatsappCall $whatsappCall): JsonResponse
+    {
+        $this->authorize('create', WhatsappCall::class);
+
+        $connection = ApiConnection::query()
+            ->where('channel', 'whatsapp')
+            ->where('status', 'connected')
+            ->where('calling_enabled', true)
+            ->first();
+
+        if (! $connection) {
+            throw ValidationException::withMessages([
+                'contactId' => 'No WhatsApp connection has calling enabled. Enable calling from Setup before requesting call permission.',
+            ]);
+        }
+
+        try {
+            app(WhatsappCallDriverResolver::class)
+                ->forConnection($connection)
+                ->sendCallPermissionRequest($whatsappCall, $connection);
+        } catch (RequestException $e) {
+            throw ValidationException::withMessages([
+                'contactId' => $this->describeMetaError($e),
+            ]);
+        }
+
+        return response()->json(['data' => ['sent' => true]]);
+    }
+
     private function describeMetaError(RequestException $e): string
     {
         $error = $e->response?->json('error');

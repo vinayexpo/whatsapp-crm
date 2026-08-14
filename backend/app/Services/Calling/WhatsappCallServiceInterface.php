@@ -20,4 +20,12 @@ interface WhatsappCallServiceInterface
      * Meta's Calling API for an in-progress call.
      */
     public function sendCallAction(WhatsappCall $call, ApiConnection $connection, array $action): void;
+
+    /**
+     * Send Meta's in-chat "call permission request" message so the contact
+     * can opt in to receiving calls from this business (required before
+     * placeCall() will succeed — Meta rejects with code 138006/2593090
+     * otherwise).
+     */
+    public function sendCallPermissionRequest(WhatsappCall $call, ApiConnection $connection): void;
 }

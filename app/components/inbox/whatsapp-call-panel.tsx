@@ -32,7 +32,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function WhatsappCallPanel({ open, contact, conversationId, onClose }: WhatsappCallPanelProps) {
-  const { callState, errorMessage, isMuted, startCall, toggleMute, endCall } = useWhatsappCallSession();
+  const { callState, errorMessage, needsCallPermission, isMuted, startCall, toggleMute, endCall, requestCallPermission } =
+    useWhatsappCallSession();
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -56,9 +57,19 @@ export function WhatsappCallPanel({ open, contact, conversationId, onClose }: Wh
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <Box className={styles.container}>
         {errorMessage && (
-          <Alert severity="error" sx={{ width: "100%" }}>
+          <Alert severity={needsCallPermission ? "warning" : "error"} sx={{ width: "100%" }}>
             {errorMessage}
           </Alert>
+        )}
+
+        {needsCallPermission && (
+          <Typography
+            variant="body2"
+            sx={{ color: "primary.main", cursor: "pointer", fontWeight: 600 }}
+            onClick={requestCallPermission}
+          >
+            Request call permission
+          </Typography>
         )}
 
         <Avatar src={contact.avatarUrl} sx={{ width: 72, height: 72 }}>

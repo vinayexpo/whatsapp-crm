@@ -34,4 +34,18 @@ class GraphApiWhatsappCallService implements WhatsappCallServiceInterface
             ], $action))
             ->throw();
     }
+
+    public function sendCallPermissionRequest(WhatsappCall $call, ApiConnection $connection): void
+    {
+        Http::withToken($connection->access_token)
+            ->post("https://graph.facebook.com/v20.0/{$connection->phone_number_id}/messages", [
+                'messaging_product' => 'whatsapp',
+                'to' => $call->contact->handle,
+                'type' => 'interactive',
+                'interactive' => [
+                    'type' => 'call_permission_request',
+                ],
+            ])
+            ->throw();
+    }
 }

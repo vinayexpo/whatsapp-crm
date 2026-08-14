@@ -989,6 +989,12 @@ async function hangupWhatsappCall(whatsappCallId: string): Promise<WhatsappCall>
   return data;
 }
 
+async function requestWhatsappCallPermission(whatsappCallId: string): Promise<void> {
+  await apiRequest<{ data: { sent: boolean } }>(`/api/v1/whatsapp-calls/${whatsappCallId}/permission-request`, {
+    method: "POST",
+  });
+}
+
 async function assignWhatsappCallFollowup(whatsappCallId: string, userId: string | null): Promise<WhatsappCall> {
   const { data } = await apiRequest<{ data: WhatsappCall }>(`/api/v1/whatsapp-calls/${whatsappCallId}/followup`, {
     method: "PATCH",
@@ -1142,6 +1148,7 @@ export const apiClient = {
   placeWhatsappCall,
   submitWhatsappCallOffer,
   hangupWhatsappCall,
+  requestWhatsappCallPermission,
   assignWhatsappCallFollowup,
   completeWhatsappCallFollowup,
   listNotifications,

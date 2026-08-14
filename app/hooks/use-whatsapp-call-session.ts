@@ -15,16 +15,21 @@ export type WhatsappCallSessionState =
 interface UseWhatsappCallSessionResult {
   callState: WhatsappCallSessionState;
   errorMessage: string | null;
+  needsCallPermission: boolean;
   isMuted: boolean;
   whatsappCall: WhatsappCall | null;
   startCall: (params: { contactId: string; conversationId?: string }) => Promise<void>;
   toggleMute: () => void;
   endCall: () => Promise<void>;
+  requestCallPermission: () => Promise<void>;
 }
+
+const CALL_PERMISSION_ERROR_PATTERN = /138006|2593090/;
 
 export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
   const [callState, setCallState] = useState<WhatsappCallSessionState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [needsCallPermission, setNeedsCallPermission] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [whatsappCall, setWhatsappCall] = useState<WhatsappCall | null>(null);
 
@@ -54,6 +59,7 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
   const startCall = useCallback(
     async ({ contactId, conversationId }: { contactId: string; conversationId?: string }) => {
       setErrorMessage(null);
+      setNeedsCallPermission(false);
       setWhatsappCall(null);
       setIsMuted(false);
 
@@ -132,15 +138,30 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
         const updatedCall = await apiClient.submitWhatsappCallOffer(call.id, sdpOffer);
         setWhatsappCall(updatedCall);
       } catch (error) {
+        const message =
+          error instanceof ApiError ? (error.errors?.sdpOffer?.[0] ?? error.message) : "Couldn't place the call.";
         setCallState("failed");
-        setErrorMessage(
-          error instanceof ApiError ? (error.errors?.sdpOffer?.[0] ?? error.message) : "Couldn't place the call.",
-        );
+        setErrorMessage(message);
+        setNeedsCallPermission(CALL_PERMISSION_ERROR_PATTERN.test(message));
         cleanup();
       }
     },
     [cleanup],
   );
+
+  const requestCallPermission = useCallback(async () => {
+    const call = whatsappCall;
+    if (!call) return;
+    try {
+      await apiClient.requestWhatsappCallPermission(call.id);
+      setNeedsCallPermission(false);
+      setErrorMessage(
+        "Call permission request sent. Ask the contact to accept it in WhatsApp, then try calling again.",
+      );
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Couldn't send the call permission request.");
+    }
+  }, [whatsappCall]);
 
   const toggleMute = useCallback(() => {
     const stream = localStreamRef.current;
@@ -165,7 +186,17 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
     }
   }, [cleanup, whatsappCall]);
 
-  return { callState, errorMessage, isMuted, whatsappCall, startCall, toggleMute, endCall };
+  return {
+    callState,
+    errorMessage,
+    needsCallPermission,
+    isMuted,
+    whatsappCall,
+    startCall,
+    toggleMute,
+    endCall,
+    requestCallPermission,
+  };
 }
 
 function waitForIceGatheringComplete(pc: RTCPeerConnection): Promise<void> {
