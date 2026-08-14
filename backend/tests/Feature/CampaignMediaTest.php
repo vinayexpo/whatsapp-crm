@@ -8,6 +8,7 @@ use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\WhatsappTemplate;
 use Database\Seeders\PipelineStagesSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
@@ -162,4 +163,105 @@ it('sends a WhatsApp image message via the Graph API when the message has an att
             && $request['type'] === 'image'
             && $request['image']['link'] === 'https://example.com/promo.jpg';
     });
+});
+
+it('includes a header component with the attachment when a template has a media header', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.template-media123']]], 200),
+    ]);
+
+    ApiConnection::factory()->connected()->create([
+        'channel' => 'whatsapp',
+        'phone_number_id' => 'phone-789',
+    ]);
+
+    $template = WhatsappTemplate::factory()->create([
+        'name' => 'birthday',
+        'status' => 'approved',
+        'body' => 'Happy Birthday {{1}}!',
+        'components' => [
+            ['type' => 'HEADER', 'format' => 'IMAGE', 'example' => ['header_handle' => ['https://scontent.whatsapp.net/example-header.jpg']]],
+            ['type' => 'BODY', 'text' => 'Happy Birthday {{1}}!'],
+        ],
+    ]);
+
+    $contact = Contact::factory()->create(['channel' => 'whatsapp']);
+    $conversation = Conversation::factory()->create(['contact_id' => $contact->id, 'channel' => 'whatsapp']);
+
+    $campaign = Campaign::factory()->create([
+        'channel' => 'whatsapp',
+        'message' => 'fallback text',
+        'whatsapp_template_id' => $template->id,
+        'template_variables' => ['1' => 'Amara'],
+        'attachment_url' => 'https://example.com/birthday-cake.jpg',
+        'attachment_type' => 'image',
+    ]);
+    $recipient = CampaignRecipient::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_id' => $contact->id,
+        'status' => 'pending',
+    ]);
+
+    (new SendCampaignMessage($recipient->id))->handle(app(\App\Services\Messaging\MessagingDriverResolver::class));
+
+    Http::assertSent(function ($request) {
+        $components = collect($request['template']['components'] ?? []);
+        $header = $components->firstWhere('type', 'header');
+
+        return str_contains($request->url(), 'graph.facebook.com')
+            && $request['type'] === 'template'
+            && $header
+            && $header['parameters'][0]['image']['link'] === 'https://example.com/birthday-cake.jpg';
+    });
+
+    expect($recipient->fresh()->status)->toBe('sent');
+});
+
+it('falls back to the template example media when the campaign has no attachment of its own', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.template-media456']]], 200),
+    ]);
+
+    ApiConnection::factory()->connected()->create([
+        'channel' => 'whatsapp',
+        'phone_number_id' => 'phone-790',
+    ]);
+
+    $template = WhatsappTemplate::factory()->create([
+        'name' => 'anniversary',
+        'status' => 'approved',
+        'body' => 'Congrats {{1}}!',
+        'components' => [
+            ['type' => 'HEADER', 'format' => 'IMAGE', 'example' => ['header_handle' => ['https://scontent.whatsapp.net/example-header.jpg']]],
+            ['type' => 'BODY', 'text' => 'Congrats {{1}}!'],
+        ],
+    ]);
+
+    $contact = Contact::factory()->create(['channel' => 'whatsapp']);
+    $conversation = Conversation::factory()->create(['contact_id' => $contact->id, 'channel' => 'whatsapp']);
+
+    $campaign = Campaign::factory()->create([
+        'channel' => 'whatsapp',
+        'message' => 'fallback text',
+        'whatsapp_template_id' => $template->id,
+        'template_variables' => ['1' => 'Amara'],
+        'attachment_url' => null,
+        'attachment_type' => null,
+    ]);
+    $recipient = CampaignRecipient::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_id' => $contact->id,
+        'status' => 'pending',
+    ]);
+
+    (new SendCampaignMessage($recipient->id))->handle(app(\App\Services\Messaging\MessagingDriverResolver::class));
+
+    Http::assertSent(function ($request) {
+        $components = collect($request['template']['components'] ?? []);
+        $header = $components->firstWhere('type', 'header');
+
+        return $header && $header['parameters'][0]['image']['link'] === 'https://scontent.whatsapp.net/example-header.jpg';
+    });
+
+    expect($recipient->fresh()->status)->toBe('sent');
 });

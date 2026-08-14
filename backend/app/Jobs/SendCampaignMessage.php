@@ -86,7 +86,7 @@ class SendCampaignMessage implements ShouldQueue
 
         $connection = ApiConnection::query()->where('channel', $conversation->channel)->first();
 
-        $templatePayload = $template ? $this->buildTemplatePayload($template, $campaign->template_variables ?? []) : null;
+        $templatePayload = $template ? $this->buildTemplatePayload($template, $campaign->template_variables ?? [], $campaign->attachment_url) : null;
 
         try {
             $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection, $templatePayload);
@@ -120,7 +120,7 @@ class SendCampaignMessage implements ShouldQueue
      * @param  array<string, string>  $variables
      * @return array{name: string, language: string, components: array}
      */
-    private function buildTemplatePayload(WhatsappTemplate $template, array $variables): array
+    private function buildTemplatePayload(WhatsappTemplate $template, array $variables, ?string $attachmentUrl = null): array
     {
         $bodyComponent = collect($template->components ?? [])->firstWhere('type', 'BODY');
         $placeholders = $bodyComponent['text'] ?? $template->body;
@@ -129,6 +129,27 @@ class SendCampaignMessage implements ShouldQueue
         $orderedKeys = $matches[1] ?? [];
 
         $components = [];
+
+        $headerComponent = collect($template->components ?? [])->firstWhere('type', 'HEADER');
+        $headerFormat = strtolower($headerComponent['format'] ?? '');
+
+        if ($headerComponent && in_array($headerFormat, ['image', 'video', 'document'], true)) {
+            // Meta rejects the send with error 132012 ("Parameter format does
+            // not match format in the created template") if a template
+            // declares a media header but the request omits the matching
+            // header component -- fall back to the template's own approved
+            // example media if the campaign didn't attach its own.
+            $headerMediaUrl = $attachmentUrl ?? $headerComponent['example']['header_handle'][0] ?? null;
+
+            if ($headerMediaUrl) {
+                $components[] = [
+                    'type' => 'header',
+                    'parameters' => [
+                        ['type' => $headerFormat, $headerFormat => ['link' => $headerMediaUrl]],
+                    ],
+                ];
+            }
+        }
 
         if ($orderedKeys) {
             $components[] = [
