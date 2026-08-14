@@ -199,11 +199,22 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
   };
 }
 
+// STUN gathering can stall indefinitely if UDP is blocked on the network
+// (corporate firewalls, some mobile carriers) -- without a timeout the call
+// hangs at "Connecting..." forever with no error and the offer never reaches
+// our backend, let alone Meta.
+const ICE_GATHERING_TIMEOUT_MS = 5000;
+
 function waitForIceGatheringComplete(pc: RTCPeerConnection): Promise<void> {
   if (pc.iceGatheringState === "complete") return Promise.resolve();
   return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      pc.removeEventListener("icegatheringstatechange", check);
+      resolve();
+    }, ICE_GATHERING_TIMEOUT_MS);
     function check() {
       if (pc.iceGatheringState === "complete") {
+        clearTimeout(timer);
         pc.removeEventListener("icegatheringstatechange", check);
         resolve();
       }
