@@ -46,7 +46,7 @@ class GraphApiWhatsappCallService implements WhatsappCallServiceInterface
 
     public function sendCallPermissionRequest(WhatsappCall $call, ApiConnection $connection): void
     {
-        Http::withToken($connection->access_token)
+        $response = Http::withToken($connection->access_token)
             ->post("https://graph.facebook.com/v20.0/{$connection->phone_number_id}/messages", [
                 'messaging_product' => 'whatsapp',
                 'to' => $call->contact->handle,
@@ -59,5 +59,18 @@ class GraphApiWhatsappCallService implements WhatsappCallServiceInterface
                 ],
             ])
             ->throw();
+
+        // No local Message row is created for this send, so the async
+        // delivery-status webhook Meta posts back (which could report a
+        // silent "failed" here even though the initial POST returned 200)
+        // has nothing to attach to. Log the raw response so a failure is at
+        // least visible, since it would otherwise vanish entirely.
+        Log::info('GraphApiWhatsappCallService::sendCallPermissionRequest raw Meta response', [
+            'whatsapp_call_id' => $call->id,
+            'to' => $call->contact->handle,
+            'phone_number_id' => $connection->phone_number_id,
+            'status' => $response->status(),
+            'body' => $response->json(),
+        ]);
     }
 }

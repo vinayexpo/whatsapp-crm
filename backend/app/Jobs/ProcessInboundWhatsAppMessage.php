@@ -17,6 +17,7 @@ use App\Services\Notifications\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ProcessInboundWhatsAppMessage implements ShouldQueue
@@ -158,6 +159,17 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         $message = Message::query()->where('external_message_id', $externalId)->first();
 
         if (! $message) {
+            // Sends that don't create a local Message row (e.g. the call
+            // permission request, sent directly via the Graph API) would
+            // otherwise have their delivery status silently discarded here,
+            // hiding an async failure Meta reports after the initial 200.
+            if ($newStatus === 'failed') {
+                Log::warning('Received a failed status webhook for an unmatched message', [
+                    'external_id' => $externalId,
+                    'status' => $status,
+                ]);
+            }
+
             return;
         }
 
