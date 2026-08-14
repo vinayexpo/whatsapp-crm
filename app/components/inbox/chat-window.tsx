@@ -29,6 +29,7 @@ import { formatTime } from "~/utils/format";
 import { useAiChatCompletion } from "~/hooks/use-ai-chat-completion";
 import { apiClient } from "~/utils/api-client";
 import { WhatsappCallSummary } from "./whatsapp-call-summary";
+import { WhatsappCallPanel } from "./whatsapp-call-panel";
 import classNames from "classnames";
 import styles from "./chat-window.module.css";
 
@@ -67,8 +68,8 @@ export function ChatWindow({
     isConfigured: isAiConfigured,
   } = useAiChatCompletion(aiAssistantSettings);
   const [aiErrorOpen, setAiErrorOpen] = useState(false);
-  const [isCalling, setIsCalling] = useState(false);
   const [callSnackbar, setCallSnackbar] = useState<{ severity: "success" | "error"; message: string } | null>(null);
+  const [callPanelOpen, setCallPanelOpen] = useState(false);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -88,20 +89,8 @@ export function ChatWindow({
     if (file) setAttachmentFile(file);
   }
 
-  async function handleQuickCall() {
-    if (isCalling) return;
-    setIsCalling(true);
-    try {
-      await apiClient.placeWhatsappCall({ contactId: contact.id, conversationId: conversation.id });
-      setCallSnackbar({ severity: "success", message: `Calling ${contact.name}…` });
-    } catch (error) {
-      setCallSnackbar({
-        severity: "error",
-        message: error instanceof Error ? error.message : "Couldn't place the call.",
-      });
-    } finally {
-      setIsCalling(false);
-    }
+  function handleQuickCall() {
+    setCallPanelOpen(true);
   }
 
   async function handleAiAssist() {
@@ -144,8 +133,8 @@ export function ChatWindow({
         {conversation.channel === "whatsapp" && (
           <Tooltip title={`Call ${contact.name} on WhatsApp`}>
             <span>
-              <IconButton size="small" onClick={handleQuickCall} disabled={isCalling}>
-                {isCalling ? <CircularProgress size={16} /> : <CallRoundedIcon fontSize="small" />}
+              <IconButton size="small" onClick={handleQuickCall}>
+                <CallRoundedIcon fontSize="small" />
               </IconButton>
             </span>
           </Tooltip>
@@ -193,6 +182,14 @@ export function ChatWindow({
       </Stack>
 
       {conversation.channel === "whatsapp" && <WhatsappCallSummary key={contact.id} contactId={contact.id} />}
+      {conversation.channel === "whatsapp" && (
+        <WhatsappCallPanel
+          open={callPanelOpen}
+          contact={contact}
+          conversationId={conversation.id}
+          onClose={() => setCallPanelOpen(false)}
+        />
+      )}
 
       <Box ref={scrollRef} className={styles.messages}>
         {messages.map((message) => (

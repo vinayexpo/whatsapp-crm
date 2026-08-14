@@ -331,6 +331,7 @@ export interface WhatsappCall {
   direction: WhatsappCallDirection;
   status: WhatsappCallStatus;
   metaCallId: string | null;
+  sdpExchangeStatus: "pending_offer" | "offer_sent" | "answer_received" | "connected" | "failed";
   transcript: unknown[];
   collectedVariables: Record<string, unknown>;
   needsHumanFollowup: boolean;

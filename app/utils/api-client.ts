@@ -974,6 +974,21 @@ async function placeWhatsappCall(params: {
   return data;
 }
 
+async function submitWhatsappCallOffer(whatsappCallId: string, sdpOffer: string): Promise<WhatsappCall> {
+  const { data } = await apiRequest<{ data: WhatsappCall }>(`/api/v1/whatsapp-calls/${whatsappCallId}/offer`, {
+    method: "POST",
+    body: JSON.stringify({ sdpOffer }),
+  });
+  return data;
+}
+
+async function hangupWhatsappCall(whatsappCallId: string): Promise<WhatsappCall> {
+  const { data } = await apiRequest<{ data: WhatsappCall }>(`/api/v1/whatsapp-calls/${whatsappCallId}/hangup`, {
+    method: "POST",
+  });
+  return data;
+}
+
 async function assignWhatsappCallFollowup(whatsappCallId: string, userId: string | null): Promise<WhatsappCall> {
   const { data } = await apiRequest<{ data: WhatsappCall }>(`/api/v1/whatsapp-calls/${whatsappCallId}/followup`, {
     method: "PATCH",
@@ -1125,6 +1140,8 @@ export const apiClient = {
   listWhatsappCalls,
   getWhatsappCall,
   placeWhatsappCall,
+  submitWhatsappCallOffer,
+  hangupWhatsappCall,
   assignWhatsappCallFollowup,
   completeWhatsappCallFollowup,
   listNotifications,
