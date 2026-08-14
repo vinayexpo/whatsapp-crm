@@ -217,7 +217,7 @@ it('includes a header component with the attachment when a template has a media 
     expect($recipient->fresh()->status)->toBe('sent');
 });
 
-it('falls back to the template example media when the campaign has no attachment of its own', function () {
+it('fails clearly when a media-header template is sent without a campaign attachment', function () {
     Http::fake([
         'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.template-media456']]], 200),
     ]);
@@ -227,6 +227,11 @@ it('falls back to the template example media when the campaign has no attachment
         'phone_number_id' => 'phone-790',
     ]);
 
+    // The template's own "example.header_handle" is a Meta-internal,
+    // expiring scontent.whatsapp.net preview link -- Meta 403s when trying
+    // to re-fetch it at send time, so it must never be used as a stand-in
+    // for a real attachment. A campaign without its own media must fail
+    // with a clear reason instead of silently sending a broken payload.
     $template = WhatsappTemplate::factory()->create([
         'name' => 'anniversary',
         'status' => 'approved',
@@ -256,12 +261,9 @@ it('falls back to the template example media when the campaign has no attachment
 
     (new SendCampaignMessage($recipient->id))->handle(app(\App\Services\Messaging\MessagingDriverResolver::class));
 
-    Http::assertSent(function ($request) {
-        $components = collect($request['template']['components'] ?? []);
-        $header = $components->firstWhere('type', 'header');
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'graph.facebook.com'));
 
-        return $header && $header['parameters'][0]['image']['link'] === 'https://scontent.whatsapp.net/example-header.jpg';
-    });
-
-    expect($recipient->fresh()->status)->toBe('sent');
+    $recipient->refresh();
+    expect($recipient->status)->toBe('failed');
+    expect($recipient->failure_reason)->toContain('requires an image/video header');
 });

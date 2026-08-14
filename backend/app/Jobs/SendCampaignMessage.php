@@ -60,6 +60,15 @@ class SendCampaignMessage implements ShouldQueue
             return;
         }
 
+        if ($template && $this->templateNeedsMediaHeader($template) && ! $campaign->attachment_url) {
+            $recipient->update([
+                'status' => 'failed',
+                'failure_reason' => "The template \"{$template->name}\" requires an image/video header, but this campaign has no attachment. Add one and resend.",
+            ]);
+
+            return;
+        }
+
         $text = $template ? $this->renderTemplate($template->body, $campaign->template_variables ?? []) : $campaign->message;
 
         $message = DB::transaction(function () use ($recipient, $conversation, $text, $campaign) {
@@ -86,7 +95,7 @@ class SendCampaignMessage implements ShouldQueue
 
         $connection = ApiConnection::query()->where('channel', $conversation->channel)->first();
 
-        $templatePayload = $template ? $this->buildTemplatePayload($template, $campaign->template_variables ?? [], $campaign->attachment_url) : null;
+        $templatePayload = $template ? $this->buildTemplatePayload($template, $campaign->template_variables ?? [], $message->attachment_url) : null;
 
         try {
             $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection, $templatePayload);
@@ -133,22 +142,21 @@ class SendCampaignMessage implements ShouldQueue
         $headerComponent = collect($template->components ?? [])->firstWhere('type', 'HEADER');
         $headerFormat = strtolower($headerComponent['format'] ?? '');
 
-        if ($headerComponent && in_array($headerFormat, ['image', 'video', 'document'], true)) {
+        if ($headerComponent && in_array($headerFormat, ['image', 'video', 'document'], true) && $attachmentUrl) {
             // Meta rejects the send with error 132012 ("Parameter format does
             // not match format in the created template") if a template
             // declares a media header but the request omits the matching
-            // header component -- fall back to the template's own approved
-            // example media if the campaign didn't attach its own.
-            $headerMediaUrl = $attachmentUrl ?? $headerComponent['example']['header_handle'][0] ?? null;
-
-            if ($headerMediaUrl) {
-                $components[] = [
-                    'type' => 'header',
-                    'parameters' => [
-                        ['type' => $headerFormat, $headerFormat => ['link' => $headerMediaUrl]],
-                    ],
-                ];
-            }
+            // header component. The template's own "example.header_handle"
+            // is a Meta-internal, expiring scontent.whatsapp.net preview
+            // asset -- Meta's servers 403 when trying to re-fetch it for an
+            // actual send, so it can't be reused here; the campaign must
+            // supply its own publicly reachable attachment.
+            $components[] = [
+                'type' => 'header',
+                'parameters' => [
+                    ['type' => $headerFormat, $headerFormat => ['link' => $attachmentUrl]],
+                ],
+            ];
         }
 
         if ($orderedKeys) {
@@ -166,6 +174,14 @@ class SendCampaignMessage implements ShouldQueue
             'language' => $template->language,
             'components' => $components,
         ];
+    }
+
+    private function templateNeedsMediaHeader(WhatsappTemplate $template): bool
+    {
+        $headerComponent = collect($template->components ?? [])->firstWhere('type', 'HEADER');
+
+        return $headerComponent
+            && in_array(strtolower($headerComponent['format'] ?? ''), ['image', 'video', 'document'], true);
     }
 
     public function failed(Throwable $e): void
