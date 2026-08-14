@@ -37,9 +37,19 @@ class ContactImportService
                 continue;
             }
 
+            // For WhatsApp, the handle IS the phone number (E.164, no leading
+            // '+') -- it's what actually gets used as the "to" recipient
+            // when sending. Fall back to the phone column so imports that
+            // only fill in "phone" (or put something other than the number
+            // in "handle") still resolve to a real, sendable recipient
+            // instead of silently creating an unreachable contact.
+            $handle = $row->channel === 'whatsapp'
+                ? preg_replace('/\D/', '', $row->handle ?: $row->phone ?: '')
+                : $row->handle;
+
             $contact = Contact::query()
                 ->where('channel', $row->channel)
-                ->where('handle', $row->handle)
+                ->where('handle', $handle)
                 ->first();
 
             if ($contact) {
@@ -48,7 +58,7 @@ class ContactImportService
                 $contact = Contact::query()->create([
                     'name' => $row->name,
                     'channel' => $row->channel,
-                    'handle' => $row->handle,
+                    'handle' => $handle,
                     'phone' => $row->phone,
                     'email' => $row->email,
                     'pipeline_stage_id' => $defaultPipelineStageId,
@@ -159,7 +169,11 @@ class ContactImportService
             return 'Channel must be whatsapp or instagram.';
         }
 
-        if (! $row->handle) {
+        if ($row->channel === 'whatsapp') {
+            if (! $row->handle && ! $row->phone) {
+                return 'Handle or phone is required for WhatsApp contacts.';
+            }
+        } elseif (! $row->handle) {
             return 'Handle is required.';
         }
 

@@ -72,18 +72,31 @@ class SendCampaignMessage implements ShouldQueue
 
             $conversation->update(['last_message_at' => $message->sent_at]);
 
-            $recipient->update([
-                'message_id' => $message->id,
-                'status' => 'sent',
-                'sent_at' => $message->sent_at,
-            ]);
+            // Leave the recipient in 'pending' until the provider call below
+            // actually succeeds. Marking it 'sent' here meant a failed Graph
+            // API call still looked "handled" to the pending-status guard
+            // above, so a queue retry would just no-op instead of resending.
+            $recipient->update(['message_id' => $message->id]);
 
             return $message;
         });
 
         $connection = ApiConnection::query()->where('channel', $conversation->channel)->first();
-        $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection);
+
+        try {
+            $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection);
+        } catch (Throwable $e) {
+            $message->update(['status' => 'failed']);
+            $recipient->update([
+                'status' => 'failed',
+                'failure_reason' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+
         $message->update(['external_message_id' => $externalId]);
+        $recipient->update(['status' => 'sent', 'sent_at' => $message->sent_at]);
 
         ConversationUpdated::dispatch($conversation);
     }
