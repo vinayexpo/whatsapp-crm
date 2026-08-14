@@ -60,6 +60,14 @@ class GraphApiWhatsappCallService implements WhatsappCallServiceInterface
             ])
             ->throw();
 
+        Log::info('GraphApiWhatsappCallService::sendCallPermissionRequest raw Meta response', [
+            'whatsapp_call_id' => $call->id,
+            'to' => $call->contact->handle,
+            'phone_number_id' => $connection->phone_number_id,
+            'status' => $response->status(),
+            'body' => $response->json(),
+        ]);
+
         return $response->json('messages.0.id');
     }
 }

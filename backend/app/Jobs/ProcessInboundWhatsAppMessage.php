@@ -154,6 +154,8 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         $externalId = $status['id'] ?? null;
         $newStatus = $status['status'] ?? null;
 
+        Log::info('Received WhatsApp status webhook', ['status' => $status]);
+
         if (! $externalId || ! in_array($newStatus, ['sent', 'delivered', 'read', 'failed'], true)) {
             return;
         }
@@ -212,6 +214,13 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             $details = $errors[0]['error_data']['details'] ?? null;
             $update['permission_request_failure_reason'] = trim(($reason ?? 'Message delivery failed.').($details ? " {$details}" : ''));
         }
+
+        Log::info('Matched permission-request status webhook to a WhatsappCall', [
+            'whatsapp_call_id' => $whatsappCall->id,
+            'external_id' => $externalId,
+            'new_status' => $newStatus,
+            'update' => $update,
+        ]);
 
         $whatsappCall->update($update);
 
