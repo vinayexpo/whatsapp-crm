@@ -103,7 +103,9 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
       localStreamRef.current = stream;
 
       setCallState("connecting");
-      const pc = new RTCPeerConnection();
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
+      });
       pcRef.current = pc;
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
@@ -111,6 +113,11 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
         const audio = new Audio();
         audio.autoplay = true;
         audio.srcObject = event.streams[0];
+        document.body.appendChild(audio);
+        audio.play().catch(() => {
+          // Autoplay may be blocked until a user gesture; the call UI's
+          // own controls (mute/hangup) count as one for subsequent plays.
+        });
         remoteAudioRef.current = audio;
       };
 
