@@ -39,13 +39,26 @@ class ContactImportService
 
             // For WhatsApp, the handle IS the phone number (E.164, no leading
             // '+') -- it's what actually gets used as the "to" recipient
-            // when sending. Fall back to the phone column so imports that
-            // only fill in "phone" (or put something other than the number
-            // in "handle") still resolve to a real, sendable recipient
-            // instead of silently creating an unreachable contact.
-            $handle = $row->channel === 'whatsapp'
-                ? preg_replace('/\D/', '', $row->handle ?: $row->phone ?: '')
-                : $row->handle;
+            // when sending. Strip non-digits from whichever column actually
+            // has a usable number: a "handle" cell that isn't a phone number
+            // (e.g. free text, or literally the channel name) strips down to
+            // nothing, so fall back to "phone" in that case too, rather than
+            // only when "handle" is blank.
+            if ($row->channel === 'whatsapp') {
+                $handle = preg_replace('/\D/', '', $row->handle ?? '');
+
+                if ($handle === '') {
+                    $handle = preg_replace('/\D/', '', $row->phone ?? '');
+                }
+
+                if ($handle === '') {
+                    $summary['errors'][] = ['row' => $row->rowNumber, 'message' => 'Handle/phone does not contain a usable phone number.'];
+
+                    continue;
+                }
+            } else {
+                $handle = $row->handle;
+            }
 
             $contact = Contact::query()
                 ->where('channel', $row->channel)
