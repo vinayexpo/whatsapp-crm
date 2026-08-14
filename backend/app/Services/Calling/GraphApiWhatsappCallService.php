@@ -53,6 +53,9 @@ class GraphApiWhatsappCallService implements WhatsappCallServiceInterface
                 'type' => 'interactive',
                 'interactive' => [
                     'type' => 'call_permission_request',
+                    'action' => [
+                        'name' => 'call_permission_request',
+                    ],
                 ],
             ])
             ->throw();
