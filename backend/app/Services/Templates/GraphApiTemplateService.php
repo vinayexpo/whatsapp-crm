@@ -35,6 +35,7 @@ class GraphApiTemplateService implements TemplateSyncServiceInterface
                 'status' => strtolower($template['status']),
                 'body' => $body,
                 'variables' => array_values(array_unique($matches[1] ?? [])),
+                'components' => $template['components'] ?? [],
             ];
         }
 

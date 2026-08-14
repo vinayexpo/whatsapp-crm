@@ -6,6 +6,7 @@ use App\Events\ConversationUpdated;
 use App\Events\MessageReceived;
 use App\Events\MessageStatusUpdated;
 use App\Models\ApiConnection;
+use App\Models\CampaignRecipient;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -161,6 +162,23 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         }
 
         $message->update(['status' => $newStatus]);
+
+        // A message can be accepted by the initial API call (getting a real
+        // external_message_id) and still be rejected asynchronously via this
+        // status webhook -- e.g. error 131047 when the recipient falls
+        // outside the 24-hour window. Propagate that failure back onto the
+        // campaign recipient so it doesn't keep showing a stale "sent".
+        if ($newStatus === 'failed') {
+            $errors = $status['errors'] ?? [];
+            $reason = $errors[0]['message'] ?? $errors[0]['title'] ?? null;
+            $details = $errors[0]['error_data']['details'] ?? null;
+
+            CampaignRecipient::query()->where('message_id', $message->id)->update([
+                'status' => 'failed',
+                'failure_reason' => trim(($reason ?? 'Message delivery failed.').($details ? " {$details}" : '')),
+            ]);
+        }
+
         MessageStatusUpdated::dispatch($message->load('conversation'));
     }
 

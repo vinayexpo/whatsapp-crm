@@ -23,6 +23,7 @@ class FakeMetaTemplateService implements TemplateSyncServiceInterface
                 'status' => 'approved',
                 'body' => 'Hi {{1}}, your order {{2}} has been confirmed and will arrive by {{3}}.',
                 'variables' => ['1', '2', '3'],
+                'components' => [['type' => 'BODY', 'text' => 'Hi {{1}}, your order {{2}} has been confirmed and will arrive by {{3}}.']],
             ],
             [
                 'meta_template_id' => '1002_'.$connection->id,
@@ -32,6 +33,7 @@ class FakeMetaTemplateService implements TemplateSyncServiceInterface
                 'status' => 'approved',
                 'body' => 'Hi {{1}}, this is a reminder for your appointment on {{2}}.',
                 'variables' => ['1', '2'],
+                'components' => [['type' => 'BODY', 'text' => 'Hi {{1}}, this is a reminder for your appointment on {{2}}.']],
             ],
             [
                 'meta_template_id' => '1003_'.$connection->id,
@@ -41,6 +43,7 @@ class FakeMetaTemplateService implements TemplateSyncServiceInterface
                 'status' => 'approved',
                 'body' => 'Hi {{1}}, enjoy {{2}}% off your next purchase with code {{3}}.',
                 'variables' => ['1', '2', '3'],
+                'components' => [['type' => 'BODY', 'text' => 'Hi {{1}}, enjoy {{2}}% off your next purchase with code {{3}}.']],
             ],
         ];
     }

@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 class FakeMetaMessagingService implements OutboundMessageServiceInterface
 {
-    public function send(Message $message, ApiConnection $connection): string
+    public function send(Message $message, ApiConnection $connection, ?array $template = null): string
     {
         $externalId = 'fake_'.Str::uuid();
 

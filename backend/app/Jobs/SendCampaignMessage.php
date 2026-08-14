@@ -7,6 +7,7 @@ use App\Models\ApiConnection;
 use App\Models\CampaignRecipient;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\WhatsappTemplate;
 use App\Jobs\Concerns\NotifiesOnFailure;
 use App\Services\Messaging\MessagingDriverResolver;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -48,10 +49,12 @@ class SendCampaignMessage implements ShouldQueue
         $outsideWindow = ! $lastInboundAt || now()->diffInHours($lastInboundAt, absolute: true) >= 24;
         $template = $campaign->whatsappTemplate;
 
-        if ($outsideWindow && ! $template) {
+        if ($outsideWindow && (! $template || $template->status !== 'approved')) {
             $recipient->update([
                 'status' => 'failed',
-                'failure_reason' => 'Outside the 24-hour customer messaging window; requires a pre-approved template.',
+                'failure_reason' => $template
+                    ? "Outside the 24-hour customer messaging window; the attached template is \"{$template->status}\", not approved by Meta."
+                    : 'Outside the 24-hour customer messaging window; requires a pre-approved template.',
             ]);
 
             return;
@@ -83,8 +86,10 @@ class SendCampaignMessage implements ShouldQueue
 
         $connection = ApiConnection::query()->where('channel', $conversation->channel)->first();
 
+        $templatePayload = $template ? $this->buildTemplatePayload($template, $campaign->template_variables ?? []) : null;
+
         try {
-            $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection);
+            $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection, $templatePayload);
         } catch (Throwable $e) {
             $message->update(['status' => 'failed']);
             $recipient->update([
@@ -109,6 +114,37 @@ class SendCampaignMessage implements ShouldQueue
         return preg_replace_callback('/\{\{\s*(\w+)\s*\}\}/', function ($matches) use ($variables) {
             return $variables[$matches[1]] ?? $matches[0];
         }, $body);
+    }
+
+    /**
+     * @param  array<string, string>  $variables
+     * @return array{name: string, language: string, components: array}
+     */
+    private function buildTemplatePayload(WhatsappTemplate $template, array $variables): array
+    {
+        $bodyComponent = collect($template->components ?? [])->firstWhere('type', 'BODY');
+        $placeholders = $bodyComponent['text'] ?? $template->body;
+
+        preg_match_all('/\{\{\s*(\w+)\s*\}\}/', $placeholders, $matches);
+        $orderedKeys = $matches[1] ?? [];
+
+        $components = [];
+
+        if ($orderedKeys) {
+            $components[] = [
+                'type' => 'body',
+                'parameters' => array_map(
+                    fn ($key) => ['type' => 'text', 'text' => $variables[$key] ?? ''],
+                    $orderedKeys
+                ),
+            ];
+        }
+
+        return [
+            'name' => $template->name,
+            'language' => $template->language,
+            'components' => $components,
+        ];
     }
 
     public function failed(Throwable $e): void

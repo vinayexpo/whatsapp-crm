@@ -63,6 +63,7 @@ class WhatsappTemplateController extends Controller
                     'status' => $template['status'],
                     'body' => $template['body'],
                     'variables' => $template['variables'],
+                    'components' => $template['components'] ?? [],
                     'synced_at' => $syncedAt,
                 ]
             );
