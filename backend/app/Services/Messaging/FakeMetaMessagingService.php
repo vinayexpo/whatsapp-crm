@@ -5,12 +5,13 @@ namespace App\Services\Messaging;
 use App\Jobs\SimulateMessageDeliveryTick;
 use App\Models\ApiConnection;
 use App\Models\Message;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class FakeMetaMessagingService implements OutboundMessageServiceInterface
 {
-    public function send(Message $message, ApiConnection $connection, ?array $template = null): string
+    public function send(Message $message, ApiConnection $connection, ?array $template = null, ?UploadedFile $attachmentFile = null): string
     {
         $externalId = 'fake_'.Str::uuid();
 

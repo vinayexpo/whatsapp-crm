@@ -4,6 +4,7 @@ namespace App\Services\Messaging;
 
 use App\Models\ApiConnection;
 use App\Models\Message;
+use Illuminate\Http\UploadedFile;
 
 interface OutboundMessageServiceInterface
 {
@@ -17,7 +18,12 @@ interface OutboundMessageServiceInterface
      * the only message type Meta allows outside the 24-hour customer
      * service window.
      *
+     * When $attachmentFile is given, the raw upload is sent using Meta's
+     * two-step media upload (POST the bytes to Meta, then reference the
+     * returned media id) instead of a "link" URL -- this avoids depending
+     * on our own storage being reachable over the public internet.
+     *
      * @param  array{name: string, language: string, components: array}|null  $template
      */
-    public function send(Message $message, ApiConnection $connection, ?array $template = null): string;
+    public function send(Message $message, ApiConnection $connection, ?array $template = null, ?UploadedFile $attachmentFile = null): string;
 }

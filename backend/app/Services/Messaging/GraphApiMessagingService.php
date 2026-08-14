@@ -4,12 +4,13 @@ namespace App\Services\Messaging;
 
 use App\Models\ApiConnection;
 use App\Models\Message;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class GraphApiMessagingService implements OutboundMessageServiceInterface
 {
-    public function send(Message $message, ApiConnection $connection, ?array $template = null): string
+    public function send(Message $message, ApiConnection $connection, ?array $template = null, ?UploadedFile $attachmentFile = null): string
     {
         $conversation = $message->conversation()->with('contact')->first();
 
@@ -40,7 +41,24 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
             if (! empty($template['components'])) {
                 $payload['template']['components'] = $template['components'];
             }
+        } elseif ($attachmentFile && $message->attachment_type && $conversation->channel === 'whatsapp') {
+            // Uploading the raw bytes to Meta and referencing the returned
+            // media id (instead of passing our own storage URL as a "link")
+            // means delivery never depends on our backend being reachable
+            // over the public internet -- our own storage disk is ephemeral
+            // on this host and was the actual cause of media never arriving.
+            $mediaId = $this->uploadMedia($attachmentFile, $senderId, $connection);
+            $payload['type'] = $message->attachment_type;
+            $payload[$message->attachment_type] = array_filter([
+                'id' => $mediaId,
+                'caption' => $message->attachment_type === 'document' || $message->attachment_type === 'image' || $message->attachment_type === 'video'
+                    ? $message->text
+                    : null,
+                'filename' => $message->attachment_type === 'document' ? $attachmentFile->getClientOriginalName() : null,
+            ]);
         } elseif ($message->attachment_url && in_array($message->attachment_type, ['image', 'video'], true)) {
+            // Fallback for channels/paths that only have a stored URL (e.g.
+            // Instagram, which has no equivalent media-upload endpoint here).
             $payload['type'] = $message->attachment_type;
             $payload[$message->attachment_type] = [
                 'link' => $message->attachment_url,
@@ -55,5 +73,19 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
             ->throw();
 
         return $response->json('messages.0.id');
+    }
+
+    private function uploadMedia(UploadedFile $file, string $phoneNumberId, ApiConnection $connection): string
+    {
+        $response = Http::withToken($connection->access_token)
+            ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName(), [
+                'Content-Type' => $file->getMimeType(),
+            ])
+            ->post("https://graph.facebook.com/v20.0/{$phoneNumberId}/media", [
+                'messaging_product' => 'whatsapp',
+            ])
+            ->throw();
+
+        return $response->json('id');
     }
 }

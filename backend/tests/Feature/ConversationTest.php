@@ -1,11 +1,13 @@
 <?php
 
+use App\Models\ApiConnection;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
 use Database\Seeders\PipelineStagesSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
@@ -93,6 +95,47 @@ it('allows an agent to send a message with an attachment and no text', function 
     $message = Message::query()->where('conversation_id', $conversation->id)->first();
     expect($message->attachment_type)->toBe('image');
     expect($message->attachment_url)->not->toBeNull();
+});
+
+it('sends an outbound attachment to Meta via the two-step media upload instead of a link', function () {
+    Illuminate\Support\Facades\Storage::fake('public');
+
+    $connection = ApiConnection::factory()->connected()->create([
+        'channel' => 'whatsapp',
+        'phone_number_id' => '1234567890',
+    ]);
+    $conversation = Conversation::factory()->create([
+        'company_id' => $connection->company_id,
+        'channel' => 'whatsapp',
+    ]);
+    $user = actingAsConversationRole('agent');
+
+    Http::fake([
+        'graph.facebook.com/*/media' => Http::response(['id' => 'media-abc123'], 200),
+        'graph.facebook.com/*/messages' => Http::response(['messages' => [['id' => 'wamid.SENT1']]], 200),
+    ]);
+
+    $file = Illuminate\Http\UploadedFile::fake()->image('photo.jpg');
+
+    $response = $this->actingAs($user)->postJson("/api/v1/conversations/{$conversation->uuid}/messages", [
+        'attachmentFile' => $file,
+    ]);
+
+    $response->assertCreated();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/media'));
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/messages')) {
+            return false;
+        }
+
+        return $request['type'] === 'image'
+            && $request['image']['id'] === 'media-abc123'
+            && ! isset($request['image']['link']);
+    });
+
+    $message = Message::query()->where('conversation_id', $conversation->id)->first();
+    expect($message->external_message_id)->toBe('wamid.SENT1');
 });
 
 it('marks a conversation as read', function () {

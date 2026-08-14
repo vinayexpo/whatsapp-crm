@@ -59,7 +59,7 @@ class ConversationController extends Controller
 
         $data = $request->validate([
             'text' => ['nullable', 'string'],
-            'attachmentFile' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,webm', 'max:51200'],
+            'attachmentFile' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,webm,pdf,doc,docx,xls,xlsx,ppt,pptx,mp3,ogg,amr,aac', 'max:51200'],
         ]);
 
         if (empty($data['text']) && ! $request->hasFile('attachmentFile')) {
@@ -70,11 +70,20 @@ class ConversationController extends Controller
 
         $attachmentUrl = null;
         $attachmentType = null;
+        $attachmentFile = $request->hasFile('attachmentFile') ? $request->file('attachmentFile') : null;
 
-        if ($request->hasFile('attachmentFile')) {
-            $file = $request->file('attachmentFile');
-            $attachmentType = str_starts_with($file->getMimeType() ?? '', 'video/') ? 'video' : 'image';
-            $attachmentUrl = Storage::disk('public')->url($file->store('conversation-attachments', 'public'));
+        if ($attachmentFile) {
+            $mimeType = $attachmentFile->getMimeType() ?? '';
+            $attachmentType = match (true) {
+                str_starts_with($mimeType, 'image/') => 'image',
+                str_starts_with($mimeType, 'video/') => 'video',
+                str_starts_with($mimeType, 'audio/') => 'audio',
+                default => 'document',
+            };
+            // Kept only for display in the CRM's own UI (MessageResource) --
+            // the actual send to Meta below uploads the file bytes directly
+            // and never relies on this URL being publicly fetchable.
+            $attachmentUrl = Storage::disk('public')->url($attachmentFile->store('conversation-attachments', 'public'));
         }
 
         $message = Message::query()->create([
@@ -94,7 +103,7 @@ class ConversationController extends Controller
             // GET /widget/messages polling endpoint instead.
         } else {
             $connection = ApiConnection::query()->where('channel', $conversation->channel)->first();
-            $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection);
+            $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection, null, $attachmentFile);
             $message->update(['external_message_id' => $externalId]);
         }
 
