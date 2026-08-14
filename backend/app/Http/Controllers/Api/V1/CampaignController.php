@@ -24,7 +24,11 @@ class CampaignController extends Controller
         $this->authorize('viewAny', Campaign::class);
 
         return CampaignResource::collection(
-            Campaign::query()->with(['whatsappTemplate', 'phonebookFolder', 'voiceAgent', 'whatsappCallFlow'])->latest('created_at')->get()
+            Campaign::query()
+                ->with(['whatsappTemplate', 'phonebookFolder', 'voiceAgent', 'whatsappCallFlow'])
+                ->withCount(['recipients as failed_recipients_count' => fn ($q) => $q->where('status', 'failed')])
+                ->latest('created_at')
+                ->get()
         );
     }
 

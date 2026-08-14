@@ -82,12 +82,25 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={campaign.status}
-                      size="small"
-                      color={STATUS_COLOR[campaign.status]}
-                      sx={{ textTransform: "capitalize" }}
-                    />
+                    <Stack direction="row" sx={{ gap: 0.5, flexWrap: "wrap" }}>
+                      <Chip
+                        label={campaign.status}
+                        size="small"
+                        color={STATUS_COLOR[campaign.status]}
+                        sx={{ textTransform: "capitalize" }}
+                      />
+                      {campaign.status === "completed" && campaign.failedCount > 0 && (
+                        <Chip
+                          label={
+                            campaign.failedCount >= campaign.recipientCount
+                              ? "All failed"
+                              : `${campaign.failedCount} failed`
+                          }
+                          size="small"
+                          color="error"
+                        />
+                      )}
+                    </Stack>
                   </TableCell>
                   <TableCell>
                     <Chip

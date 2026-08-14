@@ -26,6 +26,7 @@ class CampaignResource extends JsonResource
             'deliveredCount' => $this->delivered_count,
             'readCount' => $this->read_count,
             'repliedCount' => $this->replied_count,
+            'failedCount' => $this->failed_recipients_count ?? $this->recipients()->where('status', 'failed')->count(),
             'scheduledAt' => $this->scheduled_at?->toIso8601String(),
             'createdAt' => $this->created_at?->toIso8601String(),
             'voiceAgentId' => $this->voiceAgent?->uuid,

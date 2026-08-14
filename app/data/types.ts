@@ -80,6 +80,7 @@ export interface Campaign {
   deliveredCount: number;
   readCount: number;
   repliedCount: number;
+  failedCount: number;
   scheduledAt: string | null;
   createdAt: string;
   voiceAgentId: string | null;
