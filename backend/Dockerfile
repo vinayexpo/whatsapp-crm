@@ -24,6 +24,5 @@ RUN composer dump-autoload --optimize \
     && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8080
-EXPOSE 8081
 
-CMD php artisan migrate --force && php artisan db:seed --class=RolesAndPermissionsSeeder --force && php artisan db:seed --class=PipelineStagesForAllCompaniesSeeder --force && php artisan storage:link && (php artisan queue:work --sleep=1 --tries=3 &) && (php artisan schedule:work &) && (php artisan reverb:start --host=0.0.0.0 --port=${REVERB_SERVER_PORT:-8081} &) && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+CMD php artisan migrate --force && php artisan db:seed --class=RolesAndPermissionsSeeder --force && php artisan db:seed --class=PipelineStagesForAllCompaniesSeeder --force && php artisan storage:link && (php artisan queue:work --sleep=1 --tries=3 &) && (php artisan schedule:work &) && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
