@@ -8,13 +8,17 @@ use Illuminate\Support\Facades\Http;
 
 class GraphApiWhatsappCallService implements WhatsappCallServiceInterface
 {
-    public function placeCall(WhatsappCall $call, ApiConnection $connection): string
+    public function placeCall(WhatsappCall $call, ApiConnection $connection, string $sdpOffer): string
     {
         $response = Http::withToken($connection->access_token)
             ->post("https://graph.facebook.com/v20.0/{$connection->phone_number_id}/calls", [
                 'messaging_product' => 'whatsapp',
                 'to' => $call->contact->handle,
                 'action' => 'connect',
+                'session' => [
+                    'sdp_type' => 'offer',
+                    'sdp' => $sdpOffer,
+                ],
             ])
             ->throw();
 

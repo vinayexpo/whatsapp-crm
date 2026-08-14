@@ -185,6 +185,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/whatsapp-calls', [WhatsappCallController::class, 'index']);
         Route::post('/whatsapp-calls', [WhatsappCallController::class, 'store']);
         Route::get('/whatsapp-calls/{whatsappCall}', [WhatsappCallController::class, 'show']);
+        Route::post('/whatsapp-calls/{whatsappCall}/offer', [WhatsappCallController::class, 'submitOffer']);
+        Route::post('/whatsapp-calls/{whatsappCall}/hangup', [WhatsappCallController::class, 'hangup']);
         Route::patch('/whatsapp-calls/{whatsappCall}/followup', [WhatsappCallController::class, 'assignFollowup']);
         Route::patch('/whatsapp-calls/{whatsappCall}/followup/complete', [WhatsappCallController::class, 'completeFollowup']);
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\WhatsappCallStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WhatsappCallResource;
 use App\Models\ApiConnection;
@@ -99,27 +100,104 @@ class WhatsappCallController extends Controller
             'conversation_id' => $conversation?->id,
             'direction' => 'outbound',
             'status' => 'ringing',
+            'sdp_exchange_status' => 'pending_offer',
         ]);
-
-        $call->setRelation('contact', $contact);
-
-        try {
-            $metaCallId = app(WhatsappCallDriverResolver::class)
-                ->forConnection($connection)
-                ->placeCall($call, $connection);
-        } catch (RequestException) {
-            $call->update(['status' => 'failed']);
-
-            throw ValidationException::withMessages([
-                'contactId' => "Meta rejected the outbound call request. Double-check the connection's calling setup and try again.",
-            ]);
-        }
-
-        $call->update(['meta_call_id' => $metaCallId]);
 
         return response()->json([
             'data' => new WhatsappCallResource($call->fresh(['callFlow', 'contact', 'conversation', 'humanFollowupAssignee'])),
         ], 201);
+    }
+
+    public function submitOffer(Request $request, WhatsappCall $whatsappCall): JsonResponse
+    {
+        $this->authorize('create', WhatsappCall::class);
+
+        $data = $request->validate([
+            'sdpOffer' => ['required', 'string'],
+        ]);
+
+        $connection = ApiConnection::query()
+            ->where('channel', 'whatsapp')
+            ->where('status', 'connected')
+            ->where('calling_enabled', true)
+            ->first();
+
+        if (! $connection) {
+            throw ValidationException::withMessages([
+                'sdpOffer' => 'No WhatsApp connection has calling enabled. Enable calling from Setup before placing a call.',
+            ]);
+        }
+
+        $whatsappCall->update([
+            'local_sdp_offer' => $data['sdpOffer'],
+            'sdp_exchange_status' => 'offer_sent',
+        ]);
+
+        try {
+            $metaCallId = app(WhatsappCallDriverResolver::class)
+                ->forConnection($connection)
+                ->placeCall($whatsappCall, $connection, $data['sdpOffer']);
+        } catch (RequestException $e) {
+            $whatsappCall->update(['status' => 'failed', 'sdp_exchange_status' => 'failed']);
+
+            WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
+
+            throw ValidationException::withMessages([
+                'sdpOffer' => $this->describeMetaError($e),
+            ]);
+        }
+
+        $whatsappCall->update(['meta_call_id' => $metaCallId]);
+
+        return response()->json([
+            'data' => new WhatsappCallResource($whatsappCall->fresh(['callFlow', 'contact', 'conversation', 'humanFollowupAssignee'])),
+        ]);
+    }
+
+    public function hangup(WhatsappCall $whatsappCall): JsonResponse
+    {
+        $this->authorize('create', WhatsappCall::class);
+
+        $connection = ApiConnection::query()
+            ->where('channel', 'whatsapp')
+            ->where('status', 'connected')
+            ->where('calling_enabled', true)
+            ->first();
+
+        if ($connection && $whatsappCall->meta_call_id) {
+            app(WhatsappCallDriverResolver::class)
+                ->forConnection($connection)
+                ->sendCallAction($whatsappCall, $connection, ['action' => 'terminate']);
+        }
+
+        $whatsappCall->update([
+            'status' => 'completed',
+            'ended_at' => now(),
+        ]);
+
+        WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
+
+        return response()->json([
+            'data' => new WhatsappCallResource($whatsappCall->fresh(['callFlow', 'contact', 'conversation', 'humanFollowupAssignee'])),
+        ]);
+    }
+
+    private function describeMetaError(RequestException $e): string
+    {
+        $error = $e->response?->json('error');
+
+        if (! $error) {
+            return "Meta rejected the outbound call request. Double-check the connection's calling setup and try again.";
+        }
+
+        $message = $error['message'] ?? 'Meta rejected the outbound call request.';
+        $details = $error['error_data']['details'] ?? null;
+        $code = $error['code'] ?? null;
+        $subcode = $error['error_subcode'] ?? null;
+
+        $suffix = $code ? " (code {$code}".($subcode ? "/{$subcode}" : '').')' : '';
+
+        return $details ? "{$message}: {$details}{$suffix}" : "{$message}{$suffix}";
     }
 
     public function show(WhatsappCall $whatsappCall): JsonResponse

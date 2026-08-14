@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\WhatsappCallSdpAnswerReceived;
 use App\Events\WhatsappCallStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessInboundWhatsappCall;
@@ -30,6 +31,7 @@ class WhatsappCallWebhookController extends Controller
 
         $status = data_get($request->all(), 'entry.0.changes.0.value.calls.0.status');
         $metaCallId = data_get($request->all(), 'entry.0.changes.0.value.calls.0.id');
+        $session = data_get($request->all(), 'entry.0.changes.0.value.calls.0.session');
 
         $existingCall = $metaCallId ? WhatsappCall::query()->where('meta_call_id', $metaCallId)->first() : null;
 
@@ -37,6 +39,15 @@ class WhatsappCallWebhookController extends Controller
             ProcessInboundWhatsappCall::dispatch($event->id);
 
             return response()->noContent();
+        }
+
+        if ($existingCall && $session && ($session['sdp_type'] ?? null) === 'answer' && ! empty($session['sdp'])) {
+            $existingCall->update([
+                'remote_sdp_answer' => $session['sdp'],
+                'sdp_exchange_status' => 'answer_received',
+            ]);
+
+            WhatsappCallSdpAnswerReceived::dispatch($existingCall->fresh());
         }
 
         if ($existingCall) {
@@ -119,6 +130,7 @@ class WhatsappCallWebhookController extends Controller
 
         if ($status === 'accepted' && ! $whatsappCall->started_at) {
             $attributes['started_at'] = now();
+            $attributes['sdp_exchange_status'] = 'connected';
         }
 
         $terminal = in_array($status, ['terminated', 'failed', 'missed', 'rejected'], true);
@@ -127,6 +139,7 @@ class WhatsappCallWebhookController extends Controller
             $attributes['ended_at'] = now();
 
             if (in_array($status, ['failed', 'missed', 'rejected'], true)) {
+                $attributes['sdp_exchange_status'] = 'failed';
                 $attributes['needs_human_followup'] = true;
             }
         }

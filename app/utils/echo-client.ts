@@ -10,6 +10,16 @@ declare global {
 
 let echo: Echo<"reverb"> | null = null;
 
+// VITE_REVERB_* are build-time Vite vars — they must be set on the Railway
+// frontend service so the production build points at the deployed Reverb
+// server instead of localhost.
+const REVERB_HOST = import.meta.env.VITE_REVERB_HOST ?? "localhost";
+const REVERB_PORT = Number(import.meta.env.VITE_REVERB_PORT ?? 8080);
+const REVERB_SCHEME = import.meta.env.VITE_REVERB_SCHEME ?? "http";
+const REVERB_APP_KEY = import.meta.env.VITE_REVERB_APP_KEY ?? "vlpcckeyubabfqhbnwfd";
+const REVERB_FORCE_TLS = REVERB_SCHEME === "https";
+const AUTH_ENDPOINT = `${import.meta.env.VITE_API_URL ?? "http://localhost:8000"}/broadcasting/auth`;
+
 export function getEcho(): Echo<"reverb"> {
   if (echo) return echo;
 
@@ -17,17 +27,17 @@ export function getEcho(): Echo<"reverb"> {
 
   echo = new Echo({
     broadcaster: "reverb",
-    key: "vlpcckeyubabfqhbnwfd",
-    wsHost: "localhost",
-    wsPort: 8080,
-    wssPort: 8080,
-    forceTLS: false,
+    key: REVERB_APP_KEY,
+    wsHost: REVERB_HOST,
+    wsPort: REVERB_PORT,
+    wssPort: REVERB_PORT,
+    forceTLS: REVERB_FORCE_TLS,
     enabledTransports: ["ws", "wss"],
-    authEndpoint: "http://localhost:8000/broadcasting/auth",
+    authEndpoint: AUTH_ENDPOINT,
     authorizer: (channel: { name: string }) => ({
       authorize: (socketId: string, callback: (error: Error | null, data: ChannelAuthorizationData | null) => void) => {
         const token = typeof window !== "undefined" ? window.localStorage.getItem("auth_token") : null;
-        fetch("http://localhost:8000/broadcasting/auth", {
+        fetch(AUTH_ENDPOINT, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",

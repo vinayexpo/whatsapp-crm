@@ -2,6 +2,7 @@
 
 namespace App\Services\Calling;
 
+use App\Jobs\SimulateWhatsappCallAnswer;
 use App\Models\ApiConnection;
 use App\Models\WhatsappCall;
 use Illuminate\Support\Facades\Log;
@@ -9,7 +10,7 @@ use Illuminate\Support\Str;
 
 class FakeWhatsappCallService implements WhatsappCallServiceInterface
 {
-    public function placeCall(WhatsappCall $call, ApiConnection $connection): string
+    public function placeCall(WhatsappCall $call, ApiConnection $connection, string $sdpOffer): string
     {
         $metaCallId = 'fake-whatsapp-call-'.Str::uuid();
 
@@ -18,6 +19,8 @@ class FakeWhatsappCallService implements WhatsappCallServiceInterface
             'contact_id' => $call->contact_id,
             'meta_call_id' => $metaCallId,
         ]);
+
+        SimulateWhatsappCallAnswer::dispatch($call->id)->delay(now()->addSeconds(2));
 
         return $metaCallId;
     }

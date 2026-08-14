@@ -91,7 +91,11 @@ class InitiateOutboundWhatsappCall implements ShouldQueue
             return;
         }
 
-        $metaCallId = $service->placeCall($call, $connection ?? new ApiConnection);
+        // IVR/campaign calls don't yet generate a real SDP offer (that's a
+        // separate media-bridge project, not the browser-driven flow this
+        // controller's offer/answer endpoints exist for) -- this keeps the
+        // existing pre-WebRTC behavior unchanged for that path.
+        $metaCallId = $service->placeCall($call, $connection ?? new ApiConnection, '');
 
         $call->update(['meta_call_id' => $metaCallId]);
         $recipient->update(['status' => 'sent', 'sent_at' => now()]);

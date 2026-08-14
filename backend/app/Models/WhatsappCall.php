@@ -28,6 +28,10 @@ class WhatsappCall extends Model
         'human_followup_completed_at',
         'started_at',
         'ended_at',
+        'local_sdp_offer',
+        'remote_sdp_answer',
+        'sdp_exchange_status',
+        'remote_ice_candidates',
     ];
 
     protected function casts(): array
@@ -39,6 +43,7 @@ class WhatsappCall extends Model
             'human_followup_completed_at' => 'datetime',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'remote_ice_candidates' => 'array',
         ];
     }
 

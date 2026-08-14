@@ -1,5 +1,6 @@
 <?php
 
+use App\Events\WhatsappCallSdpAnswerReceived;
 use App\Jobs\ProcessInboundWhatsappCall;
 use App\Jobs\ProcessWhatsappCallCompletion;
 use App\Models\ApiConnection;
@@ -12,6 +13,7 @@ use App\Models\WhatsappCall;
 use App\Models\WhatsappCallFlow;
 use Database\Seeders\PipelineStagesSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -241,4 +243,29 @@ it('returns 404 on an action request for an unknown call id', function () {
     $this->postJson('/api/webhooks/whatsapp-call/action', [
         'call_id' => 'does-not-exist',
     ])->assertNotFound();
+});
+
+it('stores the remote SDP answer and dispatches WhatsappCallSdpAnswerReceived', function () {
+    Event::fake([WhatsappCallSdpAnswerReceived::class]);
+    config(['services.meta.app_secret' => null]);
+
+    $whatsappCall = WhatsappCall::factory()->create([
+        'meta_call_id' => 'wacid.666',
+        'status' => 'ringing',
+        'sdp_exchange_status' => 'offer_sent',
+    ]);
+
+    $this->postJson('/api/webhooks/whatsapp-call', whatsappCallPayload([
+        'entry' => [['changes' => [['value' => ['calls' => [[
+            'id' => 'wacid.666',
+            'status' => 'ringing',
+            'session' => ['sdp_type' => 'answer', 'sdp' => 'v=0...fake-answer-sdp'],
+        ]]]]]]],
+    ]))->assertNoContent();
+
+    $whatsappCall->refresh();
+    expect($whatsappCall->remote_sdp_answer)->toBe('v=0...fake-answer-sdp');
+    expect($whatsappCall->sdp_exchange_status)->toBe('answer_received');
+
+    Event::assertDispatched(WhatsappCallSdpAnswerReceived::class, fn ($event) => $event->whatsappCall->id === $whatsappCall->id);
 });
