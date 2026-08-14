@@ -47,6 +47,16 @@ class WhatsAppWebhookController extends Controller
             return response()->noContent(401);
         }
 
+        // Meta delivers both messages and calls to the same subscribed
+        // webhook URL -- there is no separate registration for call events,
+        // so payloads carrying entry[].changes[].value.calls must be routed
+        // to the call webhook handler instead of the message job, which
+        // only reads value.messages/value.statuses and silently ignores
+        // anything else.
+        if (! empty(data_get($request->all(), 'entry.0.changes.0.value.calls'))) {
+            return app(WhatsappCallWebhookController::class)->handle($request);
+        }
+
         $event = WebhookEvent::query()->create([
             'provider' => 'whatsapp',
             'payload' => $request->all(),

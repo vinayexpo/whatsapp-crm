@@ -5,6 +5,7 @@ use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\WebhookEvent;
+use App\Models\WhatsappCall;
 use Database\Seeders\PipelineStagesSeeder;
 use Illuminate\Support\Facades\Queue;
 
@@ -131,6 +132,35 @@ it('reuses the existing contact and conversation for a known number', function (
     expect(Contact::query()->where('handle', '15551112222')->count())->toBe(1);
     expect(Conversation::query()->where('contact_id', $contact->id)->count())->toBe(1);
     expect($conversation->fresh()->unread_count)->toBe(3);
+});
+
+it('routes a call payload arriving at the message webhook URL to the call handler instead of dropping it', function () {
+    Queue::fake();
+    config(['services.meta.app_secret' => null]);
+
+    $whatsappCall = WhatsappCall::factory()->create([
+        'meta_call_id' => 'wacid.routed1',
+        'status' => 'ringing',
+    ]);
+
+    $this->postJson('/api/webhooks/whatsapp', [
+        'entry' => [
+            [
+                'changes' => [
+                    [
+                        'value' => [
+                            'calls' => [
+                                ['id' => 'wacid.routed1', 'status' => 'missed'],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ])->assertNoContent();
+
+    expect($whatsappCall->fresh()->status)->toBe('missed');
+    Queue::assertNotPushed(ProcessInboundWhatsAppMessage::class);
 });
 
 it('updates message status from an inbound status webhook', function () {
