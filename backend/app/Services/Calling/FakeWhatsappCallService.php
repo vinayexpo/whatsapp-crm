@@ -33,11 +33,16 @@ class FakeWhatsappCallService implements WhatsappCallServiceInterface
         ]);
     }
 
-    public function sendCallPermissionRequest(WhatsappCall $call, ApiConnection $connection): void
+    public function sendCallPermissionRequest(WhatsappCall $call, ApiConnection $connection): string
     {
+        $messageId = 'fake-permission-request-'.Str::uuid();
+
         Log::info('FakeWhatsappCallService: simulated call permission request', [
             'whatsapp_call_id' => $call->id,
             'contact_id' => $call->contact_id,
+            'message_id' => $messageId,
         ]);
+
+        return $messageId;
     }
 }

@@ -199,7 +199,7 @@ class WhatsappCallController extends Controller
         }
 
         try {
-            app(WhatsappCallDriverResolver::class)
+            $messageId = app(WhatsappCallDriverResolver::class)
                 ->forConnection($connection)
                 ->sendCallPermissionRequest($whatsappCall, $connection);
         } catch (RequestException $e) {
@@ -207,6 +207,12 @@ class WhatsappCallController extends Controller
                 'contactId' => $this->describeMetaError($e),
             ]);
         }
+
+        $whatsappCall->update([
+            'permission_request_message_id' => $messageId,
+            'permission_request_status' => 'sent',
+            'permission_request_failure_reason' => null,
+        ]);
 
         return response()->json(['data' => ['sent' => true]]);
     }

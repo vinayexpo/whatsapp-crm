@@ -21,6 +21,8 @@ class WhatsappCallResource extends JsonResource
             'status' => $this->status,
             'metaCallId' => $this->meta_call_id,
             'sdpExchangeStatus' => $this->sdp_exchange_status,
+            'permissionRequestStatus' => $this->permission_request_status,
+            'permissionRequestFailureReason' => $this->permission_request_failure_reason,
             'transcript' => $this->transcript ?? [],
             'collectedVariables' => $this->collected_variables ?? [],
             'needsHumanFollowup' => (bool) $this->needs_human_followup,

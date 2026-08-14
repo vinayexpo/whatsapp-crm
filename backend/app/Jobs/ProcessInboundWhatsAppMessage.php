@@ -11,6 +11,8 @@ use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\WebhookEvent;
+use App\Models\WhatsappCall;
+use App\Events\WhatsappCallStatusUpdated;
 use App\Jobs\Concerns\NotifiesOnFailure;
 use App\Scopes\CompanyScope;
 use App\Services\Notifications\NotificationDispatchService;
@@ -159,16 +161,7 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         $message = Message::query()->where('external_message_id', $externalId)->first();
 
         if (! $message) {
-            // Sends that don't create a local Message row (e.g. the call
-            // permission request, sent directly via the Graph API) would
-            // otherwise have their delivery status silently discarded here,
-            // hiding an async failure Meta reports after the initial 200.
-            if ($newStatus === 'failed') {
-                Log::warning('Received a failed status webhook for an unmatched message', [
-                    'external_id' => $externalId,
-                    'status' => $status,
-                ]);
-            }
+            $this->applyPermissionRequestStatusUpdate($externalId, $newStatus, $status);
 
             return;
         }
@@ -192,6 +185,37 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         }
 
         MessageStatusUpdated::dispatch($message->load('conversation'));
+    }
+
+    private function applyPermissionRequestStatusUpdate(string $externalId, string $newStatus, array $status): void
+    {
+        $whatsappCall = WhatsappCall::withoutGlobalScope(CompanyScope::class)
+            ->where('permission_request_message_id', $externalId)
+            ->first();
+
+        if (! $whatsappCall) {
+            if ($newStatus === 'failed') {
+                Log::warning('Received a failed status webhook for an unmatched message', [
+                    'external_id' => $externalId,
+                    'status' => $status,
+                ]);
+            }
+
+            return;
+        }
+
+        $update = ['permission_request_status' => $newStatus];
+
+        if ($newStatus === 'failed') {
+            $errors = $status['errors'] ?? [];
+            $reason = $errors[0]['message'] ?? $errors[0]['title'] ?? null;
+            $details = $errors[0]['error_data']['details'] ?? null;
+            $update['permission_request_failure_reason'] = trim(($reason ?? 'Message delivery failed.').($details ? " {$details}" : ''));
+        }
+
+        $whatsappCall->update($update);
+
+        WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
     }
 
     public function failed(Throwable $e): void

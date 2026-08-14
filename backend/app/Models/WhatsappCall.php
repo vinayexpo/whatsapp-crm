@@ -32,6 +32,9 @@ class WhatsappCall extends Model
         'remote_sdp_answer',
         'sdp_exchange_status',
         'remote_ice_candidates',
+        'permission_request_message_id',
+        'permission_request_status',
+        'permission_request_failure_reason',
     ];
 
     protected function casts(): array

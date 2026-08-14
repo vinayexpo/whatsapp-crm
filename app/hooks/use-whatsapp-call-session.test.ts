@@ -35,6 +35,8 @@ function baseCall(overrides: Partial<WhatsappCall> = {}): WhatsappCall {
     status: "ringing",
     metaCallId: null,
     sdpExchangeStatus: "pending_offer",
+    permissionRequestStatus: null,
+    permissionRequestFailureReason: null,
     transcript: [],
     collectedVariables: {},
     needsHumanFollowup: false,

@@ -25,7 +25,9 @@ interface WhatsappCallServiceInterface
      * Send Meta's in-chat "call permission request" message so the contact
      * can opt in to receiving calls from this business (required before
      * placeCall() will succeed — Meta rejects with code 138006/2593090
-     * otherwise).
+     * otherwise). Returns Meta's message ID so async delivery-status
+     * webhooks (e.g. a 24-hour-window failure) can be matched back to this
+     * call, since Meta can return 200 here and still fail delivery later.
      */
-    public function sendCallPermissionRequest(WhatsappCall $call, ApiConnection $connection): void;
+    public function sendCallPermissionRequest(WhatsappCall $call, ApiConnection $connection): string;
 }

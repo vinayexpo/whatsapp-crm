@@ -189,3 +189,44 @@ it('updates message status from an inbound status webhook', function () {
 
     expect($message->fresh()->status)->toBe('delivered');
 });
+
+it('marks a call permission request failed from an async status webhook with no matching message', function () {
+    $whatsappCall = WhatsappCall::factory()->create([
+        'permission_request_message_id' => 'wamid.PERMREQ1',
+        'permission_request_status' => 'sent',
+    ]);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'statuses' => [
+                                    [
+                                        'id' => 'wamid.PERMREQ1',
+                                        'status' => 'failed',
+                                        'errors' => [
+                                            [
+                                                'message' => 'Re-engagement message',
+                                                'error_data' => ['details' => 'Message failed to send because more than 24 hours have passed since the customer last replied to this number.'],
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    $whatsappCall->refresh();
+    expect($whatsappCall->permission_request_status)->toBe('failed');
+    expect($whatsappCall->permission_request_failure_reason)->toContain('24 hours');
+});

@@ -87,6 +87,14 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
           setCallState("failed");
           setErrorMessage("The call failed.");
         }
+
+        if (payload.whatsappCall.permissionRequestStatus === "failed") {
+          setErrorMessage(
+            payload.whatsappCall.permissionRequestFailureReason ?? "The call permission request couldn't be delivered.",
+          );
+        } else if (payload.whatsappCall.permissionRequestStatus === "delivered" || payload.whatsappCall.permissionRequestStatus === "read") {
+          setErrorMessage("Call permission request delivered. Ask the contact to accept it in WhatsApp, then try calling again.");
+        }
       });
       echo.private(channelName).listen(".whatsapp-call.sdp-answer", async (payload: { sdp: string }) => {
         try {
@@ -140,10 +148,21 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
       } catch (error) {
         const message =
           error instanceof ApiError ? (error.errors?.sdpOffer?.[0] ?? error.message) : "Couldn't place the call.";
+        const needsPermission = CALL_PERMISSION_ERROR_PATTERN.test(message);
         setCallState("failed");
         setErrorMessage(message);
-        setNeedsCallPermission(CALL_PERMISSION_ERROR_PATTERN.test(message));
-        cleanup();
+        setNeedsCallPermission(needsPermission);
+        if (needsPermission) {
+          // Keep the Echo subscription alive so a later async permission-
+          // request delivery failure (e.g. the 24-hour window) can still
+          // reach the UI in real time instead of only WebRTC teardown.
+          pcRef.current?.close();
+          pcRef.current = null;
+          localStreamRef.current?.getTracks().forEach((track) => track.stop());
+          localStreamRef.current = null;
+        } else {
+          cleanup();
+        }
       }
     },
     [cleanup],
@@ -156,7 +175,7 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
       await apiClient.requestWhatsappCallPermission(call.id);
       setNeedsCallPermission(false);
       setErrorMessage(
-        "Call permission request sent. Ask the contact to accept it in WhatsApp, then try calling again.",
+        "Call permission request sent. Waiting for WhatsApp to deliver it to the contact…",
       );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Couldn't send the call permission request.");
