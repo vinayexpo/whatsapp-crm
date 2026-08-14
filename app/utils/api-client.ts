@@ -995,6 +995,11 @@ async function requestWhatsappCallPermission(whatsappCallId: string): Promise<vo
   });
 }
 
+async function getWhatsappCallIceServers(): Promise<RTCIceServer[]> {
+  const { data } = await apiRequest<{ data: { iceServers: RTCIceServer[] } }>("/api/v1/whatsapp-calls/ice-servers");
+  return data.iceServers;
+}
+
 async function assignWhatsappCallFollowup(whatsappCallId: string, userId: string | null): Promise<WhatsappCall> {
   const { data } = await apiRequest<{ data: WhatsappCall }>(`/api/v1/whatsapp-calls/${whatsappCallId}/followup`, {
     method: "PATCH",
@@ -1149,6 +1154,7 @@ export const apiClient = {
   submitWhatsappCallOffer,
   hangupWhatsappCall,
   requestWhatsappCallPermission,
+  getWhatsappCallIceServers,
   assignWhatsappCallFollowup,
   completeWhatsappCallFollowup,
   listNotifications,

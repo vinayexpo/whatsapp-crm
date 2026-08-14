@@ -16,6 +16,8 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class WhatsappCallController extends Controller
@@ -215,6 +217,40 @@ class WhatsappCallController extends Controller
         ]);
 
         return response()->json(['data' => ['sent' => true]]);
+    }
+
+    public function iceServers(): JsonResponse
+    {
+        $this->authorize('create', WhatsappCall::class);
+
+        $accountSid = config('services.twilio.account_sid');
+        $authToken = config('services.twilio.auth_token');
+
+        $fallback = [['urls' => ['stun:stun.l.google.com:19302']]];
+
+        if (! $accountSid || ! $authToken) {
+            return response()->json(['data' => ['iceServers' => $fallback]]);
+        }
+
+        try {
+            $response = Http::withBasicAuth($accountSid, $authToken)
+                ->asForm()
+                ->post("https://api.twilio.com/2010-04-01/Accounts/{$accountSid}/Tokens.json")
+                ->throw();
+        } catch (RequestException $e) {
+            // Without TURN, calls between peers behind restrictive NATs/
+            // firewalls will connect at the signaling level but carry no
+            // audio -- fall back to STUN-only rather than blocking the call
+            // outright, since STUN-only still works on many networks.
+            Log::warning('Failed to fetch Twilio TURN credentials, falling back to STUN-only', [
+                'status' => $e->response?->status(),
+                'body' => $e->response?->json(),
+            ]);
+
+            return response()->json(['data' => ['iceServers' => $fallback]]);
+        }
+
+        return response()->json(['data' => ['iceServers' => $response->json('ice_servers', $fallback)]]);
     }
 
     private function describeMetaError(RequestException $e): string

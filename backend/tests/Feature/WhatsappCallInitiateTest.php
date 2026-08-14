@@ -228,3 +228,47 @@ it('filters whatsapp calls by contactId and conversationId', function () {
     expect($byConversation->json('data'))->toHaveCount(1);
     $byConversation->assertJsonPath('data.0.conversationId', $conversation->uuid);
 });
+
+it('falls back to a STUN-only ICE server list when Twilio credentials are not configured', function () {
+    config(['services.twilio.account_sid' => null, 'services.twilio.auth_token' => null]);
+    $manager = actingAsInitiateCallRole('manager');
+
+    $response = $this->actingAs($manager)->getJson('/api/v1/whatsapp-calls/ice-servers');
+
+    $response->assertOk();
+    expect($response->json('data.iceServers'))->toBe([['urls' => ['stun:stun.l.google.com:19302']]]);
+});
+
+it('returns Twilio TURN credentials as ICE servers when configured', function () {
+    config(['services.twilio.account_sid' => 'ACtest', 'services.twilio.auth_token' => 'secret']);
+    $manager = actingAsInitiateCallRole('manager');
+
+    Http::fake([
+        'api.twilio.com/*' => Http::response([
+            'ice_servers' => [
+                ['url' => 'stun:global.stun.twilio.com:3478'],
+                ['url' => 'turn:global.turn.twilio.com:3478?transport=udp', 'username' => 'user1', 'credential' => 'cred1'],
+            ],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($manager)->getJson('/api/v1/whatsapp-calls/ice-servers');
+
+    $response->assertOk();
+    expect($response->json('data.iceServers'))->toHaveCount(2);
+    $response->assertJsonPath('data.iceServers.1.username', 'user1');
+});
+
+it('falls back to STUN-only when the Twilio TURN request fails', function () {
+    config(['services.twilio.account_sid' => 'ACtest', 'services.twilio.auth_token' => 'secret']);
+    $manager = actingAsInitiateCallRole('manager');
+
+    Http::fake([
+        'api.twilio.com/*' => Http::response(['message' => 'Unauthorized'], 401),
+    ]);
+
+    $response = $this->actingAs($manager)->getJson('/api/v1/whatsapp-calls/ice-servers');
+
+    $response->assertOk();
+    expect($response->json('data.iceServers'))->toBe([['urls' => ['stun:stun.l.google.com:19302']]]);
+});

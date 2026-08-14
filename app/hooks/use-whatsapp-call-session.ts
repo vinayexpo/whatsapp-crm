@@ -117,9 +117,16 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
       localStreamRef.current = stream;
 
       setCallState("connecting");
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
-      });
+      let iceServers: RTCIceServer[];
+      try {
+        iceServers = await apiClient.getWhatsappCallIceServers();
+      } catch {
+        // STUN-only still works on many networks; don't block the call
+        // just because the TURN credential fetch itself failed.
+        iceServers = [{ urls: ["stun:stun.l.google.com:19302"] }];
+      }
+
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
@@ -133,6 +140,20 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
           // own controls (mute/hangup) count as one for subsequent plays.
         });
         remoteAudioRef.current = audio;
+      };
+
+      // The Meta status webhook is the source of truth for the call's
+      // WhatsApp-side status, but it can lag or never arrive. The peer
+      // connection reaching "connected" is direct proof that audio is
+      // actually flowing, so use it as a fallback that can't leave the UI
+      // stuck at "connecting" indefinitely.
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === "connected") {
+          setCallState((current) => (current === "ended" || current === "failed" ? current : "connected"));
+        } else if (pc.connectionState === "failed") {
+          setCallState("failed");
+          setErrorMessage("The audio connection failed. This can happen on restrictive networks — try again or switch networks.");
+        }
       };
 
       try {

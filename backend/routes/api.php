@@ -184,6 +184,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/whatsapp-calls', [WhatsappCallController::class, 'index']);
         Route::post('/whatsapp-calls', [WhatsappCallController::class, 'store']);
+        Route::get('/whatsapp-calls/ice-servers', [WhatsappCallController::class, 'iceServers']);
         Route::get('/whatsapp-calls/{whatsappCall}', [WhatsappCallController::class, 'show']);
         Route::post('/whatsapp-calls/{whatsappCall}/offer', [WhatsappCallController::class, 'submitOffer']);
         Route::post('/whatsapp-calls/{whatsappCall}/hangup', [WhatsappCallController::class, 'hangup']);

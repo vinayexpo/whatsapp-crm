@@ -3,17 +3,18 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { useWhatsappCallSession } from "./use-whatsapp-call-session";
 import type { WhatsappCall } from "~/data/types";
 
-const { placeWhatsappCall, submitWhatsappCallOffer, hangupWhatsappCall } = vi.hoisted(() => ({
+const { placeWhatsappCall, submitWhatsappCallOffer, hangupWhatsappCall, getWhatsappCallIceServers } = vi.hoisted(() => ({
   placeWhatsappCall: vi.fn(),
   submitWhatsappCallOffer: vi.fn(),
   hangupWhatsappCall: vi.fn(),
+  getWhatsappCallIceServers: vi.fn(),
 }));
 
 vi.mock("~/utils/api-client", async () => {
   const actual = await vi.importActual<typeof import("~/utils/api-client")>("~/utils/api-client");
   return {
     ...actual,
-    apiClient: { placeWhatsappCall, submitWhatsappCallOffer, hangupWhatsappCall },
+    apiClient: { placeWhatsappCall, submitWhatsappCallOffer, hangupWhatsappCall, getWhatsappCallIceServers },
   };
 });
 
@@ -53,7 +54,9 @@ class FakeRTCPeerConnection {
   static instances: FakeRTCPeerConnection[] = [];
   localDescription: { type: string; sdp: string } | null = null;
   iceGatheringState = "complete";
+  connectionState = "new";
   ontrack: ((event: { streams: MediaStream[] }) => void) | null = null;
+  onconnectionstatechange: (() => void) | null = null;
   addTrack = vi.fn();
   close = vi.fn();
   addEventListener = vi.fn();
@@ -84,6 +87,7 @@ function fakeStream() {
 beforeEach(() => {
   vi.clearAllMocks();
   FakeRTCPeerConnection.instances = [];
+  getWhatsappCallIceServers.mockResolvedValue([{ urls: ["stun:stun.l.google.com:19302"] }]);
   // @ts-expect-error test stub, not a full RTCPeerConnection implementation
   global.RTCPeerConnection = FakeRTCPeerConnection;
   Object.defineProperty(global.navigator, "mediaDevices", {
@@ -179,5 +183,44 @@ describe("useWhatsappCallSession", () => {
     });
 
     await waitFor(() => expect(result.current.isMuted).toBe(true));
+  });
+
+  it("reaches connected when the peer connection itself connects, even without a status webhook", async () => {
+    placeWhatsappCall.mockResolvedValue(baseCall());
+    submitWhatsappCallOffer.mockResolvedValue(baseCall({ sdpExchangeStatus: "offer_sent" }));
+
+    const { result } = renderHook(() => useWhatsappCallSession());
+
+    await act(async () => {
+      await result.current.startCall({ contactId: "contact-1" });
+    });
+
+    expect(result.current.callState).toBe("connecting");
+
+    const pc = FakeRTCPeerConnection.instances[0];
+    await act(async () => {
+      pc.connectionState = "connected";
+      pc.onconnectionstatechange?.();
+    });
+
+    expect(result.current.callState).toBe("connected");
+  });
+
+  it("fetches TURN credentials and passes them to the peer connection", async () => {
+    placeWhatsappCall.mockResolvedValue(baseCall());
+    submitWhatsappCallOffer.mockResolvedValue(baseCall({ sdpExchangeStatus: "offer_sent" }));
+    getWhatsappCallIceServers.mockResolvedValue([
+      { urls: ["stun:stun.l.google.com:19302"] },
+      { urls: ["turn:global.turn.twilio.com:3478?transport=udp"], username: "user1", credential: "cred1" },
+    ]);
+
+    const { result } = renderHook(() => useWhatsappCallSession());
+
+    await act(async () => {
+      await result.current.startCall({ contactId: "contact-1" });
+    });
+
+    expect(getWhatsappCallIceServers).toHaveBeenCalled();
+    expect(result.current.errorMessage).toBeNull();
   });
 });
