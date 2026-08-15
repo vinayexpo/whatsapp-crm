@@ -15,6 +15,10 @@ Broadcast::channel('conversation.{uuid}', function ($user, string $uuid) {
     return $conversation && $user->can('view', $conversation);
 });
 
+Broadcast::channel('company.{companyUuid}.conversations', function ($user, string $companyUuid) {
+    return $user->company && $user->company->uuid === $companyUuid;
+});
+
 Broadcast::channel('voice-call.{uuid}', function ($user, string $uuid) {
     $voiceCall = VoiceCall::query()->where('uuid', $uuid)->first();
 

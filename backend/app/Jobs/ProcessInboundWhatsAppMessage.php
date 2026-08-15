@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\ConversationCreated;
 use App\Events\ConversationUpdated;
 use App\Events\MessageReceived;
 use App\Events\MessageStatusUpdated;
@@ -66,7 +67,7 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
 
         $companyId = ApiConnection::query()->where('channel', 'whatsapp')->value('company_id');
 
-        [$conversation, $message, $isNewContact] = DB::transaction(function () use ($waId, $profileName, $inboundMessage, $companyId) {
+        [$conversation, $message, $isNewContact, $isNewConversation] = DB::transaction(function () use ($waId, $profileName, $inboundMessage, $companyId) {
             $contact = Contact::withoutGlobalScope(CompanyScope::class)
                 ->where('company_id', $companyId)
                 ->where('handle', $waId)
@@ -95,6 +96,8 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 ->where('contact_id', $contact->id)
                 ->where('channel', 'whatsapp')
                 ->first();
+
+            $isNewConversation = ! $conversation;
 
             if (! $conversation) {
                 $conversation = new Conversation([
@@ -129,11 +132,19 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
 
             $contact->update(['last_interaction_at' => $sentAt]);
 
-            return [$conversation, $message, $isNewContact];
+            return [$conversation, $message, $isNewContact, $isNewConversation];
         });
 
         MessageReceived::dispatch($message->load('conversation'));
-        ConversationUpdated::dispatch($conversation);
+
+        // A brand-new conversation has no agent subscribed to its per-conversation
+        // broadcast channel yet -- the inbox only learns about conversations it
+        // already knows about, so announce it on the company-wide channel instead.
+        if ($isNewConversation) {
+            ConversationCreated::dispatch($conversation);
+        } else {
+            ConversationUpdated::dispatch($conversation);
+        }
 
         if ($conversation->assigned_to && $agent = $conversation->assignedTo()->first()) {
             app(NotificationDispatchService::class)->notify(

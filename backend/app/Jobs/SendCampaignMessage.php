@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\ConversationCreated;
 use App\Events\ConversationUpdated;
 use App\Models\ApiConnection;
 use App\Models\CampaignRecipient;
@@ -44,6 +45,15 @@ class SendCampaignMessage implements ShouldQueue
                 'status' => 'open',
             ]
         );
+
+        // A brand-new conversation (first-ever message to this contact) has no
+        // agent subscribed to its per-conversation broadcast channel yet -- the
+        // inbox only learns about conversations it already knows about. Without
+        // this, the conversation silently doesn't appear until the page is
+        // manually reloaded.
+        if ($conversation->wasRecentlyCreated) {
+            ConversationCreated::dispatch($conversation);
+        }
 
         $lastInboundAt = $conversation->messages()->where('direction', 'inbound')->max('sent_at');
         $outsideWindow = ! $lastInboundAt || now()->diffInHours($lastInboundAt, absolute: true) >= 24;

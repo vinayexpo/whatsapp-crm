@@ -179,6 +179,23 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [authStatus, activeConversationId]);
 
+  useEffect(() => {
+    if (authStatus !== "authenticated" || !currentUser?.companyId) return;
+
+    const echo = getEcho();
+    const channelName = `company.${currentUser.companyId}.conversations`;
+
+    echo.private(channelName).listen(".conversation.created", (payload: { conversation: Conversation }) => {
+      setConversations((prev) =>
+        prev.some((c) => c.id === payload.conversation.id) ? prev : [payload.conversation, ...prev],
+      );
+    });
+
+    return () => {
+      echo.leave(channelName);
+    };
+  }, [authStatus, currentUser?.companyId]);
+
   const subscribedConversationIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
