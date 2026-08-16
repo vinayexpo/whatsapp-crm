@@ -16,6 +16,7 @@ use App\Models\WhatsappCall;
 use App\Events\WhatsappCallStatusUpdated;
 use App\Jobs\Concerns\NotifiesOnFailure;
 use App\Scopes\CompanyScope;
+use App\Services\Messaging\WhatsAppMediaDownloader;
 use App\Services\Notifications\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -65,9 +66,12 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         $profileName = collect(data_get($value, 'contacts', []))
             ->firstWhere('wa_id', $waId)['profile']['name'] ?? $waId;
 
-        $companyId = ApiConnection::query()->where('channel', 'whatsapp')->value('company_id');
+        $connection = ApiConnection::query()->where('channel', 'whatsapp')->first();
+        $companyId = $connection?->company_id;
 
-        [$conversation, $message, $isNewContact, $isNewConversation] = DB::transaction(function () use ($waId, $profileName, $inboundMessage, $companyId) {
+        $attachment = $this->resolveInboundAttachment($inboundMessage, $connection);
+
+        [$conversation, $message, $isNewContact, $isNewConversation] = DB::transaction(function () use ($waId, $profileName, $inboundMessage, $companyId, $attachment) {
             $contact = Contact::withoutGlobalScope(CompanyScope::class)
                 ->where('company_id', $companyId)
                 ->where('handle', $waId)
@@ -110,7 +114,8 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 $conversation->save();
             }
 
-            $text = data_get($inboundMessage, 'text.body', '');
+            $type = $inboundMessage['type'] ?? 'text';
+            $text = data_get($inboundMessage, 'text.body') ?? data_get($inboundMessage, "{$type}.caption", '');
             $sentAt = isset($inboundMessage['timestamp'])
                 ? now()->createFromTimestamp((int) $inboundMessage['timestamp'])
                 : now();
@@ -122,6 +127,8 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 'status' => 'delivered',
                 'external_message_id' => $inboundMessage['id'] ?? null,
                 'sent_at' => $sentAt,
+                'attachment_url' => $attachment['url'] ?? null,
+                'attachment_type' => $attachment['type'] ?? null,
             ]);
 
             $conversation->update([
@@ -158,6 +165,25 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
 
         EvaluateAutomationFlows::dispatch($conversation->id, $message->id, $isNewContact);
         GenerateChatbotWhatsAppReply::dispatch($conversation->id, $message->id);
+    }
+
+    /**
+     * @return array{url: string, type: string}|null
+     */
+    private function resolveInboundAttachment(array $inboundMessage, ?ApiConnection $connection): ?array
+    {
+        $type = $inboundMessage['type'] ?? 'text';
+        $media = $inboundMessage[$type] ?? null;
+
+        if (! $connection || ! $media || ! isset($media['id']) || ! in_array($type, ['image', 'video', 'audio', 'document'], true)) {
+            return null;
+        }
+
+        return app(WhatsAppMediaDownloader::class)->download(
+            $media['id'],
+            $media['mime_type'] ?? 'application/octet-stream',
+            $connection,
+        );
     }
 
     private function applyStatusUpdate(array $status): void

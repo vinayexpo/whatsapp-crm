@@ -1,13 +1,17 @@
 <?php
 
 use App\Jobs\ProcessInboundWhatsAppMessage;
+use App\Models\ApiConnection;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\WebhookEvent;
 use App\Models\WhatsappCall;
 use Database\Seeders\PipelineStagesSeeder;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->seed(PipelineStagesSeeder::class);
@@ -116,6 +120,61 @@ it('creates a contact, conversation, and message when processing an inbound mess
     expect($message->external_message_id)->toBe('wamid.NEW1');
 
     expect($event->fresh()->processed_at)->not->toBeNull();
+});
+
+it('downloads and stores inbound media as a message attachment', function () {
+    Storage::fake('public');
+    $connection = ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
+
+    Http::fake([
+        'https://graph.facebook.com/v20.0/media123' => Http::response([
+            'url' => 'https://lookaside.fbsbx.com/whatsapp_business/attachments/media123',
+        ]),
+        'https://lookaside.fbsbx.com/*' => Http::response('fake-image-bytes'),
+    ]);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'contacts' => [
+                                    ['wa_id' => '15557778888', 'profile' => ['name' => 'Photo Sender']],
+                                ],
+                                'messages' => [
+                                    [
+                                        'from' => '15557778888',
+                                        'id' => 'wamid.MEDIA1',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'type' => 'image',
+                                        'image' => [
+                                            'id' => 'media123',
+                                            'mime_type' => 'image/jpeg',
+                                            'caption' => 'Check this out',
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    $message = Message::query()->where('external_message_id', 'wamid.MEDIA1')->first();
+
+    expect($message)->not->toBeNull();
+    expect($message->attachment_type)->toBe('image');
+    expect($message->attachment_url)->not->toBeNull();
+    expect($message->text)->toBe('Check this out');
+
+    Http::assertSent(fn (Request $request) => $request->url() === 'https://graph.facebook.com/v20.0/media123');
 });
 
 it('reuses the existing contact and conversation for a known number', function () {
