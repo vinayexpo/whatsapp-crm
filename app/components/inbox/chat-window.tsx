@@ -16,6 +16,7 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import DoneRoundedIcon from "@mui/icons-material/DoneRounded";
+import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
@@ -245,7 +246,11 @@ export function ChatWindow({
                   {formatTime(message.timestamp)}
                 </Typography>
                 {message.direction === "outbound" &&
-                  (message.status === "read" ? (
+                  (message.status === "failed" ? (
+                    <Tooltip title="Not delivered">
+                      <ErrorOutlineRoundedIcon sx={{ fontSize: 14, color: "error.main" }} />
+                    </Tooltip>
+                  ) : message.status === "read" ? (
                     <DoneAllRoundedIcon sx={{ fontSize: 14, color: "#53BDEB" }} />
                   ) : message.status === "delivered" ? (
                     <DoneAllRoundedIcon sx={{ fontSize: 14, opacity: 0.7 }} />
