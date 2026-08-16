@@ -127,7 +127,9 @@ class AuthController extends Controller
 
         if ($request->hasFile('avatar')) {
             if ($user->avatar_url) {
-                Storage::disk('public')->delete(Str::after($user->avatar_url, '/storage/'));
+                Storage::disk('public')->delete(Str::after($user->avatar_url, '/avatars/') !== $user->avatar_url
+                    ? 'avatars/'.Str::afterLast($user->avatar_url, '/avatars/')
+                    : Str::after($user->avatar_url, '/storage/'));
             }
 
             $path = $request->file('avatar')->store('avatars', 'public');
