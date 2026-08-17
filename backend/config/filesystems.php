@@ -48,7 +48,10 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'visibility' => 'public',
+            // No 'visibility' here -- the bucket uses "Bucket owner enforced"
+            // object ownership, which rejects PutObject requests that carry
+            // an ACL header. Public read access is granted entirely by the
+            // bucket policy instead.
             'throw' => false,
             'report' => false,
         ] : [
@@ -70,7 +73,6 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],
