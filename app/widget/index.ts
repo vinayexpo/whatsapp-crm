@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://mintcream-jellyfish-201700.hostingersite.com";
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://mintcream-jellyfish-201700.hostingersite.com";
 const POLL_INTERVAL_MS = 4000;
 const VISITOR_ID_STORAGE_KEY = "omnichat_widget_visitor_id";
 
