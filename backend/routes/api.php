@@ -113,6 +113,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/campaigns/dashboard', [CampaignController::class, 'dashboard']);
         Route::get('/campaigns', [CampaignController::class, 'index']);
         Route::post('/campaigns', [CampaignController::class, 'store']);
+        Route::get('/campaigns/{campaign}/recipients', [CampaignController::class, 'recipients']);
         Route::delete('/campaigns/{campaign}', [CampaignController::class, 'destroy']);
 
         Route::get('/daily-metrics', [DailyMetricController::class, 'index']);

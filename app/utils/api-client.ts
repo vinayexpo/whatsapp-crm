@@ -8,6 +8,7 @@ import type {
   AutomationStatus,
   Campaign,
   CampaignDashboardData,
+  CampaignRecipient,
   ChannelType,
   Chatbot,
   ChatbotChannel,
@@ -420,6 +421,11 @@ async function createCampaign(campaign: {
 
 async function deleteCampaign(campaignId: string): Promise<void> {
   await apiRequest(`/api/v1/campaigns/${campaignId}`, { method: "DELETE" });
+}
+
+async function listCampaignRecipients(campaignId: string): Promise<CampaignRecipient[]> {
+  const { data } = await apiRequest<{ data: CampaignRecipient[] }>(`/api/v1/campaigns/${campaignId}/recipients`);
+  return data;
 }
 
 async function getCampaignDashboard(params?: {
@@ -1090,6 +1096,7 @@ export const apiClient = {
   createCampaign,
   deleteCampaign,
   getCampaignDashboard,
+  listCampaignRecipients,
   listDailyMetrics,
   listTeamMembers,
   listAssignableMembers,

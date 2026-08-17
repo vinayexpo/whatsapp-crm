@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\CampaignRecipientResource;
 use App\Http\Resources\CampaignResource;
 use App\Models\Campaign;
 use App\Models\Contact;
@@ -240,6 +241,18 @@ class CampaignController extends Controller
         ]);
 
         return response()->json(['data' => new CampaignResource($campaign)], 201);
+    }
+
+    public function recipients(Campaign $campaign): AnonymousResourceCollection
+    {
+        $this->authorize('view', $campaign);
+
+        return CampaignRecipientResource::collection(
+            $campaign->recipients()
+                ->with('contact')
+                ->latest('id')
+                ->get()
+        );
     }
 
     public function destroy(Campaign $campaign): JsonResponse

@@ -128,7 +128,9 @@ it('carries the campaign attachment through to the outbound message', function (
 
 it('sends a WhatsApp image message via the Graph API when the message has an attachment', function () {
     Http::fake([
-        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.media123']]], 200),
+        'example.com/*' => Http::response('fake-image-bytes', 200, ['Content-Type' => 'image/jpeg']),
+        'graph.facebook.com/*/media' => Http::response(['id' => 'media-id-123'], 200),
+        'graph.facebook.com/*/messages' => Http::response(['messages' => [['id' => 'wamid.media123']]], 200),
     ]);
 
     ApiConnection::factory()->connected()->create([
@@ -159,10 +161,17 @@ it('sends a WhatsApp image message via the Graph API when the message has an att
     (new SendCampaignMessage($recipient->id))->handle(app(\App\Services\Messaging\MessagingDriverResolver::class));
 
     Http::assertSent(function ($request) {
-        return str_contains($request->url(), 'graph.facebook.com')
-            && $request['type'] === 'image'
-            && $request['image']['link'] === 'https://example.com/promo.jpg';
+        return str_contains($request->url(), 'graph.facebook.com') && str_contains($request->url(), '/media');
     });
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), 'graph.facebook.com')
+            && str_contains($request->url(), '/messages')
+            && $request['type'] === 'image'
+            && $request['image']['id'] === 'media-id-123';
+    });
+
+    expect($recipient->fresh()->status)->toBe('sent');
 });
 
 it('includes a header component with the attachment when a template has a media header', function () {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableHead from "@mui/material/TableHead";
@@ -12,6 +13,7 @@ import Box from "@mui/material/Box";
 import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
+import { CampaignFailureDialog } from "~/components/campaigns/campaign-failure-dialog";
 import type { Campaign } from "~/data/types";
 import { formatDate } from "~/utils/format";
 
@@ -23,6 +25,8 @@ const STATUS_COLOR: Record<Campaign["status"], "success" | "info" | "default" | 
 };
 
 export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
+  const [failureDialogCampaign, setFailureDialogCampaign] = useState<Campaign | null>(null);
+
   return (
     <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
       <TableContainer>
@@ -98,6 +102,8 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                           }
                           size="small"
                           color="error"
+                          onClick={() => setFailureDialogCampaign(campaign)}
+                          sx={{ cursor: "pointer" }}
                         />
                       )}
                     </Stack>
@@ -136,6 +142,12 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
           </TableBody>
         </Table>
       </TableContainer>
+      <CampaignFailureDialog
+        campaignId={failureDialogCampaign?.id ?? null}
+        campaignName={failureDialogCampaign?.name ?? ""}
+        open={failureDialogCampaign !== null}
+        onClose={() => setFailureDialogCampaign(null)}
+      />
     </Paper>
   );
 }

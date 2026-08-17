@@ -89,6 +89,18 @@ export interface Campaign {
   whatsappCallFlowName: string | null;
 }
 
+export interface CampaignRecipient {
+  id: string;
+  contactName: string | null;
+  contactHandle: string | null;
+  status: "pending" | "sent" | "failed";
+  failureReason: string | null;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  readAt: string | null;
+  repliedAt: string | null;
+}
+
 export interface PhonebookFolder {
   id: string;
   name: string;
