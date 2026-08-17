@@ -56,9 +56,24 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
                     : null,
                 'filename' => $message->attachment_type === 'document' ? $attachmentFile->getClientOriginalName() : null,
             ]);
+        } elseif ($message->attachment_url && $message->attachment_type && $conversation->channel === 'whatsapp') {
+            // Campaign sends only ever have a stored URL, not an UploadedFile
+            // (the file was uploaded once at campaign-creation time, sends
+            // happen later via a queued job) -- fetch the bytes ourselves and
+            // upload them to Meta's /media endpoint instead of handing Meta a
+            // "link", so delivery doesn't depend on that URL still being
+            // reachable (our own storage disk is ephemeral without S3, and
+            // even with S3, a bad/stale link would otherwise silently fail
+            // every recipient the same way this campaign did).
+            $mediaId = $this->uploadMediaFromUrl($message->attachment_url, $senderId, $connection);
+            $payload['type'] = $message->attachment_type;
+            $payload[$message->attachment_type] = array_filter([
+                'id' => $mediaId,
+                'caption' => in_array($message->attachment_type, ['document', 'image', 'video'], true) ? $message->text : null,
+            ]);
         } elseif ($message->attachment_url && in_array($message->attachment_type, ['image', 'video'], true)) {
-            // Fallback for channels/paths that only have a stored URL (e.g.
-            // Instagram, which has no equivalent media-upload endpoint here).
+            // Instagram has no equivalent media-upload endpoint here, so it
+            // must still pass a fetchable link.
             $payload['type'] = $message->attachment_type;
             $payload[$message->attachment_type] = [
                 'link' => $message->attachment_url,
@@ -80,6 +95,22 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
         $response = Http::withToken($connection->access_token)
             ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName(), [
                 'Content-Type' => $file->getMimeType(),
+            ])
+            ->post("https://graph.facebook.com/v20.0/{$phoneNumberId}/media", [
+                'messaging_product' => 'whatsapp',
+            ])
+            ->throw();
+
+        return $response->json('id');
+    }
+
+    private function uploadMediaFromUrl(string $url, string $phoneNumberId, ApiConnection $connection): string
+    {
+        $file = Http::get($url)->throw();
+
+        $response = Http::withToken($connection->access_token)
+            ->attach('file', $file->body(), basename(parse_url($url, PHP_URL_PATH) ?? 'attachment'), [
+                'Content-Type' => $file->header('Content-Type') ?: 'application/octet-stream',
             ])
             ->post("https://graph.facebook.com/v20.0/{$phoneNumberId}/media", [
                 'messaging_product' => 'whatsapp',
