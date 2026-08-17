@@ -33,6 +33,14 @@ use App\Http\Controllers\Api\Widget\WidgetController;
 use App\Http\Middleware\EnsureValidWidgetKey;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/_diag/storage', function () {
+    return response()->json([
+        'PUBLIC_FILESYSTEM_DRIVER' => env('PUBLIC_FILESYSTEM_DRIVER'),
+        'configured_public_driver' => config('filesystems.disks.public.driver'),
+        'sample_url' => \Illuminate\Support\Facades\Storage::disk('public')->url('campaign-attachments/sample.jpg'),
+    ]);
+});
+
 Route::prefix('webhooks')->group(function () {
     Route::get('/whatsapp', [WhatsAppWebhookController::class, 'verify']);
     Route::post('/whatsapp', [WhatsAppWebhookController::class, 'handle']);
