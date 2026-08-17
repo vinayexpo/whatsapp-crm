@@ -39,7 +39,9 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
             ];
 
             if (! empty($template['components'])) {
-                $payload['template']['components'] = $template['components'];
+                $payload['template']['components'] = $conversation->channel === 'whatsapp'
+                    ? $this->resolveTemplateHeaderMedia($template['components'], $senderId, $connection)
+                    : $template['components'];
             }
         } elseif ($attachmentFile && $message->attachment_type && $conversation->channel === 'whatsapp') {
             // Uploading the raw bytes to Meta and referencing the returned
@@ -102,6 +104,45 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
             ->throw();
 
         return $response->json('id');
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $components
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveTemplateHeaderMedia(array $components, string $phoneNumberId, ApiConnection $connection): array
+    {
+        foreach ($components as $componentIndex => $component) {
+            if (($component['type'] ?? null) !== 'header') {
+                continue;
+            }
+
+            foreach ($component['parameters'] ?? [] as $parameterIndex => $parameter) {
+                $format = $parameter['type'] ?? null;
+
+                if (! in_array($format, ['image', 'video', 'document'], true)) {
+                    continue;
+                }
+
+                $link = $parameter[$format]['link'] ?? null;
+
+                if (! $link) {
+                    continue;
+                }
+
+                // Meta's servers must fetch a "link" header parameter
+                // themselves at send time, so it fails with a 403 the moment
+                // that URL becomes unreachable (stale local-disk path,
+                // private bucket, expired signed URL, etc). Uploading the
+                // bytes ourselves and referencing the returned media id
+                // removes that dependency entirely, matching how free-form
+                // image/video attachments are already sent.
+                $mediaId = $this->uploadMediaFromUrl($link, $phoneNumberId, $connection);
+                $components[$componentIndex]['parameters'][$parameterIndex][$format] = ['id' => $mediaId];
+            }
+        }
+
+        return $components;
     }
 
     private function uploadMediaFromUrl(string $url, string $phoneNumberId, ApiConnection $connection): string

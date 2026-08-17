@@ -160,7 +160,10 @@ class SendCampaignMessage implements ShouldQueue
             // is a Meta-internal, expiring scontent.whatsapp.net preview
             // asset -- Meta's servers 403 when trying to re-fetch it for an
             // actual send, so it can't be reused here; the campaign must
-            // supply its own publicly reachable attachment.
+            // supply its own attachment. This still builds a "link" here --
+            // GraphApiMessagingService::send() uploads the bytes and swaps
+            // it for a media id before the request reaches Meta, so this
+            // doesn't depend on the URL staying reachable.
             $components[] = [
                 'type' => 'header',
                 'parameters' => [
