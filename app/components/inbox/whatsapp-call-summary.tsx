@@ -94,7 +94,17 @@ export function WhatsappCallSummary({ contactId }: WhatsappCallSummaryProps) {
   const latest = calls[0];
 
   return (
-    <Box sx={{ borderBottom: "1px solid", borderColor: "divider", px: 2, py: 1 }}>
+    <Box
+      sx={{
+        borderBottom: "1px solid",
+        borderColor: "divider",
+        px: 2,
+        py: 1,
+        flexShrink: 0,
+        maxHeight: "40%",
+        overflowY: "auto",
+      }}
+    >
       <Stack
         direction="row"
         sx={{ alignItems: "center", gap: 1, cursor: "pointer" }}
