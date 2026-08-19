@@ -205,6 +205,9 @@ export function ChatWindow({
               className={classNames(styles.bubble, {
                 [styles.bubbleOutbound]: message.direction === "outbound",
               })}
+              sx={{
+                backgroundColor: message.direction === "outbound" ? "#d9fdd3" : "#ffffff",
+              }}
             >
               {message.attachmentUrl && message.attachmentType === "image" && (
                 <Box
