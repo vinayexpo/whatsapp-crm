@@ -154,7 +154,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   );
 
   const layout = (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
+    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden", bgcolor: "background.default" }}>
       <AppBar
         position="fixed"
         color="inherit"
@@ -257,6 +257,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
           display: "flex",
           flexDirection: "column",
+          minHeight: 0,
         }}
       >
         <Toolbar />
