@@ -65,6 +65,7 @@ export default function Inbox() {
     setActiveConversationId(id);
     loadMessagesForConversation(id);
     markConversationRead(id);
+    setDetailsOpen(false);
   }
 
   const detailsContent = activeContact ? (
