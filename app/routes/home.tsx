@@ -82,7 +82,7 @@ export default function Home() {
 
   return (
     <AppLayout>
-      <Box sx={{ p: { xs: 2, md: 4 }, flex: 1 }}>
+      <Box sx={{ p: { xs: 2, md: 4 }, flex: 1, overflowY: "auto" }}>
         <Stack sx={{ mb: 3 }}>
           <Typography variant="h4" sx={{ fontSize: { xs: "1.5rem", md: "1.8rem" } }}>
             Good afternoon 👋

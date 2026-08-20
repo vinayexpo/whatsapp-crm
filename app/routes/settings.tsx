@@ -56,7 +56,7 @@ export default function Settings() {
 
   return (
     <AppLayout>
-      <Box sx={{ p: { xs: 2, md: 4 }, flex: 1 }}>
+      <Box sx={{ p: { xs: 2, md: 4 }, flex: 1, overflowY: "auto" }}>
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" sx={{ fontSize: { xs: "1.5rem", md: "1.8rem" } }}>
             Settings

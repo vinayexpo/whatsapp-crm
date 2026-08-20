@@ -54,7 +54,7 @@ export default function Chatbots() {
   return (
     <AppLayout>
       <RoleGuard allow={["superadmin", "admin", "manager"]}>
-      <Box sx={{ p: { xs: 2, md: 4 }, flex: 1, minWidth: 0 }}>
+      <Box sx={{ p: { xs: 2, md: 4 }, flex: 1, minWidth: 0, overflowY: "auto" }}>
         <Stack
           direction="row"
           sx={{ alignItems: "flex-start", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 1.5 }}

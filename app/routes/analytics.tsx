@@ -193,7 +193,7 @@ export default function Analytics() {
   return (
     <AppLayout>
       <RoleGuard allow={["superadmin", "admin", "manager"]}>
-      <Box sx={{ p: { xs: 2, md: 4 }, flex: 1 }}>
+      <Box sx={{ p: { xs: 2, md: 4 }, flex: 1, overflowY: "auto" }}>
         <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
           <Stack>
             <Typography variant="h4" sx={{ fontSize: { xs: "1.5rem", md: "1.8rem" } }}>
