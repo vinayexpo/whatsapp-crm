@@ -321,6 +321,38 @@ export interface WhatsappCallFlow {
   createdAt: string;
 }
 
+export type ChatMenuFlowStatus = "active" | "paused";
+export type ChatMenuFlowChannel = "whatsapp" | "web" | "both";
+export type ChatMenuFlowNodeType = "menu" | "content";
+export type ChatMenuFlowRenderAs = "button" | "list";
+
+export interface ChatMenuFlowButton {
+  id: string;
+  label: string;
+  nextNodeId: string;
+}
+
+export interface ChatMenuFlowNode {
+  id: string;
+  type: ChatMenuFlowNodeType;
+  message: string;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
+  renderAs?: ChatMenuFlowRenderAs;
+  buttons: ChatMenuFlowButton[];
+}
+
+export interface ChatMenuFlow {
+  id: string;
+  name: string;
+  channel: ChatMenuFlowChannel;
+  status: ChatMenuFlowStatus;
+  triggerKeyword: string | null;
+  entryNodeId: string;
+  nodes: ChatMenuFlowNode[];
+  createdAt: string;
+}
+
 export type WhatsappCallDirection = "outbound" | "inbound";
 export type WhatsappCallStatus =
   | "ringing"

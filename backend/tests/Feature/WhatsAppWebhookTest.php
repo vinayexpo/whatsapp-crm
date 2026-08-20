@@ -193,6 +193,126 @@ it('reuses the existing contact and conversation for a known number', function (
     expect($conversation->fresh()->unread_count)->toBe(3);
 });
 
+it('stores the clicked button title and reply id from an inbound interactive button-reply message', function () {
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'contacts' => [
+                                    ['wa_id' => '15553334444', 'profile' => ['name' => 'Button Clicker']],
+                                ],
+                                'messages' => [
+                                    [
+                                        'from' => '15553334444',
+                                        'id' => 'wamid.BTN1',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'type' => 'interactive',
+                                        'interactive' => [
+                                            'type' => 'button_reply',
+                                            'button_reply' => ['id' => 'btn-catering', 'title' => 'Catering'],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    $message = Message::query()->where('external_message_id', 'wamid.BTN1')->first();
+
+    expect($message)->not->toBeNull();
+    expect($message->text)->toBe('Catering');
+    expect($message->interactive_reply_id)->toBe('btn-catering');
+});
+
+it('stores the selected row title and reply id from an inbound interactive list-reply message', function () {
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'contacts' => [
+                                    ['wa_id' => '15556667777', 'profile' => ['name' => 'List Picker']],
+                                ],
+                                'messages' => [
+                                    [
+                                        'from' => '15556667777',
+                                        'id' => 'wamid.LIST1',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'type' => 'interactive',
+                                        'interactive' => [
+                                            'type' => 'list_reply',
+                                            'list_reply' => ['id' => 'btn-3', 'title' => 'Option 3'],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    $message = Message::query()->where('external_message_id', 'wamid.LIST1')->first();
+
+    expect($message)->not->toBeNull();
+    expect($message->text)->toBe('Option 3');
+    expect($message->interactive_reply_id)->toBe('btn-3');
+});
+
+it('starts a chat menu flow end-to-end from an inbound WhatsApp trigger keyword and sends a real interactive reply', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.OUT1']]], 200),
+    ]);
+
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token', 'phone_number_id' => '1234567890']);
+    \App\Models\ChatMenuFlow::factory()->create([
+        'status' => 'active',
+        'trigger_keyword' => 'services',
+        'channel' => 'both',
+    ]);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => inboundWhatsAppPayload('15558889999', 'services', 'wamid.TRIGGER1'),
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    $contact = Contact::query()->where('handle', '15558889999')->first();
+    $conversation = Conversation::query()->where('contact_id', $contact->id)->first();
+
+    expect($conversation->current_chat_flow_id)->not->toBeNull();
+
+    $reply = Message::query()->where('conversation_id', $conversation->id)->where('direction', 'outbound')->first();
+    expect($reply->text)->toBe('What are you looking for?');
+    expect($reply->buttons)->toHaveCount(2);
+    expect($reply->external_message_id)->toBe('wamid.OUT1');
+
+    Http::assertSent(function (Request $request) {
+        $body = $request->data();
+
+        return $request->url() === 'https://graph.facebook.com/v20.0/1234567890/messages'
+            && $body['type'] === 'interactive'
+            && $body['interactive']['type'] === 'button';
+    });
+});
+
 it('routes a call payload arriving at the message webhook URL to the call handler instead of dropping it', function () {
     Queue::fake();
     config(['services.meta.app_secret' => null]);

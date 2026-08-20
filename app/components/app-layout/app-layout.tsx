@@ -35,6 +35,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { useCrmStore } from "~/hooks/use-crm-store";
 import { useAuth } from "~/hooks/use-auth";
@@ -55,6 +56,7 @@ const NAV_ITEMS = [
   { label: "Automations", to: "/automations", icon: BoltRoundedIcon, hideForAgent: true },
   { label: "AI Assistant", to: "/ai-assistant", icon: SmartToyRoundedIcon },
   { label: "Chatbots", to: "/chatbots", icon: ForumRoundedIcon, hideForAgent: true },
+  { label: "Chat Menus", to: "/chat-menus", icon: AccountTreeRoundedIcon, hideForAgent: true },
   { label: "Templates", to: "/templates", icon: ArticleRoundedIcon, hideForAgent: true },
   { label: "Voice Agents", to: "/voice-agents", icon: PhoneInTalkRoundedIcon, hideForAgent: true },
   { label: "WhatsApp Calling", to: "/whatsapp-calling", icon: CallRoundedIcon, hideForAgent: true },

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationFlowController;
 use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\ChatbotController;
+use App\Http\Controllers\Api\V1\ChatMenuFlowController;
 use App\Http\Controllers\Api\V1\ChatbotTrainingEntryController;
 use App\Http\Controllers\Api\V1\CompanyAdminController;
 use App\Http\Controllers\Api\V1\CompanyController;
@@ -182,6 +183,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/whatsapp-call-flows/{whatsappCallFlow}', [WhatsappCallFlowController::class, 'show']);
         Route::patch('/whatsapp-call-flows/{whatsappCallFlow}', [WhatsappCallFlowController::class, 'update']);
         Route::delete('/whatsapp-call-flows/{whatsappCallFlow}', [WhatsappCallFlowController::class, 'destroy']);
+
+        Route::get('/chat-menu-flows', [ChatMenuFlowController::class, 'index']);
+        Route::post('/chat-menu-flows', [ChatMenuFlowController::class, 'store']);
+        Route::get('/chat-menu-flows/{chatMenuFlow}', [ChatMenuFlowController::class, 'show']);
+        Route::patch('/chat-menu-flows/{chatMenuFlow}', [ChatMenuFlowController::class, 'update']);
+        Route::delete('/chat-menu-flows/{chatMenuFlow}', [ChatMenuFlowController::class, 'destroy']);
 
         Route::get('/whatsapp-calls', [WhatsappCallController::class, 'index']);
         Route::post('/whatsapp-calls', [WhatsappCallController::class, 'store']);

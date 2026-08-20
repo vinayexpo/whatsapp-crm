@@ -41,6 +41,10 @@ import type {
   WhatsappCallFlow,
   WhatsappCallFlowNode,
   WhatsappCallFlowStatus,
+  ChatMenuFlow,
+  ChatMenuFlowNode,
+  ChatMenuFlowChannel,
+  ChatMenuFlowStatus,
   WhatsappCall,
 } from "~/data/types";
 
@@ -945,6 +949,53 @@ async function deleteWhatsappCallFlow(callFlowId: string): Promise<void> {
   await apiRequest(`/api/v1/whatsapp-call-flows/${callFlowId}`, { method: "DELETE" });
 }
 
+async function listChatMenuFlows(): Promise<ChatMenuFlow[]> {
+  const { data } = await apiRequest<{ data: ChatMenuFlow[] }>("/api/v1/chat-menu-flows");
+  return data;
+}
+
+async function createChatMenuFlow(flow: {
+  name: string;
+  channel?: ChatMenuFlowChannel;
+  status?: ChatMenuFlowStatus;
+  triggerKeyword?: string | null;
+  entryNodeId: string;
+  nodes: ChatMenuFlowNode[];
+}): Promise<ChatMenuFlow> {
+  const { data } = await apiRequest<{ data: ChatMenuFlow }>("/api/v1/chat-menu-flows", {
+    method: "POST",
+    body: JSON.stringify(flow),
+  });
+  return data;
+}
+
+async function getChatMenuFlow(flowId: string): Promise<ChatMenuFlow> {
+  const { data } = await apiRequest<{ data: ChatMenuFlow }>(`/api/v1/chat-menu-flows/${flowId}`);
+  return data;
+}
+
+async function updateChatMenuFlow(
+  flowId: string,
+  updates: Partial<{
+    name: string;
+    channel: ChatMenuFlowChannel;
+    status: ChatMenuFlowStatus;
+    triggerKeyword: string | null;
+    entryNodeId: string;
+    nodes: ChatMenuFlowNode[];
+  }>,
+): Promise<ChatMenuFlow> {
+  const { data } = await apiRequest<{ data: ChatMenuFlow }>(`/api/v1/chat-menu-flows/${flowId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  return data;
+}
+
+async function deleteChatMenuFlow(flowId: string): Promise<void> {
+  await apiRequest(`/api/v1/chat-menu-flows/${flowId}`, { method: "DELETE" });
+}
+
 async function listWhatsappCalls(filters?: {
   callFlowId?: string;
   contactId?: string;
@@ -1155,6 +1206,11 @@ export const apiClient = {
   getWhatsappCallFlow,
   updateWhatsappCallFlow,
   deleteWhatsappCallFlow,
+  listChatMenuFlows,
+  createChatMenuFlow,
+  getChatMenuFlow,
+  updateChatMenuFlow,
+  deleteChatMenuFlow,
   listWhatsappCalls,
   getWhatsappCall,
   placeWhatsappCall,

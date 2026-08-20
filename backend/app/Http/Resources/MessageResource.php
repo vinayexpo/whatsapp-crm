@@ -23,6 +23,7 @@ class MessageResource extends JsonResource
             'status' => $this->status,
             'attachmentUrl' => $this->attachment_url,
             'attachmentType' => $this->attachment_type,
+            'buttons' => $this->buttons,
         ];
     }
 }

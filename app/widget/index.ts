@@ -2,11 +2,18 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://mintcream-jellyfis
 const POLL_INTERVAL_MS = 4000;
 const VISITOR_ID_STORAGE_KEY = "omnichat_widget_visitor_id";
 
+interface WidgetMessageButton {
+  id: string;
+  label: string;
+  nextNodeId: string;
+}
+
 interface WidgetMessage {
   id: string;
   direction: "inbound" | "outbound";
   text: string;
   timestamp: string;
+  buttons?: WidgetMessageButton[] | null;
 }
 
 function getScriptTag(): HTMLScriptElement {
@@ -76,16 +83,46 @@ function injectStyles() {
     .omnichat-widget-send {
       background: #5B6EF5; color: #fff; border: none; border-radius: 8px; padding: 0 14px; cursor: pointer; font-size: 13px;
     }
+    .omnichat-widget-buttons {
+      display: flex; flex-direction: column; gap: 6px; margin-top: 6px; align-self: flex-start; max-width: 80%;
+    }
+    .omnichat-widget-option {
+      background: #fff; color: #5B6EF5; border: 1px solid #5B6EF5; border-radius: 8px;
+      padding: 6px 10px; font-size: 13px; cursor: pointer; text-align: left;
+    }
+    .omnichat-widget-option:hover { background: #eef0ff; }
+    .omnichat-widget-option:disabled { opacity: 0.5; cursor: default; }
   `;
   document.head.appendChild(style);
 }
 
-function renderBubble(container: HTMLElement, message: WidgetMessage) {
+function renderBubble(
+  container: HTMLElement,
+  message: WidgetMessage,
+  onButtonClick?: (button: WidgetMessageButton) => void,
+) {
   const bubble = document.createElement("div");
   bubble.className = `omnichat-widget-bubble ${message.direction === "inbound" ? "contact" : "bot"}`;
   bubble.textContent = message.text;
   bubble.dataset.messageId = message.id;
   container.appendChild(bubble);
+
+  if (message.buttons && message.buttons.length > 0 && onButtonClick) {
+    const buttonsEl = document.createElement("div");
+    buttonsEl.className = "omnichat-widget-buttons";
+    message.buttons.forEach((button) => {
+      const optionButton = document.createElement("button");
+      optionButton.className = "omnichat-widget-option";
+      optionButton.textContent = button.label;
+      optionButton.addEventListener("click", () => {
+        Array.from(buttonsEl.querySelectorAll("button")).forEach((el) => (el.disabled = true));
+        onButtonClick(button);
+      });
+      buttonsEl.appendChild(optionButton);
+    });
+    container.appendChild(buttonsEl);
+  }
+
   container.scrollTop = container.scrollHeight;
 
   return bubble;
@@ -146,17 +183,14 @@ async function initWidget() {
   function trackMessage(message: WidgetMessage) {
     if (seenMessageIds.has(message.id)) return;
 
-    if (message.direction === "inbound") {
-      const pendingIndex = pendingInboundBubbles.findIndex((pending) => pending.text === message.text);
-      if (pendingIndex !== -1) {
-        pendingInboundBubbles[pendingIndex].element.remove();
-        pendingInboundBubbles.splice(pendingIndex, 1);
-      }
+    if (message.direction === "inbound" && pendingInboundBubbles.length > 0) {
+      const pending = pendingInboundBubbles.shift()!;
+      pending.element.remove();
     }
 
     seenMessageIds.add(message.id);
     lastMessageId = message.id;
-    renderBubble(messagesEl, message);
+    renderBubble(messagesEl, message, (button) => sendText(button.id, button.label));
   }
 
   async function pollForReplies() {
@@ -199,21 +233,18 @@ async function initWidget() {
 
   let sending = false;
 
-  async function handleSend() {
-    if (sending) return;
-    const text = input.value.trim();
-    if (!text) return;
+  async function sendText(text: string, displayText?: string) {
+    if (sending || !text) return;
     sending = true;
-    input.value = "";
     input.disabled = true;
     sendButton.disabled = true;
     const pendingBubble = renderBubble(messagesEl, {
       id: `pending-${Date.now()}`,
       direction: "inbound",
-      text,
+      text: displayText ?? text,
       timestamp: new Date().toISOString(),
     });
-    pendingInboundBubbles.push({ text, element: pendingBubble });
+    pendingInboundBubbles.push({ text: displayText ?? text, element: pendingBubble });
     try {
       const { data } = await widgetRequest<{ data: { reply: string; message: WidgetMessage } }>(
         widgetKey!,
@@ -230,6 +261,13 @@ async function initWidget() {
       sendButton.disabled = false;
       input.focus();
     }
+  }
+
+  async function handleSend() {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    await sendText(text);
   }
 
   sendButton.addEventListener("click", handleSend);

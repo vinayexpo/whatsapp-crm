@@ -16,6 +16,7 @@ export default [
   route("automations", "routes/automations.tsx"),
   route("ai-assistant", "routes/ai-assistant.tsx"),
   route("chatbots", "routes/chatbots.tsx"),
+  route("chat-menus", "routes/chat-menus.tsx"),
   route("templates", "routes/templates.tsx"),
   route("voice-agents", "routes/voice-agents.tsx"),
   route("whatsapp-calling", "routes/whatsapp-calling.tsx"),

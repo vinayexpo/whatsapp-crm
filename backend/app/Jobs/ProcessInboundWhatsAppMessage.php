@@ -16,6 +16,7 @@ use App\Models\WhatsappCall;
 use App\Events\WhatsappCallStatusUpdated;
 use App\Jobs\Concerns\NotifiesOnFailure;
 use App\Scopes\CompanyScope;
+use App\Services\ChatFlow\ChatMenuFlowEngine;
 use App\Services\Messaging\WhatsAppMediaDownloader;
 use App\Services\Notifications\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -120,6 +121,18 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 ? now()->createFromTimestamp((int) $inboundMessage['timestamp'])
                 : now();
 
+            $interactiveReplyId = null;
+
+            if ($type === 'interactive') {
+                $interactiveType = data_get($inboundMessage, 'interactive.type');
+                $reply = data_get($inboundMessage, "interactive.{$interactiveType}");
+
+                if ($reply) {
+                    $interactiveReplyId = $reply['id'] ?? null;
+                    $text = $reply['title'] ?? $text;
+                }
+            }
+
             $message = Message::query()->create([
                 'conversation_id' => $conversation->id,
                 'direction' => 'inbound',
@@ -129,6 +142,7 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 'sent_at' => $sentAt,
                 'attachment_url' => $attachment['url'] ?? null,
                 'attachment_type' => $attachment['type'] ?? null,
+                'interactive_reply_id' => $interactiveReplyId,
             ]);
 
             $conversation->update([
@@ -163,8 +177,12 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             );
         }
 
-        EvaluateAutomationFlows::dispatch($conversation->id, $message->id, $isNewContact);
-        GenerateChatbotWhatsAppReply::dispatch($conversation->id, $message->id);
+        $handledByChatFlow = app(ChatMenuFlowEngine::class)->handle($conversation, $message);
+
+        if (! $handledByChatFlow) {
+            EvaluateAutomationFlows::dispatch($conversation->id, $message->id, $isNewContact);
+            GenerateChatbotWhatsAppReply::dispatch($conversation->id, $message->id);
+        }
     }
 
     /**

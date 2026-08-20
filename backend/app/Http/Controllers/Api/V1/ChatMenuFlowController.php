@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\ChatMenuFlowResource;
+use App\Models\ChatMenuFlow;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+
+class ChatMenuFlowController extends Controller
+{
+    public function index(Request $request): AnonymousResourceCollection
+    {
+        $this->authorize('viewAny', ChatMenuFlow::class);
+
+        return ChatMenuFlowResource::collection(
+            ChatMenuFlow::query()->orderBy('name')->get()
+        );
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $this->authorize('create', ChatMenuFlow::class);
+
+        $data = $this->validateFlow($request, isUpdate: false);
+
+        $flow = ChatMenuFlow::query()->create([
+            'name' => $data['name'],
+            'channel' => $data['channel'] ?? 'both',
+            'status' => $data['status'] ?? 'paused',
+            'trigger_keyword' => $data['triggerKeyword'] ?? null,
+            'entry_node_id' => $data['entryNodeId'],
+            'nodes' => $data['nodes'],
+        ]);
+
+        return response()->json(['data' => new ChatMenuFlowResource($flow)], 201);
+    }
+
+    public function show(ChatMenuFlow $chatMenuFlow): JsonResponse
+    {
+        $this->authorize('view', $chatMenuFlow);
+
+        return response()->json(['data' => new ChatMenuFlowResource($chatMenuFlow)]);
+    }
+
+    public function update(Request $request, ChatMenuFlow $chatMenuFlow): JsonResponse
+    {
+        $this->authorize('update', $chatMenuFlow);
+
+        $data = $this->validateFlow($request, isUpdate: true);
+
+        $update = [];
+        $map = [
+            'name' => 'name',
+            'channel' => 'channel',
+            'status' => 'status',
+            'triggerKeyword' => 'trigger_keyword',
+            'entryNodeId' => 'entry_node_id',
+            'nodes' => 'nodes',
+        ];
+
+        foreach ($map as $requestKey => $column) {
+            if (array_key_exists($requestKey, $data)) {
+                $update[$column] = $data[$requestKey];
+            }
+        }
+
+        $chatMenuFlow->update($update);
+
+        return response()->json(['data' => new ChatMenuFlowResource($chatMenuFlow)]);
+    }
+
+    public function destroy(ChatMenuFlow $chatMenuFlow): JsonResponse
+    {
+        $this->authorize('delete', $chatMenuFlow);
+
+        $chatMenuFlow->delete();
+
+        return response()->json(['message' => 'Chat menu flow deleted.']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validateFlow(Request $request, bool $isUpdate): array
+    {
+        $required = $isUpdate ? 'sometimes' : 'required';
+
+        return $request->validate([
+            'name' => [$required, 'string', 'max:255'],
+            'channel' => ['sometimes', 'in:whatsapp,web,both'],
+            'status' => ['sometimes', 'in:active,paused'],
+            'triggerKeyword' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'entryNodeId' => [$required, 'string'],
+            'nodes' => [$required, 'array', 'min:1'],
+            'nodes.*.id' => ['required_with:nodes', 'string'],
+            'nodes.*.type' => ['required_with:nodes', 'in:menu,content'],
+            'nodes.*.message' => ['required_with:nodes', 'string'],
+            'nodes.*.mediaUrl' => ['sometimes', 'nullable', 'string'],
+            'nodes.*.mediaType' => ['sometimes', 'nullable', 'string'],
+            'nodes.*.renderAs' => ['sometimes', 'in:button,list'],
+            'nodes.*.buttons' => ['sometimes', 'array', 'max:10'],
+            'nodes.*.buttons.*.id' => ['required_with:nodes.*.buttons', 'string'],
+            'nodes.*.buttons.*.label' => ['required_with:nodes.*.buttons', 'string', 'max:60'],
+            'nodes.*.buttons.*.nextNodeId' => ['required_with:nodes.*.buttons', 'string'],
+        ]);
+    }
+}

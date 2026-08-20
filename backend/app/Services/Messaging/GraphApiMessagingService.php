@@ -43,6 +43,37 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
                     ? $this->resolveTemplateHeaderMedia($template['components'], $senderId, $connection)
                     : $template['components'];
             }
+        } elseif (! empty($message->buttons) && $conversation->channel === 'whatsapp') {
+            // Chat menu flow nodes attach up to 3 buttons (rendered as Meta's
+            // interactive "button" type) or up to 10 items grouped into a
+            // "list" type -- Meta rejects more than 3 inline reply buttons,
+            // so anything larger must use the list format instead.
+            $payload['type'] = 'interactive';
+            $payload['interactive'] = count($message->buttons) > 3
+                ? [
+                    'type' => 'list',
+                    'body' => ['text' => $message->text],
+                    'action' => [
+                        'button' => 'Choose an option',
+                        'sections' => [[
+                            'title' => 'Options',
+                            'rows' => array_map(
+                                fn (array $button) => ['id' => $button['id'], 'title' => $button['label']],
+                                $message->buttons,
+                            ),
+                        ]],
+                    ],
+                ]
+                : [
+                    'type' => 'button',
+                    'body' => ['text' => $message->text],
+                    'action' => [
+                        'buttons' => array_map(
+                            fn (array $button) => ['type' => 'reply', 'reply' => ['id' => $button['id'], 'title' => $button['label']]],
+                            $message->buttons,
+                        ),
+                    ],
+                ];
         } elseif ($attachmentFile && $message->attachment_type && $conversation->channel === 'whatsapp') {
             // Uploading the raw bytes to Meta and referencing the returned
             // media id (instead of passing our own storage URL as a "link")

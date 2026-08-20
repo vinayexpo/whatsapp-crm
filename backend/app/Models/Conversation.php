@@ -16,7 +16,7 @@ class Conversation extends Model
 
     protected $fillable = [
         'contact_id', 'assigned_to', 'chatbot_id', 'channel', 'status', 'unread_count', 'last_message_at',
-        'no_reply_notified_at',
+        'no_reply_notified_at', 'current_chat_flow_id', 'current_chat_flow_node_id',
     ];
 
     protected function casts(): array
@@ -46,6 +46,11 @@ class Conversation extends Model
     public function chatbot(): BelongsTo
     {
         return $this->belongsTo(Chatbot::class);
+    }
+
+    public function currentChatFlow(): BelongsTo
+    {
+        return $this->belongsTo(ChatMenuFlow::class, 'current_chat_flow_id');
     }
 
     public function messages(): HasMany

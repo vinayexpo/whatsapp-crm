@@ -13,6 +13,7 @@ use App\Models\Message;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Scopes\CompanyScope;
+use App\Services\ChatFlow\ChatMenuFlowEngine;
 use App\Services\Chatbot\ChatbotReplyServiceInterface;
 use App\Services\Notifications\NotificationDispatchService;
 use Illuminate\Http\JsonResponse;
@@ -45,7 +46,7 @@ class WidgetController extends Controller
         ]);
     }
 
-    public function sendMessage(Request $request, ChatbotReplyServiceInterface $replyService): JsonResponse
+    public function sendMessage(Request $request, ChatbotReplyServiceInterface $replyService, ChatMenuFlowEngine $chatMenuFlowEngine): JsonResponse
     {
         $chatbot = $this->resolveChatbot($request);
 
@@ -77,6 +78,19 @@ class WidgetController extends Controller
 
         MessageReceived::dispatch($inboundMessage->load('conversation'));
         ConversationUpdated::dispatch($conversation);
+
+        $handledByChatFlow = $chatMenuFlowEngine->handle($conversation, $inboundMessage);
+
+        if ($handledByChatFlow) {
+            $outboundMessage = $conversation->messages()->where('direction', 'outbound')->latest('id')->first();
+
+            return response()->json([
+                'data' => [
+                    'reply' => $outboundMessage?->text,
+                    'message' => $outboundMessage ? new MessageResource($outboundMessage) : null,
+                ],
+            ], 201);
+        }
 
         $replyText = $replyService->reply($chatbot, $conversation, $data['text']);
 
