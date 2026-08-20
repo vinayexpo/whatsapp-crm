@@ -28,6 +28,54 @@ function actingAsCampaignRole(string $role): User
     return $user;
 }
 
+it('filters campaigns by status', function () {
+    Campaign::factory()->create(['status' => 'draft']);
+    Campaign::factory()->create(['status' => 'sent']);
+    $user = actingAsCampaignRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/campaigns?status=sent');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.status'))->toBe('sent');
+});
+
+it('filters campaigns by channel', function () {
+    Campaign::factory()->create(['channel' => 'whatsapp']);
+    Campaign::factory()->create(['channel' => 'instagram']);
+    $user = actingAsCampaignRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/campaigns?channel=instagram');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.channel'))->toBe('instagram');
+});
+
+it('filters campaigns by search matching name', function () {
+    Campaign::factory()->create(['name' => 'Spring Sale Blast']);
+    Campaign::factory()->create(['name' => 'Autumn Reminder']);
+    $user = actingAsCampaignRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/campaigns?search=Spring');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('Spring Sale Blast');
+});
+
+it('composes campaign filters with pagination', function () {
+    Campaign::factory()->count(3)->create(['status' => 'draft']);
+    Campaign::factory()->count(2)->create(['status' => 'sent']);
+    $user = actingAsCampaignRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/campaigns?status=draft&per_page=2');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(2);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
 it('rejects unauthenticated campaign listing', function () {
     $this->getJson('/api/v1/campaigns')->assertUnauthorized();
 });

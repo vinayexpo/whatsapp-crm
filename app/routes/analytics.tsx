@@ -5,9 +5,9 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
+import { DateRangeFilter, type DateRangePreset } from "~/components/common/date-range-filter";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
@@ -52,8 +52,6 @@ export function meta({}: Route.MetaArgs) {
 
 const CHART_MARGIN = { top: 8, right: 16, left: -12, bottom: 0 };
 
-type RangePreset = "7d" | "14d" | "30d" | "custom";
-
 function CardHeading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <Stack sx={{ mb: 2 }}>
@@ -72,7 +70,7 @@ function CardHeading({ title, subtitle }: { title: string; subtitle?: string }) 
 export default function Analytics() {
   const { allCampaigns, dailyMetrics } = useCrmStore();
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
-  const [rangePreset, setRangePreset] = useState<RangePreset>("14d");
+  const [rangePreset, setRangePreset] = useState<DateRangePreset>("14d");
   const [customStart, setCustomStart] = useState<Dayjs | null>(null);
   const [customEnd, setCustomEnd] = useState<Dayjs | null>(null);
   const [funnelCounts, setFunnelCounts] = useState<{ stage: string; count: number }[]>([]);
@@ -217,40 +215,16 @@ export default function Analytics() {
             </Typography>
           </Stack>
           <Stack direction="row" sx={{ alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={rangePreset}
-              onChange={(_, value) => value && setRangePreset(value)}
-            >
-              <ToggleButton value="7d">7D</ToggleButton>
-              <ToggleButton value="14d">14D</ToggleButton>
-              <ToggleButton value="30d">30D</ToggleButton>
-              <ToggleButton value="custom">Custom</ToggleButton>
-            </ToggleButtonGroup>
-            {rangePreset === "custom" && (
-              <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
-                <DatePicker
-                  label="Start"
-                  value={customStart}
-                  onChange={(value) => setCustomStart(value)}
-                  maxDate={customEnd ?? latestMetricDate}
-                  minDate={earliestMetricDate}
-                  slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
-                />
-                <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                  to
-                </Typography>
-                <DatePicker
-                  label="End"
-                  value={customEnd}
-                  onChange={(value) => setCustomEnd(value)}
-                  minDate={customStart ?? earliestMetricDate}
-                  maxDate={latestMetricDate}
-                  slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
-                />
-              </Stack>
-            )}
+            <DateRangeFilter
+              preset={rangePreset}
+              onPresetChange={setRangePreset}
+              start={customStart}
+              end={customEnd}
+              onStartChange={setCustomStart}
+              onEndChange={setCustomEnd}
+              minDate={earliestMetricDate}
+              maxDate={latestMetricDate}
+            />
             <ToggleButtonGroup
               size="small"
               exclusive

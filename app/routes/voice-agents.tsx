@@ -8,8 +8,13 @@ import Grid from "@mui/material/Grid";
 import Chip from "@mui/material/Chip";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import PhoneInTalkRoundedIcon from "@mui/icons-material/PhoneInTalkRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateVoiceAgentDialog } from "~/components/voice-agents/create-voice-agent-dialog";
@@ -17,7 +22,7 @@ import { VoiceAgentDetailDrawer } from "~/components/voice-agents/voice-agent-de
 import { VoiceAgentFollowupQueue } from "~/components/voice-agents/voice-agent-followup-queue";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
-import type { VoiceAgent } from "~/data/types";
+import type { VoiceAgent, VoiceAgentStatus } from "~/data/types";
 import type { Route } from "./+types/voice-agents";
 
 export function meta({}: Route.MetaArgs) {
@@ -34,10 +39,26 @@ export default function VoiceAgents() {
   const [lastPage, setLastPage] = useState(1);
   const [selectedVoiceAgentId, setSelectedVoiceAgentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<VoiceAgentStatus | "all">("all");
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
     apiClient
-      .listVoiceAgents({ page })
+      .listVoiceAgents({
+        page,
+        search: debouncedSearch || undefined,
+        status: statusFilter === "all" ? undefined : statusFilter,
+      })
       .then(({ data, meta }) => {
         setVoiceAgents(data);
         setLastPage(meta.lastPage);
@@ -45,7 +66,7 @@ export default function VoiceAgents() {
       .catch(() => {
         // voice agents list stays empty on failure
       });
-  }, [page]);
+  }, [page, debouncedSearch, statusFilter]);
 
   const selectedVoiceAgent = voiceAgents.find((v) => v.id === selectedVoiceAgentId) ?? null;
 
@@ -97,6 +118,37 @@ export default function VoiceAgents() {
             <Tab value="agents" label="Agents" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="followups" label="Needs Follow-up" sx={{ minHeight: 36, py: 0.5 }} />
           </Tabs>
+
+          {tab === "agents" && (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2.5 }}>
+              <TextField
+                placeholder="Search voice agents…"
+                size="small"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                sx={{ flex: 1, maxWidth: { sm: 280 } }}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchRoundedIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              <Select
+                size="small"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as VoiceAgentStatus | "all")}
+                sx={{ minWidth: 150 }}
+              >
+                <MenuItem value="all">All statuses</MenuItem>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="paused">Paused</MenuItem>
+              </Select>
+            </Stack>
+          )}
 
           {tab === "agents" && (
             <Grid container spacing={2}>

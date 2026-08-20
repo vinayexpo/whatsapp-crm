@@ -31,6 +31,42 @@ it('lists chat menu flows for a role with chatbots.view', function () {
     expect($response->json('data'))->toHaveCount(2);
 });
 
+it('filters chat menu flows by status', function () {
+    ChatMenuFlow::factory()->create(['status' => 'active']);
+    ChatMenuFlow::factory()->create(['status' => 'paused']);
+    $user = actingAsChatMenuFlowRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/chat-menu-flows?status=active');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.status'))->toBe('active');
+});
+
+it('filters chat menu flows by channel', function () {
+    ChatMenuFlow::factory()->create(['channel' => 'whatsapp']);
+    ChatMenuFlow::factory()->create(['channel' => 'web']);
+    $user = actingAsChatMenuFlowRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/chat-menu-flows?channel=web');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.channel'))->toBe('web');
+});
+
+it('filters chat menu flows by search matching name', function () {
+    ChatMenuFlow::factory()->create(['name' => 'Catering Services Menu']);
+    ChatMenuFlow::factory()->create(['name' => 'Support Options']);
+    $user = actingAsChatMenuFlowRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/chat-menu-flows?search=Catering');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('Catering Services Menu');
+});
+
 it('forbids an agent from listing chat menu flows', function () {
     ChatMenuFlow::factory()->count(2)->create();
     $user = actingAsChatMenuFlowRole('agent');

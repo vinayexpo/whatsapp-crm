@@ -46,6 +46,42 @@ it('paginates chatbot listing', function () {
     expect($response->json('meta.total'))->toBe(3);
 });
 
+it('filters chatbots by status', function () {
+    Chatbot::factory()->create(['status' => 'active']);
+    Chatbot::factory()->create(['status' => 'inactive']);
+    $user = actingAsChatbotRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/chatbots?status=inactive');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.status'))->toBe('inactive');
+});
+
+it('filters chatbots by search matching name', function () {
+    Chatbot::factory()->create(['name' => 'Support Helper Bot']);
+    Chatbot::factory()->create(['name' => 'Sales Assistant Bot']);
+    $user = actingAsChatbotRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/chatbots?search=Support');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('Support Helper Bot');
+});
+
+it('composes chatbot filters with pagination', function () {
+    Chatbot::factory()->count(3)->create(['status' => 'active']);
+    Chatbot::factory()->count(2)->create(['status' => 'inactive']);
+    $user = actingAsChatbotRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/chatbots?status=active&per_page=2');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(2);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
 it('forbids an agent from listing chatbots', function () {
     Chatbot::factory()->count(2)->create();
     $user = actingAsChatbotRole('agent');

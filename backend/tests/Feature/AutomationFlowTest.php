@@ -40,6 +40,41 @@ it('allows an admin to list automation flows', function () {
     expect($response->json('data'))->toHaveCount(2);
 });
 
+it('filters automation flows by status', function () {
+    AutomationFlow::factory()->create(['status' => 'active']);
+    AutomationFlow::factory()->create(['status' => 'draft']);
+    $user = actingAsAutomationRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/automation-flows?status=active');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.status'))->toBe('active');
+});
+
+it('filters automation flows by trigger channel', function () {
+    AutomationFlow::factory()->create(['trigger' => ['type' => 'new-message', 'channel' => 'whatsapp']]);
+    AutomationFlow::factory()->create(['trigger' => ['type' => 'new-message', 'channel' => 'instagram']]);
+    $user = actingAsAutomationRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/automation-flows?channel=instagram');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+});
+
+it('filters automation flows by search matching name', function () {
+    AutomationFlow::factory()->create(['name' => 'Welcome New Leads']);
+    AutomationFlow::factory()->create(['name' => 'Follow Up Reminder']);
+    $user = actingAsAutomationRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/automation-flows?search=Welcome');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('Welcome New Leads');
+});
+
 it('forbids an agent from listing automation flows', function () {
     $user = actingAsAutomationRole('agent');
 

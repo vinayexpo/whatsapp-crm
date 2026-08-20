@@ -29,7 +29,13 @@ class WhatsappTemplateController extends Controller
         }
 
         return WhatsappTemplateResource::collection(
-            $apiConnection->templates()->orderBy('name')->paginate($this->perPageFrom($request))
+            $apiConnection->templates()
+                ->when($request->filled('status'), fn ($q) => $q->where('status', $request->query('status')))
+                ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->query('search').'%'))
+                ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->query('from')))
+                ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->query('to')))
+                ->orderBy('name')
+                ->paginate($this->perPageFrom($request))
         );
     }
 

@@ -288,8 +288,26 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-async function listContacts(params?: { page?: number; perPage?: number }): Promise<PaginatedResponse<Contact>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+async function listContacts(params?: {
+  page?: number;
+  perPage?: number;
+  channel?: ChannelType;
+  pipelineStage?: PipelineStageId;
+  tag?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+}): Promise<PaginatedResponse<Contact>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    channel: params?.channel,
+    pipelineStage: params?.pipelineStage,
+    tag: params?.tag,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<Contact>>(`/api/v1/contacts${query}`);
   return unwrapPaginated(body);
 }
@@ -403,8 +421,21 @@ async function assignConversation(conversationId: string, userId: string | null)
 async function listAutomationFlows(params?: {
   page?: number;
   perPage?: number;
+  status?: AutomationStatus;
+  channel?: ChannelType | "both";
+  search?: string;
+  from?: string;
+  to?: string;
 }): Promise<PaginatedResponse<AutomationFlow>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    channel: params?.channel,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<AutomationFlow>>(`/api/v1/automation-flows${query}`);
   return unwrapPaginated(body);
 }
@@ -431,8 +462,24 @@ async function deleteAutomationFlow(flowId: string): Promise<void> {
   await apiRequest(`/api/v1/automation-flows/${flowId}`, { method: "DELETE" });
 }
 
-async function listCampaigns(params?: { page?: number; perPage?: number }): Promise<PaginatedResponse<Campaign>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+async function listCampaigns(params?: {
+  page?: number;
+  perPage?: number;
+  status?: string;
+  channel?: ChannelType | "both";
+  search?: string;
+  from?: string;
+  to?: string;
+}): Promise<PaginatedResponse<Campaign>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    channel: params?.channel,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<Campaign>>(`/api/v1/campaigns${query}`);
   return unwrapPaginated(body);
 }
@@ -581,9 +628,16 @@ async function toggleWhatsappCalling(connectionId: string, callingEnabled: boole
 
 async function listTemplates(
   connectionId: string,
-  params?: { page?: number; perPage?: number },
+  params?: { page?: number; perPage?: number; status?: string; search?: string; from?: string; to?: string },
 ): Promise<PaginatedResponse<WhatsappTemplate>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<WhatsappTemplate>>(
     `/api/v1/api-connections/${connectionId}/templates${query}`,
   );
@@ -707,8 +761,17 @@ async function listActivityFeed(): Promise<ActivityItem[]> {
 async function listPhonebookFolders(params?: {
   page?: number;
   perPage?: number;
+  search?: string;
+  from?: string;
+  to?: string;
 }): Promise<PaginatedResponse<PhonebookFolder>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<PhonebookFolder>>(`/api/v1/phonebook-folders${query}`);
   return unwrapPaginated(body);
 }
@@ -797,8 +860,24 @@ async function exportAllContacts(format: "csv" | "xlsx"): Promise<void> {
   triggerBlobDownload(blob, `contacts.${format}`);
 }
 
-async function listChatbots(params?: { page?: number; perPage?: number }): Promise<PaginatedResponse<Chatbot>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+async function listChatbots(params?: {
+  page?: number;
+  perPage?: number;
+  status?: ChatbotStatus;
+  channel?: ChatbotChannel;
+  search?: string;
+  from?: string;
+  to?: string;
+}): Promise<PaginatedResponse<Chatbot>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    channel: params?.channel,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<Chatbot>>(`/api/v1/chatbots${query}`);
   return unwrapPaginated(body);
 }
@@ -877,8 +956,19 @@ async function generateTrainingEntries(
 async function listVoiceAgents(params?: {
   page?: number;
   perPage?: number;
+  status?: VoiceAgentStatus;
+  search?: string;
+  from?: string;
+  to?: string;
 }): Promise<PaginatedResponse<VoiceAgent>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<VoiceAgent>>(`/api/v1/voice-agents${query}`);
   return unwrapPaginated(body);
 }
@@ -983,8 +1073,19 @@ async function completeVoiceCallFollowup(voiceCallId: string): Promise<VoiceCall
 async function listWhatsappCallFlows(params?: {
   page?: number;
   perPage?: number;
+  status?: WhatsappCallFlowStatus;
+  search?: string;
+  from?: string;
+  to?: string;
 }): Promise<PaginatedResponse<WhatsappCallFlow>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<WhatsappCallFlow>>(`/api/v1/whatsapp-call-flows${query}`);
   return unwrapPaginated(body);
 }
@@ -1035,8 +1136,21 @@ async function deleteWhatsappCallFlow(callFlowId: string): Promise<void> {
 async function listChatMenuFlows(params?: {
   page?: number;
   perPage?: number;
+  status?: ChatMenuFlowStatus;
+  channel?: ChatMenuFlowChannel;
+  search?: string;
+  from?: string;
+  to?: string;
 }): Promise<PaginatedResponse<ChatMenuFlow>> {
-  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    channel: params?.channel,
+    search: params?.search,
+    from: params?.from,
+    to: params?.to,
+  });
   const body = await apiRequest<RawPaginatedResponse<ChatMenuFlow>>(`/api/v1/chat-menu-flows${query}`);
   return unwrapPaginated(body);
 }

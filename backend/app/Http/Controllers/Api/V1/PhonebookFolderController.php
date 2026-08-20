@@ -25,7 +25,13 @@ class PhonebookFolderController extends Controller
         $this->authorize('viewAny', PhonebookFolder::class);
 
         return PhonebookFolderResource::collection(
-            PhonebookFolder::query()->withCount('contacts')->orderBy('name')->paginate($this->perPageFrom($request))
+            PhonebookFolder::query()
+                ->withCount('contacts')
+                ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->query('search').'%'))
+                ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->query('from')))
+                ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->query('to')))
+                ->orderBy('name')
+                ->paginate($this->perPageFrom($request))
         );
     }
 

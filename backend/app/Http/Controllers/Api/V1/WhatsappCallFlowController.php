@@ -20,7 +20,14 @@ class WhatsappCallFlowController extends Controller
         $this->authorize('viewAny', WhatsappCallFlow::class);
 
         return WhatsappCallFlowResource::collection(
-            WhatsappCallFlow::query()->with('apiConnection')->orderBy('name')->paginate($this->perPageFrom($request))
+            WhatsappCallFlow::query()
+                ->with('apiConnection')
+                ->when($request->filled('status'), fn ($q) => $q->where('status', $request->query('status')))
+                ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->query('search').'%'))
+                ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->query('from')))
+                ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->query('to')))
+                ->orderBy('name')
+                ->paginate($this->perPageFrom($request))
         );
     }
 

@@ -14,6 +14,9 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import InputAdornment from "@mui/material/InputAdornment";
+import Select from "@mui/material/Select";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { TemplateBuilderDialog } from "~/components/templates/template-builder-dialog";
@@ -46,8 +49,20 @@ export default function Templates() {
   const [editingTemplate, setEditingTemplate] = useState<WhatsappTemplate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<WhatsappTemplateStatus | "all">("all");
 
   const whatsappConnections = useMemo(() => connections.filter((c) => c.channel === "whatsapp"), [connections]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
     apiClient.listApiConnections().then((list) => {
@@ -70,13 +85,17 @@ export default function Templates() {
       return;
     }
     apiClient
-      .listTemplates(connectionId, { page })
+      .listTemplates(connectionId, {
+        page,
+        search: debouncedSearch || undefined,
+        status: statusFilter === "all" ? undefined : statusFilter,
+      })
       .then(({ data, meta }) => {
         setTemplates(data);
         setLastPage(meta.lastPage);
       })
       .catch(() => setTemplates([]));
-  }, [connectionId, page]);
+  }, [connectionId, page, debouncedSearch, statusFilter]);
 
   function openCreate() {
     setEditingTemplate(null);
@@ -172,6 +191,39 @@ export default function Templates() {
                 </MenuItem>
               ))}
             </TextField>
+          )}
+
+          {connectionId && (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2.5 }}>
+              <TextField
+                placeholder="Search templates…"
+                size="small"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                sx={{ flex: 1, maxWidth: { sm: 280 } }}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchRoundedIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              <Select
+                size="small"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as WhatsappTemplateStatus | "all")}
+                sx={{ minWidth: 160 }}
+              >
+                <MenuItem value="all">All statuses</MenuItem>
+                <MenuItem value="draft">Draft</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="approved">Approved</MenuItem>
+                <MenuItem value="rejected">Rejected</MenuItem>
+              </Select>
+            </Stack>
           )}
 
           {!connectionId ? (

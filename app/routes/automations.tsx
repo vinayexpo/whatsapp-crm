@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
@@ -6,15 +6,21 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import { Link } from "react-router";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { AutomationFlowCard } from "~/components/automations/automation-flow-card";
 import { AutomationBuilderDialog } from "~/components/automations/automation-builder-dialog";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { useCrmStore } from "~/hooks/use-crm-store";
+import type { AutomationStatus, ChannelType } from "~/data/types";
 import type { Route } from "./+types/automations";
 
 export function meta({}: Route.MetaArgs) {
@@ -35,6 +41,23 @@ export default function Automations() {
     aiAssistantSettings,
   } = useCrmStore();
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AutomationStatus | "all">("all");
+  const [channelFilter, setChannelFilter] = useState<ChannelType | "both" | "all">("all");
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    fetchAutomationFlowsPage(1, {
+      search: debouncedSearch || undefined,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      channel: channelFilter === "all" ? undefined : channelFilter,
+    });
+  }, [fetchAutomationFlowsPage, debouncedSearch, statusFilter, channelFilter]);
 
   const activeCount = automationFlows.filter((f) => f.status === "active").length;
   const isAiConfigured = Boolean(
@@ -69,6 +92,47 @@ export default function Automations() {
             <Link to="/settings">Settings</Link> so those replies can be generated.
           </Alert>
         )}
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2.5 }}>
+          <TextField
+            placeholder="Search automations…"
+            size="small"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ flex: 1, maxWidth: { sm: 280 } }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <Select
+            size="small"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as AutomationStatus | "all")}
+            sx={{ minWidth: 150 }}
+          >
+            <MenuItem value="all">All statuses</MenuItem>
+            <MenuItem value="active">Active</MenuItem>
+            <MenuItem value="paused">Paused</MenuItem>
+            <MenuItem value="draft">Draft</MenuItem>
+          </Select>
+          <Select
+            size="small"
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value as ChannelType | "both" | "all")}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="all">All channels</MenuItem>
+            <MenuItem value="whatsapp">WhatsApp</MenuItem>
+            <MenuItem value="instagram">Instagram</MenuItem>
+            <MenuItem value="both">Both</MenuItem>
+          </Select>
+        </Stack>
 
         {automationFlows.length === 0 ? (
           <Paper variant="outlined" sx={{ p: 5, borderRadius: 3, textAlign: "center" }}>

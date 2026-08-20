@@ -31,6 +31,30 @@ it('lists voice agents for a role with voice-agents.view', function () {
     expect($response->json('data'))->toHaveCount(2);
 });
 
+it('filters voice agents by status', function () {
+    VoiceAgent::factory()->create(['status' => 'active']);
+    VoiceAgent::factory()->create(['status' => 'paused']);
+    $user = actingAsVoiceAgentRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/voice-agents?status=active');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.status'))->toBe('active');
+});
+
+it('filters voice agents by search matching name', function () {
+    VoiceAgent::factory()->create(['name' => 'Sales Qualifier']);
+    VoiceAgent::factory()->create(['name' => 'Support Screener']);
+    $user = actingAsVoiceAgentRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/voice-agents?search=Sales');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('Sales Qualifier');
+});
+
 it('forbids an agent from listing voice agents', function () {
     VoiceAgent::factory()->count(2)->create();
     $user = actingAsVoiceAgentRole('agent');

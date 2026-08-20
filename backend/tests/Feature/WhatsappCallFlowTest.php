@@ -32,6 +32,30 @@ it('lists call flows for a role with whatsapp-calling.view', function () {
     expect($response->json('data'))->toHaveCount(2);
 });
 
+it('filters call flows by status', function () {
+    WhatsappCallFlow::factory()->create(['status' => 'active']);
+    WhatsappCallFlow::factory()->create(['status' => 'paused']);
+    $user = actingAsWhatsappCallFlowRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/whatsapp-call-flows?status=active');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.status'))->toBe('active');
+});
+
+it('filters call flows by search matching name', function () {
+    WhatsappCallFlow::factory()->create(['name' => 'Lead Qualification Flow']);
+    WhatsappCallFlow::factory()->create(['name' => 'Support Triage Flow']);
+    $user = actingAsWhatsappCallFlowRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/whatsapp-call-flows?search=Lead');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('Lead Qualification Flow');
+});
+
 it('forbids an agent from listing call flows', function () {
     WhatsappCallFlow::factory()->count(2)->create();
     $user = actingAsWhatsappCallFlowRole('agent');

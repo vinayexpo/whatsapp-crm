@@ -29,6 +29,17 @@ class ContactController extends Controller
             $query->whereHas('conversations', fn ($q) => $q->where('assigned_to', $request->user()->id));
         }
 
+        $query
+            ->when($request->filled('channel'), fn ($q) => $q->where('channel', $request->query('channel')))
+            ->when($request->filled('pipelineStage'), fn ($q) => $q->where('pipeline_stage_id', $request->query('pipelineStage')))
+            ->when($request->filled('tag'), fn ($q) => $q->whereHas('tags', fn ($t) => $t->where('name', $request->query('tag'))))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->query('search');
+                $q->where(fn ($w) => $w->where('name', 'like', "%{$search}%")->orWhere('handle', 'like', "%{$search}%"));
+            })
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->query('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->query('to')));
+
         return ContactResource::collection($query->paginate($this->perPageFrom($request)));
     }
 

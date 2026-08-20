@@ -8,8 +8,13 @@ import Grid from "@mui/material/Grid";
 import Chip from "@mui/material/Chip";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateCallFlowDialog } from "~/components/whatsapp-calling/create-call-flow-dialog";
@@ -18,7 +23,7 @@ import { WhatsappCallFollowupQueue } from "~/components/whatsapp-calling/whatsap
 import { CallSetupPanel } from "~/components/whatsapp-calling/call-setup-panel";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
-import type { WhatsappCallFlow } from "~/data/types";
+import type { WhatsappCallFlow, WhatsappCallFlowStatus } from "~/data/types";
 import type { Route } from "./+types/whatsapp-calling";
 
 export function meta({}: Route.MetaArgs) {
@@ -35,10 +40,26 @@ export default function WhatsappCalling() {
   const [lastPage, setLastPage] = useState(1);
   const [selectedCallFlowId, setSelectedCallFlowId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<WhatsappCallFlowStatus | "all">("all");
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
     apiClient
-      .listWhatsappCallFlows({ page })
+      .listWhatsappCallFlows({
+        page,
+        search: debouncedSearch || undefined,
+        status: statusFilter === "all" ? undefined : statusFilter,
+      })
       .then(({ data, meta }) => {
         setCallFlows(data);
         setLastPage(meta.lastPage);
@@ -46,7 +67,7 @@ export default function WhatsappCalling() {
       .catch(() => {
         // call flows list stays empty on failure
       });
-  }, [page]);
+  }, [page, debouncedSearch, statusFilter]);
 
   const selectedCallFlow = callFlows.find((f) => f.id === selectedCallFlowId) ?? null;
 
@@ -102,6 +123,37 @@ export default function WhatsappCalling() {
             <Tab value="followups" label="Needs Follow-up" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="setup" label="Setup" sx={{ minHeight: 36, py: 0.5 }} />
           </Tabs>
+
+          {tab === "flows" && (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2.5 }}>
+              <TextField
+                placeholder="Search call flows…"
+                size="small"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                sx={{ flex: 1, maxWidth: { sm: 280 } }}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchRoundedIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              <Select
+                size="small"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as WhatsappCallFlowStatus | "all")}
+                sx={{ minWidth: 150 }}
+              >
+                <MenuItem value="all">All statuses</MenuItem>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="paused">Paused</MenuItem>
+              </Select>
+            </Stack>
+          )}
 
           {tab === "flows" && (
             <Grid container spacing={2}>

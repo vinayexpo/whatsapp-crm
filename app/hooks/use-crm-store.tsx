@@ -23,10 +23,30 @@ import { useAuth } from "~/hooks/use-auth";
 
 const AGGREGATE_PER_PAGE = 100;
 
+interface ContactFilters {
+  search?: string;
+  channel?: ChannelType;
+  pipelineStage?: PipelineStageId;
+}
+
+interface CampaignFilters {
+  search?: string;
+  status?: string;
+  channel?: ChannelType | "both";
+  from?: string;
+  to?: string;
+}
+
+interface AutomationFlowFilters {
+  search?: string;
+  status?: AutomationStatus;
+  channel?: ChannelType | "both";
+}
+
 interface CrmStoreValue {
   contacts: Contact[];
   contactsPagination: PaginationMeta;
-  fetchContactsPage: (page: number) => void;
+  fetchContactsPage: (page: number, filters?: ContactFilters, perPage?: number) => void;
   allContacts: Contact[];
   conversations: Conversation[];
   conversationsPagination: PaginationMeta;
@@ -37,12 +57,12 @@ interface CrmStoreValue {
   loadOlderMessages: (conversationId: string) => void;
   campaigns: Campaign[];
   campaignsPagination: PaginationMeta;
-  fetchCampaignsPage: (page: number) => void;
+  fetchCampaignsPage: (page: number, filters?: CampaignFilters) => void;
   allCampaigns: Campaign[];
   dailyMetrics: DailyMetric[];
   automationFlows: AutomationFlow[];
   automationFlowsPagination: PaginationMeta;
-  fetchAutomationFlowsPage: (page: number) => void;
+  fetchAutomationFlowsPage: (page: number, filters?: AutomationFlowFilters) => void;
   moveContactToStage: (contactId: string, stage: PipelineStageId) => void;
   updateContact: (
     contactId: string,
@@ -132,6 +152,8 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactsPagination, setContactsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
   const [contactsPage, setContactsPage] = useState(1);
+  const [contactsFilters, setContactsFilters] = useState<ContactFilters>({});
+  const [contactsPerPage, setContactsPerPage] = useState(20);
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -147,6 +169,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignsPagination, setCampaignsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
   const [campaignsPage, setCampaignsPage] = useState(1);
+  const [campaignsFilters, setCampaignsFilters] = useState<CampaignFilters>({});
   const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
 
   const [dailyMetrics, setDailyMetrics] = useState<DailyMetric[]>([]);
@@ -154,6 +177,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [automationFlows, setAutomationFlows] = useState<AutomationFlow[]>([]);
   const [automationFlowsPagination, setAutomationFlowsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
   const [automationFlowsPage, setAutomationFlowsPage] = useState(1);
+  const [automationFlowsFilters, setAutomationFlowsFilters] = useState<AutomationFlowFilters>({});
 
   const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -165,15 +189,17 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [aiAssistantSettings, setAiAssistantSettings] = useState<AiAssistantSettings>(DEFAULT_AI_ASSISTANT_SETTINGS);
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
 
-  const fetchContactsPage = useCallback((page: number) => {
+  const fetchContactsPage = useCallback((page: number, filters?: ContactFilters, perPage?: number) => {
     setContactsPage(page);
+    if (filters) setContactsFilters(filters);
+    if (perPage) setContactsPerPage(perPage);
   }, []);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     let cancelled = false;
     apiClient
-      .listContacts({ page: contactsPage })
+      .listContacts({ page: contactsPage, perPage: contactsPerPage, ...contactsFilters })
       .then(({ data, meta }) => {
         if (!cancelled) {
           setContacts(data);
@@ -186,7 +212,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus, contactsPage]);
+  }, [authStatus, contactsPage, contactsPerPage, contactsFilters]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
@@ -336,15 +362,16 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [authStatus]);
 
-  const fetchCampaignsPage = useCallback((page: number) => {
+  const fetchCampaignsPage = useCallback((page: number, filters?: CampaignFilters) => {
     setCampaignsPage(page);
+    if (filters) setCampaignsFilters(filters);
   }, []);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     let cancelled = false;
     apiClient
-      .listCampaigns({ page: campaignsPage })
+      .listCampaigns({ page: campaignsPage, ...campaignsFilters })
       .then(({ data, meta }) => {
         if (!cancelled) {
           setCampaigns(data);
@@ -357,7 +384,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus, campaignsPage]);
+  }, [authStatus, campaignsPage, campaignsFilters]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
@@ -391,15 +418,16 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [authStatus]);
 
-  const fetchAutomationFlowsPage = useCallback((page: number) => {
+  const fetchAutomationFlowsPage = useCallback((page: number, filters?: AutomationFlowFilters) => {
     setAutomationFlowsPage(page);
+    if (filters) setAutomationFlowsFilters(filters);
   }, []);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     let cancelled = false;
     apiClient
-      .listAutomationFlows({ page: automationFlowsPage, perPage: AGGREGATE_PER_PAGE })
+      .listAutomationFlows({ page: automationFlowsPage, perPage: AGGREGATE_PER_PAGE, ...automationFlowsFilters })
       .then(({ data, meta }) => {
         if (!cancelled) {
           setAutomationFlows(data);
@@ -412,7 +440,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus, automationFlowsPage]);
+  }, [authStatus, automationFlowsPage, automationFlowsFilters]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;

@@ -8,11 +8,14 @@ import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateFolderDialog } from "~/components/phonebook/create-folder-dialog";
@@ -40,10 +43,21 @@ export default function Phonebook() {
   const [importDefaultFolderId, setImportDefaultFolderId] = useState<string | undefined>(undefined);
   const [menuAnchor, setMenuAnchor] = useState<{ el: HTMLElement; folderId: string } | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<PhonebookFolder | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     apiClient
-      .listPhonebookFolders({ page })
+      .listPhonebookFolders({ page, search: debouncedSearch || undefined })
       .then(({ data, meta }) => {
         setFolders(data);
         setLastPage(meta.lastPage);
@@ -51,7 +65,7 @@ export default function Phonebook() {
       .catch(() => {
         // folders list stays empty on failure
       });
-  }, [page]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => {
     if (!selectedFolderId) {
@@ -65,7 +79,7 @@ export default function Phonebook() {
 
   function refreshFolders() {
     apiClient
-      .listPhonebookFolders({ page })
+      .listPhonebookFolders({ page, search: debouncedSearch || undefined })
       .then(({ data, meta }) => {
         setFolders(data);
         setLastPage(meta.lastPage);
@@ -137,6 +151,25 @@ export default function Phonebook() {
               New Folder
             </Button>
           </Stack>
+        </Stack>
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2.5 }}>
+          <TextField
+            placeholder="Search folders…"
+            size="small"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ flex: 1, maxWidth: { sm: 280 } }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
         </Stack>
 
         <Grid container spacing={2}>

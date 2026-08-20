@@ -34,6 +34,30 @@ it('lists phonebook folders for any authenticated role', function () {
     expect($response->json('data'))->toHaveCount(2);
 });
 
+it('filters phonebook folders by search matching name', function () {
+    PhonebookFolder::factory()->create(['name' => 'Spring Promo List']);
+    PhonebookFolder::factory()->create(['name' => 'Winter Clearance']);
+    $user = actingAsPhonebookRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/phonebook-folders?search=Spring');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('Spring Promo List');
+});
+
+it('composes phonebook folder search filter with pagination', function () {
+    PhonebookFolder::factory()->count(3)->create(['name' => 'Promo Batch']);
+    PhonebookFolder::factory()->count(2)->create(['name' => 'Other Batch']);
+    $user = actingAsPhonebookRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/phonebook-folders?search=Promo&per_page=2');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(2);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
 it('forbids an agent from listing phonebook folders', function () {
     PhonebookFolder::factory()->count(2)->create();
     $user = actingAsPhonebookRole('agent');

@@ -31,6 +31,11 @@ class CampaignController extends Controller
             Campaign::query()
                 ->with(['whatsappTemplate', 'phonebookFolder', 'voiceAgent', 'whatsappCallFlow'])
                 ->withCount(['recipients as failed_recipients_count' => fn ($q) => $q->where('status', 'failed')])
+                ->when($request->filled('status'), fn ($q) => $q->where('status', $request->query('status')))
+                ->when($request->filled('channel'), fn ($q) => $q->where('channel', $request->query('channel')))
+                ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->query('search').'%'))
+                ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->query('from')))
+                ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->query('to')))
                 ->latest('created_at')
                 ->paginate($this->perPageFrom($request))
         );

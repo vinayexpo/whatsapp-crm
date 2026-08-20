@@ -76,6 +76,54 @@ it('scopes contacts for an agent to only those with a conversation assigned to t
     expect($names)->not->toContain('Not Assigned');
 });
 
+it('filters contacts by channel', function () {
+    Contact::factory()->create(['channel' => 'whatsapp']);
+    Contact::factory()->create(['channel' => 'instagram']);
+    $user = actingAsRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/contacts?channel=instagram');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.channel'))->toBe('instagram');
+});
+
+it('filters contacts by pipeline stage', function () {
+    Contact::factory()->create(['pipeline_stage_id' => 'new-lead']);
+    Contact::factory()->create(['pipeline_stage_id' => 'qualified']);
+    $user = actingAsRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/contacts?pipelineStage=qualified');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.pipelineStage'))->toBe('qualified');
+});
+
+it('filters contacts by search matching name or handle', function () {
+    Contact::factory()->create(['name' => 'Jordan Rivera', 'handle' => '+1 555 111 2222']);
+    Contact::factory()->create(['name' => 'Casey Lee', 'handle' => '+1 555 333 4444']);
+    $user = actingAsRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/contacts?search=Jordan');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('Jordan Rivera');
+});
+
+it('composes contact filters with pagination', function () {
+    Contact::factory()->count(3)->create(['channel' => 'whatsapp']);
+    Contact::factory()->count(2)->create(['channel' => 'instagram']);
+    $user = actingAsRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/contacts?channel=whatsapp&per_page=2');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(2);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
 it('rejects unauthenticated contact listing', function () {
     $this->getJson('/api/v1/contacts')->assertUnauthorized();
 });

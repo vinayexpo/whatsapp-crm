@@ -80,6 +80,32 @@ it('lists synced templates for a connection', function () {
     expect(collect($response->json('data'))->pluck('name')->all())->toContain('welcome_message');
 });
 
+it('filters templates by status', function () {
+    $connection = ApiConnection::factory()->create(['channel' => 'whatsapp']);
+    WhatsappTemplate::factory()->create(['api_connection_id' => $connection->id, 'status' => 'approved']);
+    WhatsappTemplate::factory()->create(['api_connection_id' => $connection->id, 'status' => 'pending']);
+    $user = actingAsTemplateRole('manager');
+
+    $response = $this->actingAs($user)->getJson("/api/v1/api-connections/{$connection->uuid}/templates?status=pending");
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.status'))->toBe('pending');
+});
+
+it('filters templates by search matching name', function () {
+    $connection = ApiConnection::factory()->create(['channel' => 'whatsapp']);
+    WhatsappTemplate::factory()->create(['api_connection_id' => $connection->id, 'name' => 'welcome_message']);
+    WhatsappTemplate::factory()->create(['api_connection_id' => $connection->id, 'name' => 'order_confirmation']);
+    $user = actingAsTemplateRole('manager');
+
+    $response = $this->actingAs($user)->getJson("/api/v1/api-connections/{$connection->uuid}/templates?search=welcome");
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.name'))->toBe('welcome_message');
+});
+
 it('creates a campaign linked to a template with variables', function () {
     $connection = ApiConnection::factory()->create(['channel' => 'whatsapp']);
     $template = WhatsappTemplate::factory()->create([
