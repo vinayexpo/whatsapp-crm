@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ChatMenuFlowResource;
 use App\Models\ChatMenuFlow;
+use App\Services\ChatFlow\ChatMenuFlowGeneratorServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 
 class ChatMenuFlowController extends Controller
 {
@@ -79,6 +81,25 @@ class ChatMenuFlowController extends Controller
         $chatMenuFlow->delete();
 
         return response()->json(['message' => 'Chat menu flow deleted.']);
+    }
+
+    public function generate(Request $request, ChatMenuFlowGeneratorServiceInterface $generator): JsonResponse
+    {
+        $this->authorize('create', ChatMenuFlow::class);
+
+        $data = $request->validate([
+            'prompt' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $draft = $generator->generate($request->user()->company, $data['prompt']);
+
+        if (! $draft) {
+            throw ValidationException::withMessages([
+                'prompt' => 'Could not generate a menu from that description. Make sure an AI assistant is configured, and try a more specific prompt.',
+            ]);
+        }
+
+        return response()->json(['data' => $draft]);
     }
 
     /**

@@ -143,3 +143,47 @@ it('404s when accessing a chat menu flow belonging to another company', function
 
     $this->actingAs($userA)->getJson("/api/v1/chat-menu-flows/{$foreignFlow->uuid}")->assertNotFound();
 });
+
+it('rejects unauthenticated chat menu flow generation', function () {
+    $this->postJson('/api/v1/chat-menu-flows/generate', ['prompt' => 'A catering menu'])->assertUnauthorized();
+});
+
+it('forbids an agent from generating a chat menu flow', function () {
+    $agent = actingAsChatMenuFlowRole('agent');
+
+    $this->actingAs($agent)->postJson('/api/v1/chat-menu-flows/generate', [
+        'prompt' => 'A catering menu',
+    ])->assertForbidden();
+});
+
+it('requires a prompt to generate a chat menu flow', function () {
+    $admin = actingAsChatMenuFlowRole('admin');
+    $admin->update(['company_id' => Company::factory()->create()->id]);
+
+    $this->actingAs($admin)->postJson('/api/v1/chat-menu-flows/generate', [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('prompt');
+});
+
+it('allows an admin to generate a draft chat menu flow', function () {
+    $admin = actingAsChatMenuFlowRole('admin');
+    $admin->update(['company_id' => Company::factory()->create()->id]);
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/chat-menu-flows/generate', [
+        'prompt' => 'A catering services menu',
+    ]);
+
+    $response->assertOk();
+    expect($response->json('data.entryNodeId'))->toBeString();
+    expect($response->json('data.nodes'))->toHaveCount(2);
+    expect($response->json('data.nodes.0.message'))->toBe('Fake reply for: A catering services menu');
+});
+
+it('rejects an empty-string prompt when generating a chat menu flow', function () {
+    $admin = actingAsChatMenuFlowRole('admin');
+    $admin->update(['company_id' => Company::factory()->create()->id]);
+
+    $this->actingAs($admin)->postJson('/api/v1/chat-menu-flows/generate', [
+        'prompt' => '   ',
+    ])->assertUnprocessable();
+});

@@ -996,6 +996,14 @@ async function deleteChatMenuFlow(flowId: string): Promise<void> {
   await apiRequest(`/api/v1/chat-menu-flows/${flowId}`, { method: "DELETE" });
 }
 
+async function generateChatMenuFlow(prompt: string): Promise<{ entryNodeId: string; nodes: ChatMenuFlowNode[] }> {
+  const { data } = await apiRequest<{ data: { entryNodeId: string; nodes: ChatMenuFlowNode[] } }>(
+    "/api/v1/chat-menu-flows/generate",
+    { method: "POST", body: JSON.stringify({ prompt }) },
+  );
+  return data;
+}
+
 async function listWhatsappCalls(filters?: {
   callFlowId?: string;
   contactId?: string;
@@ -1211,6 +1219,7 @@ export const apiClient = {
   getChatMenuFlow,
   updateChatMenuFlow,
   deleteChatMenuFlow,
+  generateChatMenuFlow,
   listWhatsappCalls,
   getWhatsappCall,
   placeWhatsappCall,

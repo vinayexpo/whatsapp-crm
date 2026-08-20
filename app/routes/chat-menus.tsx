@@ -13,7 +13,7 @@ import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateChatMenuFlowDialog } from "~/components/chat-flows/create-chat-menu-flow-dialog";
 import { ChatMenuFlowDetailDrawer } from "~/components/chat-flows/chat-menu-flow-detail-drawer";
 import { apiClient } from "~/utils/api-client";
-import type { ChatMenuFlow, ChatMenuFlowChannel } from "~/data/types";
+import type { ChatMenuFlow, ChatMenuFlowChannel, ChatMenuFlowNode } from "~/data/types";
 import type { Route } from "./+types/chat-menus";
 
 export function meta({}: Route.MetaArgs) {
@@ -36,12 +36,21 @@ export default function ChatMenus() {
 
   const selectedFlow = flows.find((f) => f.id === selectedFlowId) ?? null;
 
-  async function handleCreate(input: { name: string; channel: ChatMenuFlowChannel }) {
-    const entryNodeId = "root";
+  async function handleCreate(input: {
+    name: string;
+    channel: ChatMenuFlowChannel;
+    entryNodeId?: string;
+    nodes?: ChatMenuFlowNode[];
+  }) {
+    const entryNodeId = input.entryNodeId ?? "root";
+    const nodes =
+      input.nodes ??
+      ([{ id: entryNodeId, type: "content", message: "Welcome! How can we help?", renderAs: "button", buttons: [] }] as ChatMenuFlowNode[]);
     const created = await apiClient.createChatMenuFlow({
-      ...input,
+      name: input.name,
+      channel: input.channel,
       entryNodeId,
-      nodes: [{ id: entryNodeId, type: "content", message: "Welcome! How can we help?", renderAs: "button", buttons: [] }],
+      nodes,
     });
     setFlows((prev) => [created, ...prev]);
     setSelectedFlowId(created.id);

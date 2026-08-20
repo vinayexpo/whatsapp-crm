@@ -186,6 +186,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/chat-menu-flows', [ChatMenuFlowController::class, 'index']);
         Route::post('/chat-menu-flows', [ChatMenuFlowController::class, 'store']);
+        Route::post('/chat-menu-flows/generate', [ChatMenuFlowController::class, 'generate']);
         Route::get('/chat-menu-flows/{chatMenuFlow}', [ChatMenuFlowController::class, 'show']);
         Route::patch('/chat-menu-flows/{chatMenuFlow}', [ChatMenuFlowController::class, 'update']);
         Route::delete('/chat-menu-flows/{chatMenuFlow}', [ChatMenuFlowController::class, 'destroy']);

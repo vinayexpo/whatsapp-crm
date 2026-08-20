@@ -8,8 +8,16 @@ import MenuItem from "@mui/material/MenuItem";
 import Alert from "@mui/material/Alert";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import CircularProgress from "@mui/material/CircularProgress";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import { apiClient, ApiError } from "~/utils/api-client";
 import type { ChatMenuFlow, ChatMenuFlowButton, ChatMenuFlowNode, ChatMenuFlowNodeType } from "~/data/types";
 
@@ -35,6 +43,38 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
   const [entryNodeId, setEntryNodeId] = useState(flow.entryNodeId || nodes[0]?.id || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiMode, setAiMode] = useState<"replace" | "expand">("replace");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  function openAiDialog() {
+    setAiMode("replace");
+    setAiPrompt("");
+    setAiError(null);
+    setAiDialogOpen(true);
+  }
+
+  async function handleGenerate() {
+    if (!aiPrompt.trim()) return;
+    setGenerating(true);
+    setAiError(null);
+    try {
+      const draft = await apiClient.generateChatMenuFlow(aiPrompt.trim());
+      if (aiMode === "replace") {
+        setNodes(draft.nodes);
+        setEntryNodeId(draft.entryNodeId);
+      } else {
+        setNodes((prev) => [...prev, ...draft.nodes]);
+      }
+      setAiDialogOpen(false);
+    } catch (err) {
+      setAiError(err instanceof ApiError ? err.message : "Failed to generate a chat menu.");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   function updateNode(index: number, patch: Partial<ChatMenuFlowNode>) {
     setNodes((prev) => prev.map((node, i) => (i === index ? { ...node, ...patch } : node)));
@@ -120,10 +160,21 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
     <Stack spacing={2.5}>
       {error && <Alert severity="error">{error}</Alert>}
 
-      <Typography variant="caption" sx={{ color: "text.secondary" }}>
-        Build a tree of menu nodes. A node with buttons shows those buttons to the customer; each button leads to
-        another node. A node with no buttons is a final reply that ends the flow.
-      </Typography>
+      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", gap: 1.5 }}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Build a tree of menu nodes. A node with buttons shows those buttons to the customer; each button leads to
+          another node. A node with no buttons is a final reply that ends the flow.
+        </Typography>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<AutoAwesomeRoundedIcon fontSize="small" />}
+          onClick={openAiDialog}
+          sx={{ flexShrink: 0 }}
+        >
+          Generate with AI
+        </Button>
+      </Stack>
 
       <TextField
         fullWidth
@@ -236,6 +287,55 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
       <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ alignSelf: "flex-start" }}>
         Save chat menu flow
       </Button>
+
+      <Dialog open={aiDialogOpen} onClose={() => setAiDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Generate with AI</DialogTitle>
+        <DialogContent>
+          {aiError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {aiError}
+            </Alert>
+          )}
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              size="small"
+              value={aiMode}
+              onChange={(_, value) => value && setAiMode(value)}
+            >
+              <ToggleButton value="replace">Replace flow</ToggleButton>
+              <ToggleButton value="expand">Add to flow</ToggleButton>
+            </ToggleButtonGroup>
+            <TextField
+              autoFocus
+              fullWidth
+              multiline
+              minRows={3}
+              label="Describe the menu"
+              placeholder="e.g. Add a branch for shipping and returns questions"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              helperText={
+                aiMode === "replace"
+                  ? "Replaces all nodes below with a freshly generated tree. Nothing is saved until you click Save."
+                  : "Appends newly generated nodes to the existing tree. Nothing is saved until you click Save."
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setAiDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleGenerate}
+            disabled={generating || !aiPrompt.trim()}
+            startIcon={generating ? <CircularProgress size={16} /> : undefined}
+          >
+            Generate
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

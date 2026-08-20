@@ -5,6 +5,9 @@ namespace App\Providers;
 use App\Services\Calling\FakeWhatsappCallService;
 use App\Services\Calling\GraphApiWhatsappCallService;
 use App\Services\Calling\WhatsappCallServiceInterface;
+use App\Services\ChatFlow\ChatMenuFlowGeneratorServiceInterface;
+use App\Services\ChatFlow\FakeChatMenuFlowGeneratorService;
+use App\Services\ChatFlow\OpenAiChatMenuFlowGeneratorService;
 use App\Services\Chatbot\ChatbotReplyServiceInterface;
 use App\Services\Chatbot\FakeChatbotReplyService;
 use App\Services\Chatbot\FakeTrainingEntryGeneratorService;
@@ -64,6 +67,12 @@ class AppServiceProvider extends ServiceProvider
             return $this->app->environment('testing')
                 ? new FakePushNotificationService
                 : new WebPushNotificationService;
+        });
+
+        $this->app->bind(ChatMenuFlowGeneratorServiceInterface::class, function () {
+            return $this->app->environment('testing')
+                ? new FakeChatMenuFlowGeneratorService
+                : new OpenAiChatMenuFlowGeneratorService;
         });
     }
 
