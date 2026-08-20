@@ -19,7 +19,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Pipeline() {
-  const { contacts, moveContactToStage } = useCrmStore();
+  const { allContacts, moveContactToStage } = useCrmStore();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   function handleDragEnd(result: DropResult) {
@@ -46,7 +46,7 @@ export default function Pipeline() {
               <PipelineColumn
                 key={stage.id}
                 stage={stage}
-                contacts={contacts.filter((c) => c.pipelineStage === stage.id)}
+                contacts={allContacts.filter((c) => c.pipelineStage === stage.id)}
                 onCardClick={setSelectedContact}
               />
             ))}

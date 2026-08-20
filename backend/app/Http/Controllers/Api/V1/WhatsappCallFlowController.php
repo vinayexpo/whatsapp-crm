@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WhatsappCallFlowResource;
 use App\Models\ApiConnection;
@@ -12,12 +13,14 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class WhatsappCallFlowController extends Controller
 {
+    use PaginatesRequests;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', WhatsappCallFlow::class);
 
         return WhatsappCallFlowResource::collection(
-            WhatsappCallFlow::query()->with('apiConnection')->orderBy('name')->get()
+            WhatsappCallFlow::query()->with('apiConnection')->orderBy('name')->paginate($this->perPageFrom($request))
         );
     }
 

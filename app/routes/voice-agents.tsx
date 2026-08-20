@@ -15,6 +15,7 @@ import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateVoiceAgentDialog } from "~/components/voice-agents/create-voice-agent-dialog";
 import { VoiceAgentDetailDrawer } from "~/components/voice-agents/voice-agent-detail-drawer";
 import { VoiceAgentFollowupQueue } from "~/components/voice-agents/voice-agent-followup-queue";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
 import type { VoiceAgent } from "~/data/types";
 import type { Route } from "./+types/voice-agents";
@@ -29,20 +30,32 @@ export function meta({}: Route.MetaArgs) {
 export default function VoiceAgents() {
   const [tab, setTab] = useState<"agents" | "followups">("agents");
   const [voiceAgents, setVoiceAgents] = useState<VoiceAgent[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [selectedVoiceAgentId, setSelectedVoiceAgentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
-    apiClient.listVoiceAgents().then(setVoiceAgents).catch(() => {
-      // voice agents list stays empty on failure
-    });
-  }, []);
+    apiClient
+      .listVoiceAgents({ page })
+      .then(({ data, meta }) => {
+        setVoiceAgents(data);
+        setLastPage(meta.lastPage);
+      })
+      .catch(() => {
+        // voice agents list stays empty on failure
+      });
+  }, [page]);
 
   const selectedVoiceAgent = voiceAgents.find((v) => v.id === selectedVoiceAgentId) ?? null;
 
   async function handleCreate(input: { name: string; systemPrompt?: string }) {
     const created = await apiClient.createVoiceAgent(input);
-    setVoiceAgents((prev) => [created, ...prev]);
+    if (page === 1) {
+      setVoiceAgents((prev) => [created, ...prev]);
+    } else {
+      setPage(1);
+    }
     setSelectedVoiceAgentId(created.id);
   }
 
@@ -142,6 +155,8 @@ export default function VoiceAgents() {
               )}
             </Grid>
           )}
+
+          {tab === "agents" && <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />}
 
           {tab === "followups" && <VoiceAgentFollowupQueue />}
         </Box>

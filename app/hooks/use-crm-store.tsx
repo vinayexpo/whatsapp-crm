@@ -14,19 +14,35 @@ import type {
   DailyMetric,
   Message,
   NotificationPreferences,
+  PaginationMeta,
   PipelineStageId,
   TeamMember,
   TeamMemberRole,
 } from "~/data/types";
 import { useAuth } from "~/hooks/use-auth";
 
+const AGGREGATE_PER_PAGE = 100;
+
 interface CrmStoreValue {
   contacts: Contact[];
+  contactsPagination: PaginationMeta;
+  fetchContactsPage: (page: number) => void;
+  allContacts: Contact[];
   conversations: Conversation[];
+  conversationsPagination: PaginationMeta;
+  fetchConversationsPage: (page: number, assignedTo?: string) => void;
+  allConversations: Conversation[];
   messages: Message[];
+  hasMoreOlderMessages: boolean;
+  loadOlderMessages: (conversationId: string) => void;
   campaigns: Campaign[];
+  campaignsPagination: PaginationMeta;
+  fetchCampaignsPage: (page: number) => void;
+  allCampaigns: Campaign[];
   dailyMetrics: DailyMetric[];
   automationFlows: AutomationFlow[];
+  automationFlowsPagination: PaginationMeta;
+  fetchAutomationFlowsPage: (page: number) => void;
   moveContactToStage: (contactId: string, stage: PipelineStageId) => void;
   updateContact: (
     contactId: string,
@@ -110,14 +126,35 @@ const DEFAULT_AI_ASSISTANT_SETTINGS: AiAssistantSettings = {
   model: "gpt-4o-mini",
 };
 
+const DEFAULT_PAGINATION: PaginationMeta = { currentPage: 1, lastPage: 1, perPage: 20, total: 0 };
+
 export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactsPagination, setContactsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
+  const [contactsPage, setContactsPage] = useState(1);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationsPagination, setConversationsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
+  const [conversationsPage, setConversationsPage] = useState(1);
+  const [conversationsAssignedTo, setConversationsAssignedTo] = useState<string | undefined>(undefined);
+  const [allConversations, setAllConversations] = useState<Conversation[]>([]);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [hasMoreOlderByConversation, setHasMoreOlderByConversation] = useState<Record<string, boolean>>({});
+
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaignsPagination, setCampaignsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
+  const [campaignsPage, setCampaignsPage] = useState(1);
+  const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
+
   const [dailyMetrics, setDailyMetrics] = useState<DailyMetric[]>([]);
+
   const [automationFlows, setAutomationFlows] = useState<AutomationFlow[]>([]);
+  const [automationFlowsPagination, setAutomationFlowsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
+  const [automationFlowsPage, setAutomationFlowsPage] = useState(1);
+
   const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [assignableMembers, setAssignableMembers] = useState<TeamMember[]>([]);
@@ -128,13 +165,20 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [aiAssistantSettings, setAiAssistantSettings] = useState<AiAssistantSettings>(DEFAULT_AI_ASSISTANT_SETTINGS);
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
 
+  const fetchContactsPage = useCallback((page: number) => {
+    setContactsPage(page);
+  }, []);
+
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     let cancelled = false;
     apiClient
-      .listContacts()
-      .then((data) => {
-        if (!cancelled) setContacts(data);
+      .listContacts({ page: contactsPage })
+      .then(({ data, meta }) => {
+        if (!cancelled) {
+          setContacts(data);
+          setContactsPagination(meta);
+        }
       })
       .catch(() => {
         // contacts list stays empty on failure; UI shows "no contacts"
@@ -142,18 +186,58 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus]);
+  }, [authStatus, contactsPage]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     let cancelled = false;
     apiClient
-      .listConversations()
-      .then((data) => {
-        if (!cancelled) setConversations(data);
+      .listContacts({ perPage: AGGREGATE_PER_PAGE })
+      .then(({ data }) => {
+        if (!cancelled) setAllContacts(data);
+      })
+      .catch(() => {
+        // full contacts list stays empty on failure
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authStatus]);
+
+  const fetchConversationsPage = useCallback((page: number, assignedTo?: string) => {
+    setConversationsPage(page);
+    setConversationsAssignedTo(assignedTo);
+  }, []);
+
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    let cancelled = false;
+    apiClient
+      .listConversations({ page: conversationsPage, assignedTo: conversationsAssignedTo })
+      .then(({ data, meta }) => {
+        if (!cancelled) {
+          setConversations(data);
+          setConversationsPagination(meta);
+        }
       })
       .catch(() => {
         // conversations list stays as-is on failure
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authStatus, currentUser?.role, conversationsPage, conversationsAssignedTo]);
+
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    let cancelled = false;
+    apiClient
+      .listConversations({ perPage: AGGREGATE_PER_PAGE })
+      .then(({ data }) => {
+        if (!cancelled) setAllConversations(data);
+      })
+      .catch(() => {
+        // full conversations list stays empty on failure
       });
     return () => {
       cancelled = true;
@@ -165,10 +249,11 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     if (activeConversationId) {
       apiClient
-        .listMessages(activeConversationId)
-        .then((data) => {
+        .listMessages(activeConversationId, { limit: 30 })
+        .then(({ data, hasMore }) => {
           if (cancelled) return;
           setMessages((prev) => [...prev.filter((m) => m.conversationId !== activeConversationId), ...data]);
+          setHasMoreOlderByConversation((prev) => ({ ...prev, [activeConversationId]: hasMore }));
         })
         .catch(() => {
           // messages stay as-is on failure
@@ -186,7 +271,13 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     const channelName = `company.${currentUser.companyId}.conversations`;
 
     echo.private(channelName).listen(".conversation.created", (payload: { conversation: Conversation }) => {
-      setConversations((prev) =>
+      setConversations((prev) => {
+        if (prev.some((c) => c.id === payload.conversation.id)) return prev;
+        if (conversationsPagination.currentPage !== 1) return prev;
+        return [payload.conversation, ...prev].slice(0, conversationsPagination.perPage || prev.length + 1);
+      });
+      setConversationsPagination((prev) => ({ ...prev, total: prev.total + 1 }));
+      setAllConversations((prev) =>
         prev.some((c) => c.id === payload.conversation.id) ? prev : [payload.conversation, ...prev],
       );
     });
@@ -194,7 +285,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       echo.leave(channelName);
     };
-  }, [authStatus, currentUser?.companyId]);
+  }, [authStatus, currentUser?.companyId, conversationsPagination.currentPage, conversationsPagination.perPage]);
 
   const subscribedConversationIds = useRef<Set<string>>(new Set());
 
@@ -226,6 +317,12 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
               ? prev.map((c) => (c.id === payload.conversation.id ? payload.conversation : c))
               : [payload.conversation, ...prev];
           });
+          setAllConversations((prev) => {
+            const exists = prev.some((c) => c.id === payload.conversation.id);
+            return exists
+              ? prev.map((c) => (c.id === payload.conversation.id ? payload.conversation : c))
+              : [payload.conversation, ...prev];
+          });
         });
     }
   }, [authStatus, conversations]);
@@ -239,16 +336,39 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [authStatus]);
 
+  const fetchCampaignsPage = useCallback((page: number) => {
+    setCampaignsPage(page);
+  }, []);
+
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     let cancelled = false;
     apiClient
-      .listCampaigns()
-      .then((data) => {
-        if (!cancelled) setCampaigns(data);
+      .listCampaigns({ page: campaignsPage })
+      .then(({ data, meta }) => {
+        if (!cancelled) {
+          setCampaigns(data);
+          setCampaignsPagination(meta);
+        }
       })
       .catch(() => {
         // campaigns list stays empty on failure
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authStatus, campaignsPage]);
+
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    let cancelled = false;
+    apiClient
+      .listCampaigns({ perPage: AGGREGATE_PER_PAGE })
+      .then(({ data }) => {
+        if (!cancelled) setAllCampaigns(data);
+      })
+      .catch(() => {
+        // full campaigns list stays empty on failure
       });
     return () => {
       cancelled = true;
@@ -271,13 +391,20 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [authStatus]);
 
+  const fetchAutomationFlowsPage = useCallback((page: number) => {
+    setAutomationFlowsPage(page);
+  }, []);
+
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     let cancelled = false;
     apiClient
-      .listAutomationFlows()
-      .then((data) => {
-        if (!cancelled) setAutomationFlows(data);
+      .listAutomationFlows({ page: automationFlowsPage, perPage: AGGREGATE_PER_PAGE })
+      .then(({ data, meta }) => {
+        if (!cancelled) {
+          setAutomationFlows(data);
+          setAutomationFlowsPagination(meta);
+        }
       })
       .catch(() => {
         // automation flows list stays empty on failure
@@ -285,7 +412,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus]);
+  }, [authStatus, automationFlowsPage]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
@@ -385,47 +512,73 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
 
   const moveContactToStage = useCallback(
     (contactId: string, stage: PipelineStageId) => {
-      const previous = contacts.find((c) => c.id === contactId);
+      const previous = allContacts.find((c) => c.id === contactId) ?? contacts.find((c) => c.id === contactId);
       if (!previous) return;
       setContacts((prev) => prev.map((c) => (c.id === contactId ? { ...c, pipelineStage: stage } : c)));
+      setAllContacts((prev) => prev.map((c) => (c.id === contactId ? { ...c, pipelineStage: stage } : c)));
       apiClient.updateContactPipelineStage(contactId, stage, previous.updatedAt).then(
         (updated) => {
           setContacts((prev) => prev.map((c) => (c.id === contactId ? updated : c)));
+          setAllContacts((prev) => prev.map((c) => (c.id === contactId ? updated : c)));
         },
         () => {
           setContacts((prev) => prev.map((c) => (c.id === contactId ? previous : c)));
+          setAllContacts((prev) => prev.map((c) => (c.id === contactId ? previous : c)));
         },
       );
     },
-    [contacts],
+    [contacts, allContacts],
   );
 
   const loadMessagesForConversation = useCallback((conversationId: string) => {
     setActiveConversationId(conversationId);
   }, []);
 
+  const loadOlderMessages = useCallback(
+    (conversationId: string) => {
+      if (hasMoreOlderByConversation[conversationId] === false) return;
+      const oldest = messages
+        .filter((m) => m.conversationId === conversationId)
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+      if (!oldest) return;
+      apiClient
+        .listMessages(conversationId, { before: oldest.id, limit: 30 })
+        .then(({ data, hasMore }) => {
+          setMessages((prev) => [...data, ...prev]);
+          setHasMoreOlderByConversation((prev) => ({ ...prev, [conversationId]: hasMore }));
+        })
+        .catch(() => {
+          // older messages stay unloaded on failure
+        });
+    },
+    [messages, hasMoreOlderByConversation],
+  );
+
   const sendMessage = useCallback((conversationId: string, text: string, attachmentFile?: File | null) => {
     apiClient.sendMessage(conversationId, text, attachmentFile).then((sent) => {
       setMessages((prev) => [...prev, sent]);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversationId
-            ? { ...c, lastMessagePreview: text || "Attachment", lastMessageAt: sent.timestamp }
-            : c,
-        ),
-      );
+      const patch = (c: Conversation) =>
+        c.id === conversationId
+          ? { ...c, lastMessagePreview: text || "Attachment", lastMessageAt: sent.timestamp }
+          : c;
+      setConversations((prev) => prev.map(patch));
+      setAllConversations((prev) => prev.map(patch));
     });
   }, []);
 
   const markConversationRead = useCallback((conversationId: string) => {
-    setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)));
+    const patch = (c: Conversation) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c);
+    setConversations((prev) => prev.map(patch));
+    setAllConversations((prev) => prev.map(patch));
     apiClient.markConversationRead(conversationId).catch(() => {
       // best-effort; next poll will reconcile
     });
   }, []);
 
   const updateConversationStatus = useCallback((conversationId: string, status: Conversation["status"]) => {
-    setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, status } : c)));
+    const patch = (c: Conversation) => (c.id === conversationId ? { ...c, status } : c);
+    setConversations((prev) => prev.map(patch));
+    setAllConversations((prev) => prev.map(patch));
     apiClient.updateConversationStatus(conversationId, status).catch(() => {
       // best-effort; next poll will reconcile
     });
@@ -434,6 +587,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const assignConversation = useCallback((conversationId: string, userId: string | null) => {
     apiClient.assignConversation(conversationId, userId).then((updated) => {
       setConversations((prev) => prev.map((c) => (c.id === conversationId ? updated : c)));
+      setAllConversations((prev) => prev.map((c) => (c.id === conversationId ? updated : c)));
     });
   }, []);
 
@@ -454,15 +608,22 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       whatsappCallFlowId?: string | null;
     }) => {
       apiClient.createCampaign(campaign).then((created) => {
-        setCampaigns((prev) => [created, ...prev]);
+        setAllCampaigns((prev) => [created, ...prev]);
+        if (campaignsPagination.currentPage === 1) {
+          setCampaigns((prev) => [created, ...prev].slice(0, campaignsPagination.perPage || undefined));
+        } else {
+          setCampaignsPage(1);
+        }
+        setCampaignsPagination((prev) => ({ ...prev, total: prev.total + 1 }));
       });
     },
-    [],
+    [campaignsPagination],
   );
 
   const addTagToContact = useCallback((contactId: string, tag: string) => {
     apiClient.addContactTag(contactId, tag).then((updated) => {
       setContacts((prev) => prev.map((c) => (c.id === contactId ? updated : c)));
+      setAllContacts((prev) => prev.map((c) => (c.id === contactId ? updated : c)));
     });
   }, []);
 
@@ -473,26 +634,35 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     ) => {
       return apiClient.updateContact(contactId, updates).then((updated) => {
         setContacts((prev) => prev.map((c) => (c.id === contactId ? updated : c)));
+        setAllContacts((prev) => prev.map((c) => (c.id === contactId ? updated : c)));
         return updated;
       });
     },
     [],
   );
 
-  const addAutomationFlow = useCallback((flow: AutomationFlow) => {
-    apiClient
-      .createAutomationFlow({
-        name: flow.name,
-        description: flow.description,
-        status: flow.status,
-        trigger: flow.trigger,
-        conditions: flow.conditions,
-        actions: flow.actions,
-      })
-      .then((created) => {
-        setAutomationFlows((prev) => [created, ...prev]);
-      });
-  }, []);
+  const addAutomationFlow = useCallback(
+    (flow: AutomationFlow) => {
+      apiClient
+        .createAutomationFlow({
+          name: flow.name,
+          description: flow.description,
+          status: flow.status,
+          trigger: flow.trigger,
+          conditions: flow.conditions,
+          actions: flow.actions,
+        })
+        .then((created) => {
+          if (automationFlowsPagination.currentPage === 1) {
+            setAutomationFlows((prev) => [created, ...prev].slice(0, automationFlowsPagination.perPage || undefined));
+          } else {
+            setAutomationFlowsPage(1);
+          }
+          setAutomationFlowsPagination((prev) => ({ ...prev, total: prev.total + 1 }));
+        });
+    },
+    [automationFlowsPagination],
+  );
 
   const setAutomationFlowStatus = useCallback((flowId: string, status: AutomationStatus) => {
     setAutomationFlows((prev) => prev.map((f) => (f.id === flowId ? { ...f, status } : f)));
@@ -503,6 +673,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
 
   const deleteAutomationFlow = useCallback((flowId: string) => {
     setAutomationFlows((prev) => prev.filter((f) => f.id !== flowId));
+    setAutomationFlowsPagination((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
     apiClient.deleteAutomationFlow(flowId).catch(() => {
       // best-effort; next load will reconcile
     });
@@ -612,11 +783,26 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       contacts,
+      contactsPagination,
+      fetchContactsPage,
+      allContacts,
       conversations,
+      conversationsPagination,
+      fetchConversationsPage,
+      allConversations,
       messages,
+      hasMoreOlderMessages: activeConversationId
+        ? (hasMoreOlderByConversation[activeConversationId] ?? true)
+        : false,
+      loadOlderMessages,
       campaigns,
+      campaignsPagination,
+      fetchCampaignsPage,
+      allCampaigns,
       dailyMetrics,
       automationFlows,
+      automationFlowsPagination,
+      fetchAutomationFlowsPage,
       moveContactToStage,
       updateContact,
       sendMessage,
@@ -648,11 +834,25 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     }),
     [
       contacts,
+      contactsPagination,
+      fetchContactsPage,
+      allContacts,
       conversations,
+      conversationsPagination,
+      fetchConversationsPage,
+      allConversations,
       messages,
+      activeConversationId,
+      hasMoreOlderByConversation,
+      loadOlderMessages,
       campaigns,
+      campaignsPagination,
+      fetchCampaignsPage,
+      allCampaigns,
       dailyMetrics,
       automationFlows,
+      automationFlowsPagination,
+      fetchAutomationFlowsPage,
       moveContactToStage,
       updateContact,
       sendMessage,

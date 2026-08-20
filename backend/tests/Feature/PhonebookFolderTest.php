@@ -100,6 +100,33 @@ it('allows adding existing contacts to a folder', function () {
     expect($folder->contacts()->where('contact_id', $contact->id)->exists())->toBeTrue();
 });
 
+it('paginates a folder contacts listing via the dedicated endpoint', function () {
+    $admin = actingAsPhonebookRole('admin');
+    $folder = PhonebookFolder::factory()->create();
+    $contacts = Contact::factory()->count(3)->create();
+    $folder->contacts()->attach($contacts->pluck('id'));
+
+    $response = $this->actingAs($admin)->getJson("/api/v1/phonebook-folders/{$folder->uuid}/contacts?per_page=2");
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(2);
+    expect($response->json('meta.last_page'))->toBe(2);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
+it('does not eager-load contacts on folder show', function () {
+    $admin = actingAsPhonebookRole('admin');
+    $folder = PhonebookFolder::factory()->create();
+    $contact = Contact::factory()->create();
+    $folder->contacts()->attach($contact->id);
+
+    $response = $this->actingAs($admin)->getJson("/api/v1/phonebook-folders/{$folder->uuid}");
+
+    $response->assertOk();
+    expect($response->json('data.contactCount'))->toBe(1);
+    expect($response->json('data.contacts'))->toBeNull();
+});
+
 it('allows removing a contact from a folder', function () {
     $admin = actingAsPhonebookRole('admin');
     $folder = PhonebookFolder::factory()->create();

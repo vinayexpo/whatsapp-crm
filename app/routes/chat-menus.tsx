@@ -12,6 +12,7 @@ import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateChatMenuFlowDialog } from "~/components/chat-flows/create-chat-menu-flow-dialog";
 import { ChatMenuFlowDetailDrawer } from "~/components/chat-flows/chat-menu-flow-detail-drawer";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
 import type { ChatMenuFlow, ChatMenuFlowChannel, ChatMenuFlowNode } from "~/data/types";
 import type { Route } from "./+types/chat-menus";
@@ -25,14 +26,22 @@ export function meta({}: Route.MetaArgs) {
 
 export default function ChatMenus() {
   const [flows, setFlows] = useState<ChatMenuFlow[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
-    apiClient.listChatMenuFlows().then(setFlows).catch(() => {
-      // flow list stays empty on failure
-    });
-  }, []);
+    apiClient
+      .listChatMenuFlows({ page })
+      .then(({ data, meta }) => {
+        setFlows(data);
+        setLastPage(meta.lastPage);
+      })
+      .catch(() => {
+        // flow list stays empty on failure
+      });
+  }, [page]);
 
   const selectedFlow = flows.find((f) => f.id === selectedFlowId) ?? null;
 
@@ -52,7 +61,11 @@ export default function ChatMenus() {
       entryNodeId,
       nodes,
     });
-    setFlows((prev) => [created, ...prev]);
+    if (page === 1) {
+      setFlows((prev) => [created, ...prev]);
+    } else {
+      setPage(1);
+    }
     setSelectedFlowId(created.id);
   }
 
@@ -144,6 +157,8 @@ export default function ChatMenus() {
               </Grid>
             )}
           </Grid>
+
+          <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />
         </Box>
 
         <CreateChatMenuFlowDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreate} />

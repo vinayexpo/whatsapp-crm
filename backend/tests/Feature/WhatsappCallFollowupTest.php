@@ -52,6 +52,19 @@ it('filters whatsapp calls by status', function () {
     expect($response->json('data'))->toHaveCount(1);
 });
 
+it('composes pagination with the status filter', function () {
+    $manager = actingAsWhatsappCallRole('manager');
+    WhatsappCall::factory()->count(3)->create(['company_id' => $manager->company_id, 'status' => 'missed']);
+    WhatsappCall::factory()->create(['company_id' => $manager->company_id, 'status' => 'completed']);
+
+    $response = $this->actingAs($manager)->getJson('/api/v1/whatsapp-calls?status=missed&per_page=2');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(2);
+    expect($response->json('meta.total'))->toBe(3);
+    expect($response->json('meta.last_page'))->toBe(2);
+});
+
 it('allows a manager to assign a followup to a team member', function () {
     $manager = actingAsWhatsappCallRole('manager');
     $assignee = User::factory()->create(['company_id' => $manager->company_id]);

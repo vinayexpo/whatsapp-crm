@@ -10,6 +10,7 @@ import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CampaignList } from "~/components/campaigns/campaign-list";
 import { CampaignBuilderDialog } from "~/components/campaigns/campaign-builder-dialog";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { useCrmStore } from "~/hooks/use-crm-store";
 import type { Campaign } from "~/data/types";
 import type { Route } from "./+types/campaigns";
@@ -30,7 +31,8 @@ const STATUS_TABS: { label: string; value: Campaign["status"] | "all" }[] = [
 ];
 
 export default function Campaigns() {
-  const { campaigns, contacts, addCampaign, apiConnections } = useCrmStore();
+  const { campaigns, campaignsPagination, fetchCampaignsPage, allContacts, addCampaign, apiConnections } =
+    useCrmStore();
   const [statusFilter, setStatusFilter] = useState<Campaign["status"] | "all">("all");
   const [builderOpen, setBuilderOpen] = useState(false);
 
@@ -67,13 +69,18 @@ export default function Campaigns() {
         </Tabs>
 
         <CampaignList campaigns={filteredCampaigns} />
+        <PaginatedListFooter
+          page={campaignsPagination.currentPage}
+          lastPage={campaignsPagination.lastPage}
+          onPageChange={fetchCampaignsPage}
+        />
       </Box>
 
       <CampaignBuilderDialog
         open={builderOpen}
         onClose={() => setBuilderOpen(false)}
         onCreate={addCampaign}
-        contacts={contacts}
+        contacts={allContacts}
         apiConnections={apiConnections}
       />
       </RoleGuard>

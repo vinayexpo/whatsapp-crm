@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ContactResource;
 use App\Models\Contact;
@@ -16,6 +17,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ContactController extends Controller
 {
+    use PaginatesRequests;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Contact::class);
@@ -26,7 +29,7 @@ class ContactController extends Controller
             $query->whereHas('conversations', fn ($q) => $q->where('assigned_to', $request->user()->id));
         }
 
-        return ContactResource::collection($query->get());
+        return ContactResource::collection($query->paginate($this->perPageFrom($request)));
     }
 
     public function export(Request $request, ContactSpreadsheetExporter $exporter): StreamedResponse

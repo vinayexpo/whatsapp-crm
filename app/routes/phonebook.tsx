@@ -18,6 +18,7 @@ import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateFolderDialog } from "~/components/phonebook/create-folder-dialog";
 import { ImportContactsDialog } from "~/components/phonebook/import-contacts-dialog";
 import { FolderDetailDrawer } from "~/components/phonebook/folder-detail-drawer";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
 import type { PhonebookFolder } from "~/data/types";
 import type { Route } from "./+types/phonebook";
@@ -31,6 +32,8 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Phonebook() {
   const [folders, setFolders] = useState<PhonebookFolder[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -39,10 +42,16 @@ export default function Phonebook() {
   const [selectedFolder, setSelectedFolder] = useState<PhonebookFolder | null>(null);
 
   useEffect(() => {
-    apiClient.listPhonebookFolders().then(setFolders).catch(() => {
-      // folders list stays empty on failure
-    });
-  }, []);
+    apiClient
+      .listPhonebookFolders({ page })
+      .then(({ data, meta }) => {
+        setFolders(data);
+        setLastPage(meta.lastPage);
+      })
+      .catch(() => {
+        // folders list stays empty on failure
+      });
+  }, [page]);
 
   useEffect(() => {
     if (!selectedFolderId) {
@@ -55,7 +64,13 @@ export default function Phonebook() {
   }, [selectedFolderId]);
 
   function refreshFolders() {
-    apiClient.listPhonebookFolders().then(setFolders).catch(() => {});
+    apiClient
+      .listPhonebookFolders({ page })
+      .then(({ data, meta }) => {
+        setFolders(data);
+        setLastPage(meta.lastPage);
+      })
+      .catch(() => {});
     if (selectedFolderId) {
       apiClient.getPhonebookFolder(selectedFolderId).then(setSelectedFolder).catch(() => {});
     }
@@ -63,7 +78,11 @@ export default function Phonebook() {
 
   async function handleCreateFolder(name: string) {
     const created = await apiClient.createPhonebookFolder(name);
-    setFolders((prev) => [created, ...prev]);
+    if (page === 1) {
+      setFolders((prev) => [created, ...prev]);
+    } else {
+      setPage(1);
+    }
   }
 
   function handleOpenImport(folderId?: string) {
@@ -177,6 +196,8 @@ export default function Phonebook() {
             </Grid>
           )}
         </Grid>
+
+        <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />
       </Box>
 
       <Menu anchorEl={menuAnchor?.el} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>

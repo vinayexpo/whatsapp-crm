@@ -6,6 +6,7 @@ import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
 import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
 import { getEcho } from "~/utils/echo-client";
 import type { WhatsappCall, WhatsappCallFlow } from "~/data/types";
@@ -33,16 +34,25 @@ function statusLabel(status: WhatsappCall["status"]) {
 
 export function WhatsappCallLogPanel({ callFlow }: WhatsappCallLogPanelProps) {
   const [calls, setCalls] = useState<WhatsappCall[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [callFlow.id]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     apiClient
-      .listWhatsappCalls({ callFlowId: callFlow.id })
-      .then((data) => {
-        if (!cancelled) setCalls(data);
+      .listWhatsappCalls({ callFlowId: callFlow.id, page })
+      .then(({ data, meta }) => {
+        if (!cancelled) {
+          setCalls(data);
+          setLastPage(meta.lastPage);
+        }
       })
       .catch(() => {
         // call log stays empty on failure
@@ -53,7 +63,7 @@ export function WhatsappCallLogPanel({ callFlow }: WhatsappCallLogPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [callFlow.id]);
+  }, [callFlow.id, page]);
 
   const subscribedCallIds = useRef<Set<string>>(new Set());
 
@@ -167,6 +177,7 @@ export function WhatsappCallLogPanel({ callFlow }: WhatsappCallLogPanelProps) {
           </Paper>
         );
       })}
+      <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />
     </Stack>
   );
 }

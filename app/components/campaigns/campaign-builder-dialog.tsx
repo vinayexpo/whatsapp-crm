@@ -102,8 +102,8 @@ export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiCo
     let cancelled = false;
     setTemplatesLoading(true);
     apiClient
-      .listTemplates(whatsappConnection.id)
-      .then((data) => {
+      .listTemplates(whatsappConnection.id, { perPage: 100 })
+      .then(({ data }) => {
         if (!cancelled) setTemplates(data.filter((t) => t.status === "approved"));
       })
       .catch(() => {
@@ -124,20 +124,20 @@ export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiCo
   useEffect(() => {
     if (!open) return;
     apiClient
-      .listPhonebookFolders()
-      .then(setFolders)
+      .listPhonebookFolders({ perPage: 100 })
+      .then(({ data }) => setFolders(data))
       .catch(() => setFolders([]));
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     apiClient
-      .listVoiceAgents()
-      .then((data) => setVoiceAgents(data.filter((a) => a.status === "active")))
+      .listVoiceAgents({ perPage: 100 })
+      .then(({ data }) => setVoiceAgents(data.filter((a) => a.status === "active")))
       .catch(() => setVoiceAgents([]));
     apiClient
-      .listWhatsappCallFlows()
-      .then((data) => setCallFlows(data.filter((f) => f.status === "active")))
+      .listWhatsappCallFlows({ perPage: 100 })
+      .then(({ data }) => setCallFlows(data.filter((f) => f.status === "active")))
       .catch(() => setCallFlows([]));
   }, [open]);
 

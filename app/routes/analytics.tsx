@@ -30,12 +30,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { useCrmStore } from "~/hooks/use-crm-store";
 import { PIPELINE_STAGES } from "~/data/pipeline-stages";
 import { formatDate } from "~/utils/format";
+import { apiClient } from "~/utils/api-client";
 import { CampaignDashboardPanel } from "~/components/analytics/campaign-dashboard-panel";
 import type { Route } from "./+types/analytics";
 
@@ -69,11 +70,18 @@ function CardHeading({ title, subtitle }: { title: string; subtitle?: string }) 
 }
 
 export default function Analytics() {
-  const { contacts, campaigns, dailyMetrics } = useCrmStore();
+  const { allCampaigns, dailyMetrics } = useCrmStore();
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
   const [rangePreset, setRangePreset] = useState<RangePreset>("14d");
   const [customStart, setCustomStart] = useState<Dayjs | null>(null);
   const [customEnd, setCustomEnd] = useState<Dayjs | null>(null);
+  const [funnelCounts, setFunnelCounts] = useState<{ stage: string; count: number }[]>([]);
+
+  useEffect(() => {
+    apiClient.getPipelineFunnel().then(setFunnelCounts).catch(() => {
+      // funnel stays empty on failure
+    });
+  }, []);
 
   const latestMetricDate = useMemo(
     () => (dailyMetrics.length > 0 ? dayjs(dailyMetrics[dailyMetrics.length - 1].date) : dayjs()),
@@ -138,7 +146,7 @@ export default function Analytics() {
 
   const campaignDeliveryData = useMemo(
     () =>
-      campaigns
+      allCampaigns
         .filter((c) => c.recipientCount > 0)
         .map((c) => ({
           name: c.name.length > 18 ? `${c.name.slice(0, 16)}…` : c.name,
@@ -146,18 +154,19 @@ export default function Analytics() {
           "Read rate": c.deliveredCount > 0 ? Math.round((c.readCount / c.deliveredCount) * 100) : 0,
           "Reply rate": c.deliveredCount > 0 ? Math.round((c.repliedCount / c.deliveredCount) * 100) : 0,
         })),
-    [campaigns],
+    [allCampaigns],
   );
 
   const funnelData = useMemo(() => {
     const stageOrder = PIPELINE_STAGES.filter((s) => s.id !== "lost");
-    let remaining = contacts.filter((c) => c.pipelineStage !== "lost").length;
-    const countsByStage = stageOrder.map((stage) => contacts.filter((c) => c.pipelineStage === stage.id).length);
+    const countsByStage = stageOrder.map(
+      (stage) => funnelCounts.find((f) => f.stage === stage.id)?.count ?? 0,
+    );
     return stageOrder.map((stage, idx) => {
       const value = countsByStage.slice(idx).reduce((s, v) => s + v, 0);
       return { name: stage.name, value, fill: stage.color };
     });
-  }, [contacts]);
+  }, [funnelCounts]);
 
   const summaryCards = [
     {

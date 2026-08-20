@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CampaignRecipientResource;
 use App\Http\Resources\CampaignResource;
@@ -20,7 +21,9 @@ use Illuminate\Validation\ValidationException;
 
 class CampaignController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    use PaginatesRequests;
+
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Campaign::class);
 
@@ -29,7 +32,7 @@ class CampaignController extends Controller
                 ->with(['whatsappTemplate', 'phonebookFolder', 'voiceAgent', 'whatsappCallFlow'])
                 ->withCount(['recipients as failed_recipients_count' => fn ($q) => $q->where('status', 'failed')])
                 ->latest('created_at')
-                ->get()
+                ->paginate($this->perPageFrom($request))
         );
     }
 

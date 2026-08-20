@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import Stack from "@mui/material/Stack";
@@ -18,8 +18,9 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
-import type { PhonebookFolder } from "~/data/types";
+import type { Contact, PhonebookFolder } from "~/data/types";
 
 interface FolderDetailDrawerProps {
   folder: PhonebookFolder | null;
@@ -31,6 +32,30 @@ interface FolderDetailDrawerProps {
 
 export function FolderDetailDrawer({ folder, onClose, onImport, onRemoveContact, onDeleteFolder }: FolderDetailDrawerProps) {
   const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [folder?.id]);
+
+  useEffect(() => {
+    if (!folder) {
+      setContacts([]);
+      setLastPage(1);
+      return;
+    }
+    apiClient
+      .getPhonebookFolderContacts(folder.id, { page })
+      .then(({ data, meta }) => {
+        setContacts(data);
+        setLastPage(meta.lastPage);
+      })
+      .catch(() => {
+        setContacts([]);
+      });
+  }, [folder, page]);
 
   async function handleExport(format: "csv" | "xlsx") {
     if (!folder) return;
@@ -85,7 +110,7 @@ export function FolderDetailDrawer({ folder, onClose, onImport, onRemoveContact,
           <Divider sx={{ mb: 1 }} />
 
           <List dense>
-            {(folder.contacts ?? []).map((contact) => (
+            {contacts.map((contact) => (
               <ListItem
                 key={contact.id}
                 secondaryAction={
@@ -110,12 +135,14 @@ export function FolderDetailDrawer({ folder, onClose, onImport, onRemoveContact,
                 />
               </ListItem>
             ))}
-            {(folder.contacts ?? []).length === 0 && (
+            {contacts.length === 0 && (
               <Typography variant="body2" sx={{ color: "text.secondary", textAlign: "center", py: 3 }}>
                 No contacts in this folder yet.
               </Typography>
             )}
           </List>
+
+          <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />
         </Box>
       )}
     </Drawer>

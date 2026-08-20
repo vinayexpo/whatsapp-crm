@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ContactResource;
 use App\Http\Resources\PhonebookFolderResource;
 use App\Models\Contact;
 use App\Models\PhonebookFolder;
@@ -16,12 +18,23 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PhonebookFolderController extends Controller
 {
+    use PaginatesRequests;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', PhonebookFolder::class);
 
         return PhonebookFolderResource::collection(
-            PhonebookFolder::query()->withCount('contacts')->orderBy('name')->get()
+            PhonebookFolder::query()->withCount('contacts')->orderBy('name')->paginate($this->perPageFrom($request))
+        );
+    }
+
+    public function contacts(Request $request, PhonebookFolder $phonebookFolder): AnonymousResourceCollection
+    {
+        $this->authorize('view', $phonebookFolder);
+
+        return ContactResource::collection(
+            $phonebookFolder->contacts()->with('tags')->paginate($this->perPageFrom($request))
         );
     }
 
@@ -43,7 +56,7 @@ class PhonebookFolderController extends Controller
         $this->authorize('view', $phonebookFolder);
 
         return response()->json([
-            'data' => new PhonebookFolderResource($phonebookFolder->load('contacts.tags')->loadCount('contacts')),
+            'data' => new PhonebookFolderResource($phonebookFolder->loadCount('contacts')),
         ]);
     }
 

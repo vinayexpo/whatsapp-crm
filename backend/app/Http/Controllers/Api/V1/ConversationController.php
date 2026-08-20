@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Events\ConversationUpdated;
 use App\Events\MessageReceived;
 use App\Http\Controllers\Controller;
@@ -20,6 +21,8 @@ use Illuminate\Validation\ValidationException;
 
 class ConversationController extends Controller
 {
+    use PaginatesRequests;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Conversation::class);
@@ -29,10 +32,7 @@ class ConversationController extends Controller
             ->orderByDesc('last_message_at');
 
         if ($request->user()->hasRole('agent')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('assigned_to', $request->user()->id)
-                    ->orWhereNull('assigned_to');
-            });
+            $query->where('assigned_to', $request->user()->id);
         } elseif ($request->query('assignedTo') === 'me') {
             $query->where('assigned_to', $request->user()->id);
         } elseif ($request->query('assignedTo') === 'unassigned') {
@@ -41,16 +41,34 @@ class ConversationController extends Controller
             $query->whereHas('assignedTo', fn ($q) => $q->where('uuid', $request->query('assignedTo')));
         }
 
-        return ConversationResource::collection($query->get());
+        return ConversationResource::collection($query->paginate($this->perPageFrom($request)));
     }
 
-    public function messages(Conversation $conversation): AnonymousResourceCollection
+    public function messages(Request $request, Conversation $conversation): JsonResponse
     {
         $this->authorize('view', $conversation);
 
-        return MessageResource::collection(
-            $conversation->messages()->with('conversation')->orderBy('sent_at')->get()
-        );
+        $limit = min((int) $request->query('limit', 30), 100);
+        $limit = $limit < 1 ? 30 : $limit;
+
+        $query = $conversation->messages()->with('conversation')->orderByDesc('sent_at');
+
+        if ($request->filled('before')) {
+            $cursor = $conversation->messages()->where('uuid', $request->query('before'))->first();
+
+            if ($cursor) {
+                $query->where('sent_at', '<', $cursor->sent_at);
+            }
+        }
+
+        $messages = $query->limit($limit + 1)->get();
+        $hasMore = $messages->count() > $limit;
+        $page = $messages->take($limit)->reverse()->values();
+
+        return response()->json([
+            'data' => MessageResource::collection($page),
+            'meta' => ['hasMore' => $hasMore],
+        ]);
     }
 
     public function sendMessage(Request $request, Conversation $conversation, MessagingDriverResolver $resolver): JsonResponse

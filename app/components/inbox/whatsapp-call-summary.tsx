@@ -45,7 +45,7 @@ export function WhatsappCallSummary({ contactId }: WhatsappCallSummaryProps) {
     setLoading(true);
     apiClient
       .listWhatsappCalls({ contactId })
-      .then((data) => {
+      .then(({ data }) => {
         if (!cancelled) setCalls(data);
       })
       .catch(() => {

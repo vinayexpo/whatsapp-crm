@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WhatsappTemplateResource;
 use App\Models\ApiConnection;
@@ -19,6 +20,8 @@ use Spatie\Permission\Models\Permission;
 
 class WhatsappTemplateController extends Controller
 {
+    use PaginatesRequests;
+
     public function index(Request $request, ApiConnection $apiConnection): AnonymousResourceCollection
     {
         if (! $request->user()->can('campaigns.view')) {
@@ -26,7 +29,7 @@ class WhatsappTemplateController extends Controller
         }
 
         return WhatsappTemplateResource::collection(
-            $apiConnection->templates()->orderBy('name')->get()
+            $apiConnection->templates()->orderBy('name')->paginate($this->perPageFrom($request))
         );
     }
 

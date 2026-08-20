@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AutomationFlowResource;
 use App\Models\AutomationFlow;
@@ -11,12 +12,14 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class AutomationFlowController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    use PaginatesRequests;
+
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', AutomationFlow::class);
 
         return AutomationFlowResource::collection(
-            AutomationFlow::query()->latest('created_at')->get()
+            AutomationFlow::query()->latest('created_at')->paginate($this->perPageFrom($request))
         );
     }
 

@@ -1,3 +1,15 @@
+export interface PaginationMeta {
+  currentPage: number;
+  lastPage: number;
+  perPage: number;
+  total: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
 export type ChannelType = "whatsapp" | "instagram" | "website" | "voice";
 
 export type PipelineStageId = "new-lead" | "contacted" | "qualified" | "negotiation" | "won" | "lost";
@@ -105,7 +117,7 @@ export interface PhonebookFolder {
   id: string;
   name: string;
   contactCount: number;
-  contacts: Contact[];
+  contacts?: Contact[];
   createdAt: string;
   updatedAt: string;
 }

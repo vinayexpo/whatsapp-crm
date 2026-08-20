@@ -8,6 +8,7 @@ import { AppLayout } from "~/components/app-layout/app-layout";
 import { ConversationList } from "~/components/inbox/conversation-list";
 import { ChatWindow } from "~/components/inbox/chat-window";
 import { ContactDetailsPanel } from "~/components/inbox/contact-details-panel";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { useCrmStore } from "~/hooks/use-crm-store";
 import type { Conversation } from "~/data/types";
 import type { Route } from "./+types/inbox";
@@ -21,9 +22,13 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Inbox() {
   const {
-    contacts,
+    allContacts,
     conversations,
+    conversationsPagination,
+    fetchConversationsPage,
     messages,
+    hasMoreOlderMessages,
+    loadOlderMessages,
     assignableMembers,
     currentUser,
     sendMessage,
@@ -53,7 +58,7 @@ export default function Inbox() {
     }
   }
 
-  const contactsById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
+  const contactsById = useMemo(() => new Map(allContacts.map((c) => [c.id, c])), [allContacts]);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId) ?? null;
   const activeContact = activeConversation ? contactsById.get(activeConversation.contactId) : null;
@@ -97,6 +102,11 @@ export default function Inbox() {
             onFilteredChange={handleFilteredChange}
             hideAssigneeFilter={currentUser?.role === "agent"}
           />
+          <PaginatedListFooter
+            page={conversationsPagination.currentPage}
+            lastPage={conversationsPagination.lastPage}
+            onPageChange={(page) => fetchConversationsPage(page)}
+          />
         </Box>
 
         <Box
@@ -111,6 +121,8 @@ export default function Inbox() {
               conversation={activeConversation}
               contact={activeContact}
               messages={activeMessages}
+              hasMoreOlderMessages={hasMoreOlderMessages}
+              onLoadOlderMessages={() => loadOlderMessages(activeConversation.id)}
               teamMembers={assignableMembers}
               onSendMessage={(text, attachmentFile) => sendMessage(activeConversation.id, text, attachmentFile)}
               onStatusChange={(status) => updateConversationStatus(activeConversation.id, status)}

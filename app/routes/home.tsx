@@ -38,15 +38,15 @@ const ACTIVITY_ICONS = {
 };
 
 export default function Home() {
-  const { contacts, conversations, campaigns, activityFeed } = useCrmStore();
+  const { allContacts, allConversations, allCampaigns, activityFeed } = useCrmStore();
 
-  const activeLeads = contacts.filter((c) => !["won", "lost"].includes(c.pipelineStage)).length;
-  const openChats = conversations.filter((c) => c.status === "open" || c.status === "pending").length;
-  const activeCampaigns = campaigns.filter((c) => c.status === "active" || c.status === "scheduled").length;
-  const totalReplied = campaigns.reduce((sum, c) => sum + c.repliedCount, 0);
-  const totalRecipients = campaigns.reduce((sum, c) => sum + c.recipientCount, 0);
+  const activeLeads = allContacts.filter((c) => !["won", "lost"].includes(c.pipelineStage)).length;
+  const openChats = allConversations.filter((c) => c.status === "open" || c.status === "pending").length;
+  const activeCampaigns = allCampaigns.filter((c) => c.status === "active" || c.status === "scheduled").length;
+  const totalReplied = allCampaigns.reduce((sum, c) => sum + c.repliedCount, 0);
+  const totalRecipients = allCampaigns.reduce((sum, c) => sum + c.recipientCount, 0);
   const conversionRate = totalRecipients > 0 ? Math.round((totalReplied / totalRecipients) * 100) : 0;
-  const wonDeals = contacts.filter((c) => c.pipelineStage === "won");
+  const wonDeals = allContacts.filter((c) => c.pipelineStage === "won");
   const wonValue = wonDeals.reduce((sum, c) => sum + c.dealValue, 0);
 
   const metrics = [
@@ -55,21 +55,21 @@ export default function Home() {
       value: activeLeads,
       icon: PeopleAltRoundedIcon,
       color: "#3B82C4",
-      helper: `${contacts.length} total contacts`,
+      helper: `${allContacts.length} total contacts`,
     },
     {
       label: "Open Chats",
       value: openChats,
       icon: ChatBubbleOutlineRoundedIcon,
       color: "#00A884",
-      helper: `${conversations.reduce((s, c) => s + c.unreadCount, 0)} unread messages`,
+      helper: `${allConversations.reduce((s, c) => s + c.unreadCount, 0)} unread messages`,
     },
     {
       label: "Active Campaigns",
       value: activeCampaigns,
       icon: CampaignRoundedIcon,
       color: "#7C4DFF",
-      helper: `${campaigns.length} campaigns total`,
+      helper: `${allCampaigns.length} campaigns total`,
     },
     {
       label: "Conversion Rate",
@@ -135,7 +135,7 @@ export default function Home() {
                 Campaign Performance
               </Typography>
               <Stack spacing={2.5}>
-                {campaigns.slice(0, 4).map((campaign) => {
+                {allCampaigns.slice(0, 4).map((campaign) => {
                   const readRate =
                     campaign.deliveredCount > 0 ? Math.round((campaign.readCount / campaign.deliveredCount) * 100) : 0;
                   return (

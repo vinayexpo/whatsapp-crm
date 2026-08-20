@@ -12,6 +12,7 @@ import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateChatbotDialog } from "~/components/chatbots/create-chatbot-dialog";
 import { ChatbotDetailDrawer } from "~/components/chatbots/chatbot-detail-drawer";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
 import type { Chatbot } from "~/data/types";
 import type { Route } from "./+types/chatbots";
@@ -25,20 +26,32 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Chatbots() {
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [selectedChatbotId, setSelectedChatbotId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
-    apiClient.listChatbots().then(setChatbots).catch(() => {
-      // chatbots list stays empty on failure
-    });
-  }, []);
+    apiClient
+      .listChatbots({ page })
+      .then(({ data, meta }) => {
+        setChatbots(data);
+        setLastPage(meta.lastPage);
+      })
+      .catch(() => {
+        // chatbots list stays empty on failure
+      });
+  }, [page]);
 
   const selectedChatbot = chatbots.find((c) => c.id === selectedChatbotId) ?? null;
 
   async function handleCreate(input: { name: string; welcomeMessage?: string }) {
     const created = await apiClient.createChatbot(input);
-    setChatbots((prev) => [created, ...prev]);
+    if (page === 1) {
+      setChatbots((prev) => [created, ...prev]);
+    } else {
+      setPage(1);
+    }
     setSelectedChatbotId(created.id);
   }
 
@@ -126,6 +139,8 @@ export default function Chatbots() {
             </Grid>
           )}
         </Grid>
+
+        <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />
       </Box>
 
       <CreateChatbotDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreate} />

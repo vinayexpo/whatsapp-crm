@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AiAssistantSettingController;
+use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\ApiConnectionController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationFlowController;
@@ -77,6 +78,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/profile', [AuthController::class, 'updateProfile']);
 
         Route::get('/pipeline-stages', [PipelineStageController::class, 'index']);
+        Route::get('/analytics/pipeline-funnel', [AnalyticsController::class, 'pipelineFunnel']);
 
         Route::get('/contacts', [ContactController::class, 'index']);
         Route::post('/contacts', [ContactController::class, 'store']);
@@ -95,6 +97,7 @@ Route::prefix('v1')->group(function () {
         Route::patch('/phonebook-folders/{phonebookFolder}', [PhonebookFolderController::class, 'update']);
         Route::delete('/phonebook-folders/{phonebookFolder}', [PhonebookFolderController::class, 'destroy']);
         Route::get('/phonebook-folders/{phonebookFolder}/export', [PhonebookFolderController::class, 'export']);
+        Route::get('/phonebook-folders/{phonebookFolder}/contacts', [PhonebookFolderController::class, 'contacts']);
         Route::post('/phonebook-folders/{phonebookFolder}/contacts', [PhonebookFolderController::class, 'addContacts']);
         Route::delete('/phonebook-folders/{phonebookFolder}/contacts/{contact}', [PhonebookFolderController::class, 'removeContact']);
 

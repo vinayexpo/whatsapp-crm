@@ -38,6 +38,8 @@ interface ChatWindowProps {
   conversation: Conversation;
   contact: Contact;
   messages: Message[];
+  hasMoreOlderMessages?: boolean;
+  onLoadOlderMessages?: () => void;
   teamMembers: TeamMember[];
   onSendMessage: (text: string, attachmentFile?: File | null) => void;
   onStatusChange: (status: Conversation["status"]) => void;
@@ -50,6 +52,8 @@ export function ChatWindow({
   conversation,
   contact,
   messages,
+  hasMoreOlderMessages = false,
+  onLoadOlderMessages,
   teamMembers,
   onSendMessage,
   onStatusChange,
@@ -71,10 +75,28 @@ export function ChatWindow({
   const [aiErrorOpen, setAiErrorOpen] = useState(false);
   const [callSnackbar, setCallSnackbar] = useState<{ severity: "success" | "error"; message: string } | null>(null);
   const [callPanelOpen, setCallPanelOpen] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const prevScrollHeightRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (prevScrollHeightRef.current !== null && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight - prevScrollHeightRef.current;
+      prevScrollHeightRef.current = null;
+      setLoadingOlder(false);
+      return;
+    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, conversation.id]);
+
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el || !onLoadOlderMessages || !hasMoreOlderMessages || loadingOlder) return;
+    if (el.scrollTop < 80) {
+      prevScrollHeightRef.current = el.scrollHeight;
+      setLoadingOlder(true);
+      onLoadOlderMessages();
+    }
+  }
 
   function handleSend() {
     const trimmed = draft.trim();
@@ -192,7 +214,12 @@ export function ChatWindow({
         />
       )}
 
-      <Box ref={scrollRef} className={styles.messages}>
+      <Box ref={scrollRef} className={styles.messages} onScroll={handleScroll}>
+        {loadingOlder && (
+          <Stack sx={{ alignItems: "center", py: 1 }}>
+            <CircularProgress size={18} />
+          </Stack>
+        )}
         {messages.map((message) => (
           <Box
             key={message.id}

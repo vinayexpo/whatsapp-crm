@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -14,6 +14,7 @@ import TableBody from "@mui/material/TableBody";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
+import TablePagination from "@mui/material/TablePagination";
 import Avatar from "@mui/material/Avatar";
 import Chip from "@mui/material/Chip";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -34,17 +35,19 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Contacts() {
-  const { contacts } = useCrmStore();
+  const { allContacts } = useCrmStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState<ChannelType | "all">("all");
   const [stageFilter, setStageFilter] = useState<PipelineStageId | "all">("all");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
 
   const selectedContactId = searchParams.get("contactId");
-  const selectedContact = contacts.find((c) => c.id === selectedContactId) ?? null;
+  const selectedContact = allContacts.find((c) => c.id === selectedContactId) ?? null;
 
   const filteredContacts = useMemo(() => {
-    return contacts.filter((contact) => {
+    return allContacts.filter((contact) => {
       const matchesSearch =
         search.trim().length === 0 ||
         contact.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -54,7 +57,16 @@ export default function Contacts() {
       const matchesStage = stageFilter === "all" || contact.pipelineStage === stageFilter;
       return matchesSearch && matchesChannel && matchesStage;
     });
-  }, [contacts, search, channelFilter, stageFilter]);
+  }, [allContacts, search, channelFilter, stageFilter]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, channelFilter, stageFilter]);
+
+  const pagedContacts = useMemo(
+    () => filteredContacts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
+    [filteredContacts, page, rowsPerPage],
+  );
 
   return (
     <AppLayout>
@@ -64,7 +76,7 @@ export default function Contacts() {
             Contacts
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-            {contacts.length} customer profiles across WhatsApp and Instagram
+            {allContacts.length} customer profiles across WhatsApp and Instagram
           </Typography>
         </Stack>
 
@@ -115,7 +127,7 @@ export default function Contacts() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredContacts.map((contact) => {
+                {pagedContacts.map((contact) => {
                   const stage = PIPELINE_STAGES.find((s) => s.id === contact.pipelineStage);
                   return (
                     <TableRow
@@ -181,6 +193,18 @@ export default function Contacts() {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            component="div"
+            count={filteredContacts.length}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 20, 50, 100]}
+          />
         </Paper>
       </Box>
 

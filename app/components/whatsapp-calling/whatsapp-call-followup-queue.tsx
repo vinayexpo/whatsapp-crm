@@ -21,8 +21,8 @@ export function WhatsappCallFollowupQueue() {
   function reload() {
     setLoading(true);
     return apiClient
-      .listWhatsappCalls({ needsHumanFollowup: true })
-      .then(setCalls)
+      .listWhatsappCalls({ needsHumanFollowup: true, perPage: 100 })
+      .then(({ data }) => setCalls(data))
       .catch(() => {
         // followup queue stays empty on failure
       })

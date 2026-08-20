@@ -17,6 +17,7 @@ import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { TemplateBuilderDialog } from "~/components/templates/template-builder-dialog";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient, ApiError } from "~/utils/api-client";
 import type { ApiConnection, WhatsappTemplate, WhatsappTemplateStatus } from "~/data/types";
 import type { Route } from "./+types/templates";
@@ -39,6 +40,8 @@ export default function Templates() {
   const [connections, setConnections] = useState<ApiConnection[]>([]);
   const [connectionId, setConnectionId] = useState<string>("");
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WhatsappTemplate | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,12 +60,23 @@ export default function Templates() {
   }, []);
 
   useEffect(() => {
+    setPage(1);
+  }, [connectionId]);
+
+  useEffect(() => {
     if (!connectionId) {
       setTemplates([]);
+      setLastPage(1);
       return;
     }
-    apiClient.listTemplates(connectionId).then(setTemplates).catch(() => setTemplates([]));
-  }, [connectionId]);
+    apiClient
+      .listTemplates(connectionId, { page })
+      .then(({ data, meta }) => {
+        setTemplates(data);
+        setLastPage(meta.lastPage);
+      })
+      .catch(() => setTemplates([]));
+  }, [connectionId, page]);
 
   function openCreate() {
     setEditingTemplate(null);
@@ -77,7 +91,12 @@ export default function Templates() {
   function handleSaved(saved: WhatsappTemplate) {
     setTemplates((prev) => {
       const exists = prev.some((t) => t.id === saved.id);
-      return exists ? prev.map((t) => (t.id === saved.id ? saved : t)) : [saved, ...prev];
+      if (exists) return prev.map((t) => (t.id === saved.id ? saved : t));
+      if (page !== 1) {
+        setPage(1);
+        return prev;
+      }
+      return [saved, ...prev];
     });
     setBuilderOpen(false);
   }
@@ -227,6 +246,8 @@ export default function Templates() {
               )}
             </Stack>
           )}
+
+          {connectionId && <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />}
         </Box>
 
         <TemplateBuilderDialog

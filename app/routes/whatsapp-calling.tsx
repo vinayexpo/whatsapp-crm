@@ -16,6 +16,7 @@ import { CreateCallFlowDialog } from "~/components/whatsapp-calling/create-call-
 import { CallFlowDetailDrawer } from "~/components/whatsapp-calling/call-flow-detail-drawer";
 import { WhatsappCallFollowupQueue } from "~/components/whatsapp-calling/whatsapp-call-followup-queue";
 import { CallSetupPanel } from "~/components/whatsapp-calling/call-setup-panel";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
 import type { WhatsappCallFlow } from "~/data/types";
 import type { Route } from "./+types/whatsapp-calling";
@@ -30,14 +31,22 @@ export function meta({}: Route.MetaArgs) {
 export default function WhatsappCalling() {
   const [tab, setTab] = useState<"flows" | "followups" | "setup">("flows");
   const [callFlows, setCallFlows] = useState<WhatsappCallFlow[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [selectedCallFlowId, setSelectedCallFlowId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
-    apiClient.listWhatsappCallFlows().then(setCallFlows).catch(() => {
-      // call flows list stays empty on failure
-    });
-  }, []);
+    apiClient
+      .listWhatsappCallFlows({ page })
+      .then(({ data, meta }) => {
+        setCallFlows(data);
+        setLastPage(meta.lastPage);
+      })
+      .catch(() => {
+        // call flows list stays empty on failure
+      });
+  }, [page]);
 
   const selectedCallFlow = callFlows.find((f) => f.id === selectedCallFlowId) ?? null;
 
@@ -46,7 +55,11 @@ export default function WhatsappCalling() {
       ...input,
       nodes: [{ id: "end", type: "end_call", prompt: "Thanks for calling, goodbye!" }],
     });
-    setCallFlows((prev) => [created, ...prev]);
+    if (page === 1) {
+      setCallFlows((prev) => [created, ...prev]);
+    } else {
+      setPage(1);
+    }
     setSelectedCallFlowId(created.id);
   }
 
@@ -146,6 +159,8 @@ export default function WhatsappCalling() {
               )}
             </Grid>
           )}
+
+          {tab === "flows" && <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />}
 
           {tab === "followups" && <WhatsappCallFollowupQueue />}
 

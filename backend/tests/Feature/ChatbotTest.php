@@ -32,6 +32,20 @@ it('lists chatbots for any authenticated role with chatbots.view', function () {
     expect($response->json('data'))->toHaveCount(2);
 });
 
+it('paginates chatbot listing', function () {
+    Chatbot::factory()->count(3)->create();
+    $user = actingAsChatbotRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/chatbots?per_page=1');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('meta.current_page'))->toBe(1);
+    expect($response->json('meta.last_page'))->toBe(3);
+    expect($response->json('meta.per_page'))->toBe(1);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
 it('forbids an agent from listing chatbots', function () {
     Chatbot::factory()->count(2)->create();
     $user = actingAsChatbotRole('agent');

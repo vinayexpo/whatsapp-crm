@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Events\WhatsappCallStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WhatsappCallResource;
@@ -22,6 +23,8 @@ use Illuminate\Validation\ValidationException;
 
 class WhatsappCallController extends Controller
 {
+    use PaginatesRequests;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', WhatsappCall::class);
@@ -50,7 +53,7 @@ class WhatsappCallController extends Controller
             $query->where('needs_human_followup', true)->whereNull('human_followup_completed_at');
         }
 
-        return WhatsappCallResource::collection($query->get());
+        return WhatsappCallResource::collection($query->paginate($this->perPageFrom($request)));
     }
 
     public function store(Request $request): JsonResponse

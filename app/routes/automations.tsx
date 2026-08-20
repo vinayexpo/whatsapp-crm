@@ -13,6 +13,7 @@ import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { AutomationFlowCard } from "~/components/automations/automation-flow-card";
 import { AutomationBuilderDialog } from "~/components/automations/automation-builder-dialog";
+import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { useCrmStore } from "~/hooks/use-crm-store";
 import type { Route } from "./+types/automations";
 
@@ -24,8 +25,15 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Automations() {
-  const { automationFlows, addAutomationFlow, setAutomationFlowStatus, deleteAutomationFlow, aiAssistantSettings } =
-    useCrmStore();
+  const {
+    automationFlows,
+    automationFlowsPagination,
+    fetchAutomationFlowsPage,
+    addAutomationFlow,
+    setAutomationFlowStatus,
+    deleteAutomationFlow,
+    aiAssistantSettings,
+  } = useCrmStore();
   const [builderOpen, setBuilderOpen] = useState(false);
 
   const activeCount = automationFlows.filter((f) => f.status === "active").length;
@@ -46,7 +54,7 @@ export default function Automations() {
               Automated Chat Flows
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-              {activeCount} of {automationFlows.length} flows active across WhatsApp and Instagram
+              {activeCount} of {automationFlowsPagination.total} flows active across WhatsApp and Instagram
             </Typography>
           </Stack>
           <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setBuilderOpen(true)}>
@@ -85,6 +93,11 @@ export default function Automations() {
             ))}
           </Grid>
         )}
+        <PaginatedListFooter
+          page={automationFlowsPagination.currentPage}
+          lastPage={automationFlowsPagination.lastPage}
+          onPageChange={fetchAutomationFlowsPage}
+        />
       </Box>
 
       <AutomationBuilderDialog open={builderOpen} onClose={() => setBuilderOpen(false)} onCreate={addAutomationFlow} />

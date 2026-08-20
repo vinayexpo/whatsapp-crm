@@ -30,6 +30,35 @@ it('lists contacts for any authenticated role', function () {
     expect($response->json('data'))->toHaveCount(3);
 });
 
+it('paginates contact listing', function () {
+    Contact::factory()->count(3)->create();
+    $user = actingAsRole('admin');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/contacts?per_page=1');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('meta.last_page'))->toBe(3);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
+it('composes pagination with agent-role scoping', function () {
+    $agent = actingAsRole('agent');
+
+    $assignedContacts = Contact::factory()->count(3)->create();
+    foreach ($assignedContacts as $contact) {
+        Conversation::factory()->create(['contact_id' => $contact->id, 'assigned_to' => $agent->id]);
+    }
+    $otherContact = Contact::factory()->create();
+    Conversation::factory()->create(['contact_id' => $otherContact->id, 'assigned_to' => null]);
+
+    $response = $this->actingAs($agent)->getJson('/api/v1/contacts?per_page=2');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(2);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
 it('scopes contacts for an agent to only those with a conversation assigned to them', function () {
     $agent = actingAsRole('agent');
 

@@ -39,6 +39,18 @@ it('rejects unauthenticated conversation listing', function () {
     $this->getJson('/api/v1/conversations')->assertUnauthorized();
 });
 
+it('paginates conversation listing', function () {
+    Conversation::factory()->count(3)->create();
+    $user = actingAsConversationRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/conversations?per_page=1');
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('meta.last_page'))->toBe(3);
+    expect($response->json('meta.total'))->toBe(3);
+});
+
 it('lists messages for a conversation in chronological order', function () {
     $conversation = Conversation::factory()->create();
     $first = Message::factory()->create(['conversation_id' => $conversation->id, 'sent_at' => now()->subHour()]);
@@ -50,6 +62,61 @@ it('lists messages for a conversation in chronological order', function () {
     $response->assertOk();
     $ids = collect($response->json('data'))->pluck('id');
     expect($ids->toArray())->toBe([$first->uuid, $second->uuid]);
+});
+
+it('caps the initial messages load with limit and reports hasMore', function () {
+    $conversation = Conversation::factory()->create();
+    foreach (range(1, 5) as $i) {
+        Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'sent_at' => now()->subMinutes(5 - $i),
+        ]);
+    }
+    $user = actingAsConversationRole('agent');
+
+    $response = $this->actingAs($user)->getJson("/api/v1/conversations/{$conversation->uuid}/messages?limit=3");
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(3);
+    expect($response->json('meta.hasMore'))->toBeTrue();
+
+    // returned page should be the 3 most recent messages, oldest-first
+    $ids = collect($response->json('data'))->pluck('id')->toArray();
+    $expectedIds = $conversation->messages()->orderByDesc('sent_at')->limit(3)->pluck('uuid')->reverse()->values()->toArray();
+    expect($ids)->toBe($expectedIds);
+});
+
+it('paginates older messages via the before cursor with no duplicates or gaps', function () {
+    $conversation = Conversation::factory()->create();
+    $messages = collect(range(1, 5))->map(fn ($i) => Message::factory()->create([
+        'conversation_id' => $conversation->id,
+        'sent_at' => now()->subMinutes(5 - $i),
+    ]));
+    $user = actingAsConversationRole('agent');
+
+    $initial = $this->actingAs($user)
+        ->getJson("/api/v1/conversations/{$conversation->uuid}/messages?limit=2")
+        ->assertOk();
+    expect($initial->json('meta.hasMore'))->toBeTrue();
+
+    $oldestLoadedId = $initial->json('data.0.id');
+
+    $older = $this->actingAs($user)
+        ->getJson("/api/v1/conversations/{$conversation->uuid}/messages?before={$oldestLoadedId}&limit=2")
+        ->assertOk();
+
+    $olderIds = collect($older->json('data'))->pluck('id')->toArray();
+    $initialIds = collect($initial->json('data'))->pluck('id')->toArray();
+
+    expect(array_intersect($olderIds, $initialIds))->toBeEmpty();
+    expect($older->json('meta.hasMore'))->toBeTrue();
+
+    $oldestOlderId = $older->json('data.0.id');
+    $lastPage = $this->actingAs($user)
+        ->getJson("/api/v1/conversations/{$conversation->uuid}/messages?before={$oldestOlderId}&limit=2")
+        ->assertOk();
+
+    expect($lastPage->json('meta.hasMore'))->toBeFalse();
 });
 
 it('allows an agent to send an outbound message', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ChatbotResource;
 use App\Models\Chatbot;
@@ -11,12 +12,14 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ChatbotController extends Controller
 {
+    use PaginatesRequests;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Chatbot::class);
 
         return ChatbotResource::collection(
-            Chatbot::query()->orderBy('name')->get()
+            Chatbot::query()->orderBy('name')->paginate($this->perPageFrom($request))
         );
     }
 
