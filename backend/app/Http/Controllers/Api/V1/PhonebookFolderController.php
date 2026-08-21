@@ -62,7 +62,7 @@ class PhonebookFolderController extends Controller
         $this->authorize('view', $phonebookFolder);
 
         return response()->json([
-            'data' => new PhonebookFolderResource($phonebookFolder->loadCount('contacts')),
+            'data' => new PhonebookFolderResource($phonebookFolder->load('contacts.tags')->loadCount('contacts')),
         ]);
     }
 

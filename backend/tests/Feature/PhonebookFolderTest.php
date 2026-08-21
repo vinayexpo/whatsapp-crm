@@ -138,7 +138,7 @@ it('paginates a folder contacts listing via the dedicated endpoint', function ()
     expect($response->json('meta.total'))->toBe(3);
 });
 
-it('does not eager-load contacts on folder show', function () {
+it('includes contacts and contact count on folder show', function () {
     $admin = actingAsPhonebookRole('admin');
     $folder = PhonebookFolder::factory()->create();
     $contact = Contact::factory()->create();
@@ -148,7 +148,7 @@ it('does not eager-load contacts on folder show', function () {
 
     $response->assertOk();
     expect($response->json('data.contactCount'))->toBe(1);
-    expect($response->json('data.contacts'))->toBeNull();
+    expect($response->json('data.contacts'))->toHaveCount(1);
 });
 
 it('allows removing a contact from a folder', function () {
