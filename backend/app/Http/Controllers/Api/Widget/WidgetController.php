@@ -58,16 +58,25 @@ class WidgetController extends Controller
 
         $data = $request->validate([
             'text' => ['required', 'string'],
+            'buttonLabel' => ['sometimes', 'nullable', 'string'],
         ]);
 
         [$contact, $conversation] = $this->resolveContactAndConversation($chatbot, $visitorId);
 
+        // A button click submits its id as `text` (so ChatMenuFlowEngine can match
+        // it) alongside the human-readable `buttonLabel`. Store the label as the
+        // visible message text and the id in interactive_reply_id, matching how
+        // WhatsApp interactive replies are stored — otherwise the raw button
+        // UUID ends up shown as the message text.
+        $isButtonClick = ! empty($data['buttonLabel']);
+
         $inboundMessage = Message::query()->create([
             'conversation_id' => $conversation->id,
             'direction' => 'inbound',
-            'text' => $data['text'],
+            'text' => $isButtonClick ? $data['buttonLabel'] : $data['text'],
             'status' => 'delivered',
             'sent_at' => now(),
+            'interactive_reply_id' => $isButtonClick ? $data['text'] : null,
         ]);
 
         $conversation->update([

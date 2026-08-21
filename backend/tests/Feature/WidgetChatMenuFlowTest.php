@@ -68,3 +68,40 @@ it('advances the flow when the widget submits a button id as plain text', functi
         ->first();
     expect($inboundClick)->not->toBeNull();
 });
+
+it('stores the button label as the visible text instead of the raw button id when the widget submits buttonLabel', function () {
+    $chatbot = createWidgetChatbot();
+    $flow = ChatMenuFlow::factory()->create([
+        'company_id' => $chatbot->company_id,
+        'channel' => 'both',
+        'status' => 'active',
+        'trigger_keyword' => 'services',
+    ]);
+
+    $this->postJson('/api/widget/messages', ['text' => 'services'], [
+        'X-Widget-Key' => $chatbot->widget_key,
+        'X-Visitor-Id' => 'widget-flow-visitor-3',
+    ])->assertCreated();
+
+    $rootNode = collect($flow->nodes)->firstWhere('id', $flow->entry_node_id);
+    $cateringButton = collect($rootNode['buttons'])->firstWhere('label', 'Catering');
+
+    $response = $this->postJson('/api/widget/messages', [
+        'text' => $cateringButton['id'],
+        'buttonLabel' => $cateringButton['label'],
+    ], [
+        'X-Widget-Key' => $chatbot->widget_key,
+        'X-Visitor-Id' => 'widget-flow-visitor-3',
+    ]);
+
+    $response->assertCreated();
+    expect($response->json('data.reply'))->toContain('catering');
+
+    $inboundClick = Message::query()
+        ->where('direction', 'inbound')
+        ->where('interactive_reply_id', $cateringButton['id'])
+        ->first();
+
+    expect($inboundClick)->not->toBeNull();
+    expect($inboundClick->text)->toBe($cateringButton['label']);
+});

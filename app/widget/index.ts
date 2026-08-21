@@ -190,7 +190,7 @@ async function initWidget() {
 
     seenMessageIds.add(message.id);
     lastMessageId = message.id;
-    renderBubble(messagesEl, message, (button) => sendText(button.id, button.label));
+    renderBubble(messagesEl, message, (button) => sendText(button.id, button.label, button.label));
   }
 
   async function pollForReplies() {
@@ -233,7 +233,7 @@ async function initWidget() {
 
   let sending = false;
 
-  async function sendText(text: string, displayText?: string) {
+  async function sendText(text: string, displayText?: string, buttonLabel?: string) {
     if (sending || !text) return;
     sending = true;
     input.disabled = true;
@@ -250,7 +250,7 @@ async function initWidget() {
         widgetKey!,
         visitorId,
         "/messages",
-        { method: "POST", body: JSON.stringify({ text }) },
+        { method: "POST", body: JSON.stringify({ text, buttonLabel }) },
       );
       trackMessage(data.message);
     } catch {
