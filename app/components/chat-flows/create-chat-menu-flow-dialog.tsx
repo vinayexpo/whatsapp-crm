@@ -15,6 +15,8 @@ import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import { apiClient, ApiError } from "~/utils/api-client";
 import type { ChatMenuFlowChannel, ChatMenuFlowNode } from "~/data/types";
 
+const AI_PROMPT_MAX = 2000;
+
 interface CreateChatMenuFlowDialogProps {
   open: boolean;
   onClose: () => void;
@@ -118,8 +120,9 @@ export function CreateChatMenuFlowDialog({ open, onClose, onCreate }: CreateChat
               label="Describe the menu"
               placeholder="e.g. A menu for a catering business with options for menus, pricing, and booking a tasting"
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              helperText="AI will draft a full set of menu nodes and buttons, which you can review and edit before saving."
+              onChange={(e) => setPrompt(e.target.value.slice(0, AI_PROMPT_MAX))}
+              error={prompt.length > AI_PROMPT_MAX}
+              helperText={`${prompt.length}/${AI_PROMPT_MAX} characters. AI will draft a full set of menu steps and buttons, which you can review and edit before saving.`}
             />
           )}
         </Stack>

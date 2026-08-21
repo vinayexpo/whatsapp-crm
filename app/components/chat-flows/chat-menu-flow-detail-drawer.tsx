@@ -29,7 +29,16 @@ export function ChatMenuFlowDetailDrawer({ flow, onClose, onUpdated, onDelete }:
   return (
     <Drawer anchor="right" open={Boolean(flow)} onClose={onClose}>
       {flow && (
-        <Box sx={{ width: { xs: 340, sm: 480 }, height: "100%", display: "flex", flexDirection: "column" }}>
+        <Box
+          sx={{
+            width: { xs: "100vw", sm: tab === "flow" ? 880 : 480 },
+            maxWidth: "100vw",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            transition: "width 0.15s ease",
+          }}
+        >
           <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", p: 3, pb: 2 }}>
             <Stack direction="row" sx={{ alignItems: "center", gap: 1.25 }}>
               <Box

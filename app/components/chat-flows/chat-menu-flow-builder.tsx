@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -8,6 +8,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Alert from "@mui/material/Alert";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
+import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -15,9 +16,12 @@ import DialogActions from "@mui/material/DialogActions";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import CircularProgress from "@mui/material/CircularProgress";
+import Tooltip from "@mui/material/Tooltip";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { apiClient, ApiError } from "~/utils/api-client";
 import type { ChatMenuFlow, ChatMenuFlowButton, ChatMenuFlowNode, ChatMenuFlowNodeType } from "~/data/types";
 
@@ -25,6 +29,11 @@ interface ChatMenuFlowBuilderProps {
   flow: ChatMenuFlow;
   onUpdated: (flow: ChatMenuFlow) => void;
 }
+
+const MESSAGE_MAX = 1024;
+const BUTTON_LABEL_MAX = 20;
+const AI_PROMPT_MAX = 2000;
+const MAX_BUTTONS_PER_NODE = 10;
 
 function newId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -38,6 +47,12 @@ function emptyButton(): ChatMenuFlowButton {
   return { id: newId("btn"), label: "", nextNodeId: "" };
 }
 
+function nodeLabel(node: ChatMenuFlowNode, index: number) {
+  const text = node.message.trim();
+  if (text) return text.length > 40 ? `${text.slice(0, 40)}…` : text;
+  return `Step ${index + 1}`;
+}
+
 export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProps) {
   const [nodes, setNodes] = useState<ChatMenuFlowNode[]>(flow.nodes.length > 0 ? flow.nodes : [emptyNode()]);
   const [entryNodeId, setEntryNodeId] = useState(flow.entryNodeId || nodes[0]?.id || "");
@@ -48,6 +63,7 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
   const [aiPrompt, setAiPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [previewNodeId, setPreviewNodeId] = useState<string | null>(null);
 
   function openAiDialog() {
     setAiMode("replace");
@@ -118,24 +134,53 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
     );
   }
 
+  // Surfaced inline per-node/button instead of failing silently at save time,
+  // since incomplete buttons used to be dropped without any visible warning.
+  const nodeIssues = useMemo(() => {
+    const issues = new Map<string, string[]>();
+    for (const node of nodes) {
+      const nodeProblems: string[] = [];
+      if (!node.message.trim()) nodeProblems.push("Message is empty.");
+      if (node.message.length > MESSAGE_MAX) nodeProblems.push(`Message exceeds ${MESSAGE_MAX} characters.`);
+      for (const button of node.buttons) {
+        if (!button.label.trim()) nodeProblems.push("A button is missing a label.");
+        else if (button.label.length > BUTTON_LABEL_MAX) {
+          nodeProblems.push(`Button "${button.label.slice(0, 12)}…" exceeds ${BUTTON_LABEL_MAX} characters.`);
+        }
+        if (!button.nextNodeId) nodeProblems.push(`Button "${button.label || "(unlabeled)"}" has no destination step.`);
+      }
+      issues.set(node.id, nodeProblems);
+    }
+    return issues;
+  }, [nodes]);
+
+  const hasBlockingIssues = useMemo(
+    () => Array.from(nodeIssues.values()).some((problems) => problems.length > 0),
+    [nodeIssues],
+  );
+
   async function handleSave() {
     setSaving(true);
     setError(null);
     try {
+      if (hasBlockingIssues) {
+        setError("Fix the highlighted steps below before saving — invalid buttons would otherwise be dropped silently.");
+        setSaving(false);
+        return;
+      }
+
       const cleanedNodes = nodes
         .map((node) => ({
           id: node.id.trim(),
           type: node.buttons.length > 0 ? ("menu" as ChatMenuFlowNodeType) : ("content" as ChatMenuFlowNodeType),
           message: node.message.trim(),
           renderAs: node.buttons.length > 3 ? ("list" as const) : ("button" as const),
-          buttons: node.buttons
-            .map((b) => ({ id: b.id.trim(), label: b.label.trim(), nextNodeId: b.nextNodeId.trim() }))
-            .filter((b) => b.id && b.label && b.nextNodeId),
+          buttons: node.buttons.map((b) => ({ id: b.id.trim(), label: b.label.trim(), nextNodeId: b.nextNodeId.trim() })),
         }))
         .filter((node) => node.id && node.message);
 
       if (cleanedNodes.length === 0) {
-        setError("Add at least one node with a message.");
+        setError("Add at least one step with a message.");
         setSaving(false);
         return;
       }
@@ -156,14 +201,16 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
     }
   }
 
+  const previewNode = nodes.find((n) => n.id === previewNodeId) ?? null;
+
   return (
     <Stack spacing={2.5}>
       {error && <Alert severity="error">{error}</Alert>}
 
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", gap: 1.5 }}>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          Build a tree of menu nodes. A node with buttons shows those buttons to the customer; each button leads to
-          another node. A node with no buttons is a final reply that ends the flow.
+          Build your menu as a series of steps. A step with reply buttons shows those buttons to the customer;
+          tapping one jumps to the step it points to. A step with no buttons is a final reply that ends the flow.
         </Typography>
         <Button
           size="small"
@@ -180,108 +227,142 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
         fullWidth
         select
         size="small"
-        label="Entry node (shown when the flow starts)"
+        label="First step (shown when the flow starts)"
         value={entryNodeId}
         onChange={(e) => setEntryNodeId(e.target.value)}
       >
-        {nodes.map((node) => (
+        {nodes.map((node, index) => (
           <MenuItem key={node.id} value={node.id}>
-            {node.message.trim() || node.id}
+            {nodeLabel(node, index)}
           </MenuItem>
         ))}
       </TextField>
 
       <Stack spacing={1.5}>
-        {nodes.map((node, index) => (
-          <Paper key={node.id} variant="outlined" sx={{ borderRadius: 2, p: 1.75 }}>
-            <Stack spacing={1.25}>
-              <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                    Node
-                  </Typography>
-                  {node.id === entryNodeId && <Chip label="Entry" size="small" color="primary" />}
-                  <Chip
-                    label={node.buttons.length > 0 ? "Menu" : "Final reply"}
-                    size="small"
-                    variant="outlined"
-                  />
-                </Stack>
-                <IconButton size="small" onClick={() => removeNode(index)}>
-                  <DeleteRoundedIcon fontSize="small" />
-                </IconButton>
-              </Stack>
-
-              <TextField
-                fullWidth
-                size="small"
-                label="Node ID"
-                value={node.id}
-                onChange={(e) => updateNode(index, { id: e.target.value })}
-              />
-
-              <TextField
-                fullWidth
-                size="small"
-                multiline
-                minRows={2}
-                label="Message"
-                value={node.message}
-                onChange={(e) => updateNode(index, { message: e.target.value })}
-              />
-
-              <Stack spacing={1}>
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  Buttons ({node.buttons.length}/10)
-                </Typography>
-                {node.buttons.map((button, buttonIndex) => (
-                  <Stack key={button.id} direction={{ xs: "column", sm: "row" }} spacing={1}>
-                    <TextField
+        {nodes.map((node, index) => {
+          const problems = nodeIssues.get(node.id) ?? [];
+          const messageLen = node.message.length;
+          return (
+            <Paper
+              key={node.id}
+              variant="outlined"
+              sx={{
+                borderRadius: 2,
+                p: 1.75,
+                borderColor: problems.length > 0 ? "warning.main" : undefined,
+              }}
+            >
+              <Stack spacing={1.25}>
+                <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    <Chip label={`Step ${index + 1}`} size="small" />
+                    {node.id === entryNodeId && <Chip label="First step" size="small" color="primary" />}
+                    <Chip
+                      label={node.buttons.length > 0 ? "Menu with buttons" : "Final reply"}
                       size="small"
-                      label="Button label"
-                      value={button.label}
-                      onChange={(e) => updateButton(index, buttonIndex, { label: e.target.value })}
-                      sx={{ flex: 1 }}
+                      variant="outlined"
                     />
-                    <TextField
-                      size="small"
-                      select
-                      label="Leads to"
-                      value={button.nextNodeId}
-                      onChange={(e) => updateButton(index, buttonIndex, { nextNodeId: e.target.value })}
-                      sx={{ minWidth: 180 }}
-                    >
-                      {nodes
-                        .filter((n) => n.id !== node.id)
-                        .map((n) => (
-                          <MenuItem key={n.id} value={n.id}>
-                            {n.message.trim() || n.id}
-                          </MenuItem>
-                        ))}
-                    </TextField>
-                    <IconButton size="small" onClick={() => removeButton(index, buttonIndex)}>
+                    {problems.length > 0 && (
+                      <Tooltip title={problems.join(" ")}>
+                        <WarningAmberRoundedIcon fontSize="small" color="warning" />
+                      </Tooltip>
+                    )}
+                  </Stack>
+                  <Stack direction="row" spacing={0.5}>
+                    <Tooltip title="Preview how this looks on WhatsApp">
+                      <IconButton size="small" onClick={() => setPreviewNodeId(node.id)}>
+                        <ChatBubbleRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <IconButton size="small" onClick={() => removeNode(index)}>
                       <DeleteRoundedIcon fontSize="small" />
                     </IconButton>
                   </Stack>
-                ))}
-                {node.buttons.length < 10 && (
-                  <Button
-                    size="small"
-                    startIcon={<AddRoundedIcon />}
-                    onClick={() => addButton(index)}
-                    sx={{ alignSelf: "flex-start" }}
-                  >
-                    Add button
-                  </Button>
-                )}
+                </Stack>
+
+                <TextField
+                  fullWidth
+                  size="small"
+                  multiline
+                  minRows={2}
+                  label="Message"
+                  value={node.message}
+                  onChange={(e) => updateNode(index, { message: e.target.value })}
+                  error={messageLen > MESSAGE_MAX}
+                  helperText={`${messageLen}/${MESSAGE_MAX} characters — this is what WhatsApp shows the customer.`}
+                />
+
+                <Stack spacing={1}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Reply buttons ({node.buttons.length}/{MAX_BUTTONS_PER_NODE})
+                    </Typography>
+                    {node.buttons.length > 3 && (
+                      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                        Shown as a list (WhatsApp only allows 3 inline buttons)
+                      </Typography>
+                    )}
+                  </Stack>
+                  {node.buttons.map((button, buttonIndex) => {
+                    const labelLen = button.label.length;
+                    const labelTooLong = labelLen > BUTTON_LABEL_MAX;
+                    return (
+                      <Stack key={button.id} direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: { sm: "flex-start" } }}>
+                        <TextField
+                          size="small"
+                          label="Button label"
+                          value={button.label}
+                          onChange={(e) => updateButton(index, buttonIndex, { label: e.target.value })}
+                          error={labelTooLong || (button.label === "" && node.buttons.length > 0)}
+                          helperText={`${labelLen}/${BUTTON_LABEL_MAX}${labelTooLong ? " — too long for WhatsApp" : ""}`}
+                          sx={{ flex: 1 }}
+                        />
+                        <TextField
+                          size="small"
+                          select
+                          label="Goes to step"
+                          value={button.nextNodeId}
+                          onChange={(e) => updateButton(index, buttonIndex, { nextNodeId: e.target.value })}
+                          error={!button.nextNodeId}
+                          helperText={!button.nextNodeId ? "Required" : " "}
+                          sx={{ minWidth: 200 }}
+                        >
+                          {nodes
+                            .filter((n) => n.id !== node.id)
+                            .map((n) => {
+                              const i2 = nodes.findIndex((x) => x.id === n.id);
+                              return (
+                                <MenuItem key={n.id} value={n.id}>
+                                  {nodeLabel(n, i2)}
+                                </MenuItem>
+                              );
+                            })}
+                        </TextField>
+                        <IconButton size="small" onClick={() => removeButton(index, buttonIndex)} sx={{ mt: { sm: 0.5 } }}>
+                          <DeleteRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    );
+                  })}
+                  {node.buttons.length < MAX_BUTTONS_PER_NODE && (
+                    <Button
+                      size="small"
+                      startIcon={<AddRoundedIcon />}
+                      onClick={() => addButton(index)}
+                      sx={{ alignSelf: "flex-start" }}
+                    >
+                      Add reply button
+                    </Button>
+                  )}
+                </Stack>
               </Stack>
-            </Stack>
-          </Paper>
-        ))}
+            </Paper>
+          );
+        })}
       </Stack>
 
       <Button startIcon={<AddRoundedIcon />} onClick={addNode} sx={{ alignSelf: "flex-start" }}>
-        Add node
+        Add step
       </Button>
 
       <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ alignSelf: "flex-start" }}>
@@ -315,11 +396,15 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
               label="Describe the menu"
               placeholder="e.g. Add a branch for shipping and returns questions"
               value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
+              onChange={(e) => setAiPrompt(e.target.value.slice(0, AI_PROMPT_MAX))}
+              error={aiPrompt.length > AI_PROMPT_MAX}
               helperText={
-                aiMode === "replace"
-                  ? "Replaces all nodes below with a freshly generated tree. Nothing is saved until you click Save."
-                  : "Appends newly generated nodes to the existing tree. Nothing is saved until you click Save."
+                <>
+                  {aiPrompt.length}/{AI_PROMPT_MAX} characters.{" "}
+                  {aiMode === "replace"
+                    ? "Replaces all steps below with a freshly generated tree. Nothing is saved until you click Save."
+                    : "Appends newly generated steps to the existing tree. Nothing is saved until you click Save."}
+                </>
               }
             />
           </Stack>
@@ -334,6 +419,58 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
           >
             Generate
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(previewNode)} onClose={() => setPreviewNodeId(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>WhatsApp preview</DialogTitle>
+        <DialogContent>
+          {previewNode && (
+            <Box
+              sx={{
+                bgcolor: "#e5ddd5",
+                borderRadius: 2,
+                p: 2,
+                mt: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  bgcolor: "#fff",
+                  borderRadius: "8px 8px 8px 0px",
+                  p: 1.5,
+                  maxWidth: "85%",
+                  boxShadow: "0 1px 0.5px rgba(0,0,0,0.13)",
+                }}
+              >
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                  {previewNode.message.trim() || "(empty message)"}
+                </Typography>
+              </Box>
+              {previewNode.buttons.length > 0 && (
+                <Stack spacing={0.75} sx={{ mt: 1, maxWidth: "85%" }}>
+                  {previewNode.buttons.length > 3 ? (
+                    <Box sx={{ bgcolor: "#fff", borderRadius: 1, p: 1.25, textAlign: "center" }}>
+                      <Typography variant="body2" sx={{ color: "#00a5f4", fontWeight: 600 }}>
+                        Choose an option ▾
+                      </Typography>
+                    </Box>
+                  ) : (
+                    previewNode.buttons.map((button) => (
+                      <Box key={button.id} sx={{ bgcolor: "#fff", borderRadius: 1, p: 1.25, textAlign: "center" }}>
+                        <Typography variant="body2" sx={{ color: "#00a5f4", fontWeight: 600 }}>
+                          {button.label.trim() || "(empty label)"}
+                        </Typography>
+                      </Box>
+                    ))
+                  )}
+                </Stack>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setPreviewNodeId(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Stack>

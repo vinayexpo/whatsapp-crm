@@ -112,7 +112,8 @@ class OpenAiChatMenuFlowGeneratorService implements ChatMenuFlowGeneratorService
                     && isset($idMap[$button['nextNodeId'] ?? null]))
                 ->map(fn ($button) => [
                     'id' => (string) Str::uuid(),
-                    'label' => trim($button['label']),
+                    // Meta caps button/list-row titles at 20 characters.
+                    'label' => Str::limit(trim($button['label']), 20, ''),
                     'nextNodeId' => $idMap[$button['nextNodeId']],
                 ])
                 ->values()
@@ -121,7 +122,7 @@ class OpenAiChatMenuFlowGeneratorService implements ChatMenuFlowGeneratorService
             $nodes[] = [
                 'id' => $idMap[$rawNode['id']],
                 'type' => count($buttons) > 0 ? 'menu' : 'content',
-                'message' => is_string($rawNode['message'] ?? null) ? trim($rawNode['message']) : '',
+                'message' => is_string($rawNode['message'] ?? null) ? Str::limit(trim($rawNode['message']), 1024, '') : '',
                 'mediaUrl' => null,
                 'mediaType' => null,
                 'renderAs' => count($buttons) > 3 ? 'list' : 'button',

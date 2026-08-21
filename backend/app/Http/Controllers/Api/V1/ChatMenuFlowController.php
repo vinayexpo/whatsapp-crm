@@ -128,13 +128,17 @@ class ChatMenuFlowController extends Controller
             'nodes' => [$required, 'array', 'min:1'],
             'nodes.*.id' => ['required_with:nodes', 'string'],
             'nodes.*.type' => ['required_with:nodes', 'in:menu,content'],
-            'nodes.*.message' => ['required_with:nodes', 'string'],
+            // WhatsApp interactive message bodies are capped at 1024 characters by Meta.
+            'nodes.*.message' => ['required_with:nodes', 'string', 'max:1024'],
             'nodes.*.mediaUrl' => ['sometimes', 'nullable', 'string'],
             'nodes.*.mediaType' => ['sometimes', 'nullable', 'string'],
             'nodes.*.renderAs' => ['sometimes', 'in:button,list'],
             'nodes.*.buttons' => ['sometimes', 'array', 'max:10'],
             'nodes.*.buttons.*.id' => ['required_with:nodes.*.buttons', 'string'],
-            'nodes.*.buttons.*.label' => ['required_with:nodes.*.buttons', 'string', 'max:60'],
+            // Meta caps quick-reply button titles at 20 characters and list-row
+            // titles at 24; 20 is used as the single limit shown in the UI so
+            // buttons never silently fail once >3 of them switch to list rendering.
+            'nodes.*.buttons.*.label' => ['required_with:nodes.*.buttons', 'string', 'max:20'],
             'nodes.*.buttons.*.nextNodeId' => ['required_with:nodes.*.buttons', 'string'],
         ]);
     }

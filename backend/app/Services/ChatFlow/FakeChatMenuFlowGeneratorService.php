@@ -22,7 +22,7 @@ class FakeChatMenuFlowGeneratorService implements ChatMenuFlowGeneratorServiceIn
                 [
                     'id' => $rootId,
                     'type' => 'menu',
-                    'message' => "Fake reply for: {$prompt}",
+                    'message' => Str::limit("Fake reply for: {$prompt}", 1024, ''),
                     'mediaUrl' => null,
                     'mediaType' => null,
                     'renderAs' => 'button',

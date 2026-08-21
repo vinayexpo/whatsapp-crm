@@ -114,6 +114,44 @@ it('rejects creating a chat menu flow with an empty node list', function () {
     ])->assertUnprocessable();
 });
 
+it('rejects a button label longer than the WhatsApp 20-character limit', function () {
+    $admin = actingAsChatMenuFlowRole('admin');
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/chat-menu-flows', [
+        'name' => 'Services Menu',
+        'entryNodeId' => 'root',
+        'nodes' => [
+            [
+                'id' => 'root',
+                'type' => 'menu',
+                'message' => 'What are you looking for?',
+                'buttons' => [
+                    ['id' => 'btn-1', 'label' => 'This label is way too long', 'nextNodeId' => 'leaf'],
+                ],
+            ],
+            ['id' => 'leaf', 'type' => 'content', 'message' => 'We cater events.', 'buttons' => []],
+        ],
+    ]);
+
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors('nodes.0.buttons.0.label');
+});
+
+it('rejects a node message longer than the WhatsApp 1024-character limit', function () {
+    $admin = actingAsChatMenuFlowRole('admin');
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/chat-menu-flows', [
+        'name' => 'Services Menu',
+        'entryNodeId' => 'root',
+        'nodes' => [
+            ['id' => 'root', 'type' => 'content', 'message' => str_repeat('a', 1025), 'buttons' => []],
+        ],
+    ]);
+
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors('nodes.0.message');
+});
+
 it('forbids an agent from creating a chat menu flow', function () {
     $agent = actingAsChatMenuFlowRole('agent');
 
