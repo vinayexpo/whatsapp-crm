@@ -105,7 +105,8 @@ class ChatMenuFlowController extends Controller
 
         if (! $draft) {
             throw ValidationException::withMessages([
-                'prompt' => 'Could not generate a menu from that description. Make sure an AI assistant is configured, and try a more specific prompt.',
+                'prompt' => $generator->lastError()
+                    ?? 'Could not generate a menu from that description. Make sure an AI assistant is configured, and try a more specific prompt.',
             ]);
         }
 

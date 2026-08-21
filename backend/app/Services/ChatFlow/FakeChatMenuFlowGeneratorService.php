@@ -7,6 +7,11 @@ use Illuminate\Support\Str;
 
 class FakeChatMenuFlowGeneratorService implements ChatMenuFlowGeneratorServiceInterface
 {
+    public function lastError(): ?string
+    {
+        return null;
+    }
+
     public function generate(Company $company, string $prompt): ?array
     {
         if (trim($prompt) === '') {
