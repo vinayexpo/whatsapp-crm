@@ -90,18 +90,22 @@ export default function Inbox() {
             flexShrink: 0,
             borderRight: "1px solid",
             borderColor: "divider",
-            display: { xs: activeConversationId ? "none" : "block", sm: "block" },
+            display: { xs: activeConversationId ? "flex" : "none", sm: "flex" },
+            flexDirection: "column",
+            minHeight: 0,
           }}
         >
-          <ConversationList
-            conversations={conversations}
-            contactsById={contactsById}
-            activeConversationId={activeConversationId}
-            currentUserId={currentUser?.id}
-            onSelect={handleSelectConversation}
-            onFilteredChange={handleFilteredChange}
-            hideAssigneeFilter={currentUser?.role === "agent"}
-          />
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <ConversationList
+              conversations={conversations}
+              contactsById={contactsById}
+              activeConversationId={activeConversationId}
+              currentUserId={currentUser?.id}
+              onSelect={handleSelectConversation}
+              onFilteredChange={handleFilteredChange}
+              hideAssigneeFilter={currentUser?.role === "agent"}
+            />
+          </Box>
           <PaginatedListFooter
             page={conversationsPagination.currentPage}
             lastPage={conversationsPagination.lastPage}
