@@ -357,10 +357,16 @@ async function updateContact(
 
 async function listConversations(params?: {
   assignedTo?: string;
+  contactId?: string;
   page?: number;
   perPage?: number;
 }): Promise<PaginatedResponse<Conversation>> {
-  const query = buildQuery({ assignedTo: params?.assignedTo, page: params?.page, per_page: params?.perPage });
+  const query = buildQuery({
+    assignedTo: params?.assignedTo,
+    contactId: params?.contactId,
+    page: params?.page,
+    per_page: params?.perPage,
+  });
   const body = await apiRequest<RawPaginatedResponse<Conversation>>(`/api/v1/conversations${query}`);
   return unwrapPaginated(body);
 }

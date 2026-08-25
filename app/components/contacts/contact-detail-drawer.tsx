@@ -99,7 +99,7 @@ export function ContactDetailDrawer({ contact, onClose }: ContactDetailDrawerPro
 
           <Button
             component={Link}
-            to="/inbox"
+            to={`/inbox?contactId=${contact.id}`}
             fullWidth
             variant="contained"
             startIcon={<ChatBubbleOutlineRoundedIcon />}

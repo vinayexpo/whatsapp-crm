@@ -51,6 +51,18 @@ it('paginates conversation listing', function () {
     expect($response->json('meta.total'))->toBe(3);
 });
 
+it('filters conversation listing by contactId', function () {
+    $target = Conversation::factory()->create();
+    Conversation::factory()->count(3)->create();
+    $user = actingAsConversationRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/conversations?contactId='.$target->contact->uuid);
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids->all())->toBe([$target->uuid]);
+});
+
 it('lists messages for a conversation in chronological order', function () {
     $conversation = Conversation::factory()->create();
     $first = Message::factory()->create(['conversation_id' => $conversation->id, 'sent_at' => now()->subHour()]);

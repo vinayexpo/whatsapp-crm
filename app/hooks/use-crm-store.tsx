@@ -51,6 +51,7 @@ interface CrmStoreValue {
   conversations: Conversation[];
   conversationsPagination: PaginationMeta;
   fetchConversationsPage: (page: number, assignedTo?: string) => void;
+  findConversationByContact: (contactId: string) => Promise<string | null>;
   allConversations: Conversation[];
   messages: Message[];
   hasMoreOlderMessages: boolean;
@@ -157,6 +158,10 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const conversationsRef = useRef<Conversation[]>([]);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
   const [conversationsPagination, setConversationsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
   const [conversationsPage, setConversationsPage] = useState(1);
   const [conversationsAssignedTo, setConversationsAssignedTo] = useState<string | undefined>(undefined);
@@ -233,6 +238,18 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const fetchConversationsPage = useCallback((page: number, assignedTo?: string) => {
     setConversationsPage(page);
     setConversationsAssignedTo(assignedTo);
+  }, []);
+
+  const findConversationByContact = useCallback(async (contactId: string): Promise<string | null> => {
+    const existing = conversationsRef.current.find((c) => c.contactId === contactId);
+    if (existing) return existing.id;
+
+    const { data } = await apiClient.listConversations({ contactId, perPage: 1 });
+    const found = data[0] ?? null;
+    if (found) {
+      setConversations((prev) => (prev.some((c) => c.id === found.id) ? prev : [found, ...prev]));
+    }
+    return found?.id ?? null;
   }, []);
 
   useEffect(() => {
@@ -817,6 +834,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       conversations,
       conversationsPagination,
       fetchConversationsPage,
+      findConversationByContact,
       allConversations,
       messages,
       hasMoreOlderMessages: activeConversationId
@@ -868,6 +886,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       conversations,
       conversationsPagination,
       fetchConversationsPage,
+      findConversationByContact,
       allConversations,
       messages,
       activeConversationId,

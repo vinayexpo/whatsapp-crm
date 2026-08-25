@@ -41,6 +41,10 @@ class ConversationController extends Controller
             $query->whereHas('assignedTo', fn ($q) => $q->where('uuid', $request->query('assignedTo')));
         }
 
+        if ($request->filled('contactId')) {
+            $query->whereHas('contact', fn ($q) => $q->where('uuid', $request->query('contactId')));
+        }
+
         return ConversationResource::collection($query->paginate($this->perPageFrom($request)));
     }
 

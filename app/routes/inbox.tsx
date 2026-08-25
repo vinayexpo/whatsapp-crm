@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
@@ -26,6 +27,7 @@ export default function Inbox() {
     conversations,
     conversationsPagination,
     fetchConversationsPage,
+    findConversationByContact,
     messages,
     hasMoreOlderMessages,
     loadOlderMessages,
@@ -40,9 +42,31 @@ export default function Inbox() {
     loadMessagesForConversation,
     aiAssistantSettings,
   } = useCrmStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const hasAutoSelected = useRef(false);
+
+  const requestedContactId = searchParams.get("contactId");
+
+  useEffect(() => {
+    if (!requestedContactId) return;
+    hasAutoSelected.current = true;
+    let cancelled = false;
+    findConversationByContact(requestedContactId).then((conversationId) => {
+      if (cancelled || !conversationId) return;
+      setActiveConversationId(conversationId);
+      loadMessagesForConversation(conversationId);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("contactId");
+        return next;
+      }, { replace: true });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedContactId, findConversationByContact, loadMessagesForConversation, setSearchParams]);
 
   useEffect(() => {
     if (activeConversationId === null && conversations.length > 0 && !hasAutoSelected.current) {
