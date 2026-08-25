@@ -62,9 +62,17 @@ export interface ConversationAssignee {
   avatarUrl: string;
 }
 
+export interface ConversationContact {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  channel: ChannelType;
+}
+
 export interface Conversation {
   id: string;
   contactId: string;
+  contact?: ConversationContact | null;
   channel: ChannelType;
   status: ConversationStatus;
   unreadCount: number;

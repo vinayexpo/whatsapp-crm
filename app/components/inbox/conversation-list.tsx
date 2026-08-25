@@ -147,7 +147,7 @@ export function ConversationList({
           </Typography>
         )}
         {filtered.map((conversation) => {
-          const contact = contactsById.get(conversation.contactId);
+          const contact = conversation.contact ?? contactsById.get(conversation.contactId);
           if (!contact) return null;
           const isActive = conversation.id === activeConversationId;
           return (

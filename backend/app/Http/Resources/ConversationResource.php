@@ -19,6 +19,12 @@ class ConversationResource extends JsonResource
         return [
             'id' => $this->uuid,
             'contactId' => $this->contact?->uuid,
+            'contact' => $this->whenLoaded('contact', fn () => $this->contact ? [
+                'id' => $this->contact->uuid,
+                'name' => $this->contact->name,
+                'avatarUrl' => $this->contact->avatar_url,
+                'channel' => $this->contact->channel,
+            ] : null),
             'channel' => $this->channel,
             'status' => $this->status,
             'unreadCount' => $this->unread_count,
