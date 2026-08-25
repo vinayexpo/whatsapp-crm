@@ -46,8 +46,21 @@ export default function Inbox() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const hasAutoSelected = useRef(false);
+  const [searchInput, setSearchInput] = useState("");
+  const isFirstSearchRender = useRef(true);
 
   const requestedContactId = searchParams.get("contactId");
+
+  useEffect(() => {
+    if (isFirstSearchRender.current) {
+      isFirstSearchRender.current = false;
+      return;
+    }
+    const handle = setTimeout(() => {
+      fetchConversationsPage(1, undefined, searchInput.trim() || undefined);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchInput, fetchConversationsPage]);
 
   useEffect(() => {
     if (!requestedContactId) return;
@@ -128,6 +141,8 @@ export default function Inbox() {
               onSelect={handleSelectConversation}
               onFilteredChange={handleFilteredChange}
               hideAssigneeFilter={currentUser?.role === "agent"}
+              searchValue={searchInput}
+              onSearchChange={setSearchInput}
             />
           </Box>
           <PaginatedListFooter

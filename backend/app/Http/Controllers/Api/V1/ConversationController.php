@@ -45,6 +45,13 @@ class ConversationController extends Controller
             $query->whereHas('contact', fn ($q) => $q->where('uuid', $request->query('contactId')));
         }
 
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->whereHas('contact', fn ($q) => $q->where('name', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->orWhere('handle', 'like', "%{$search}%"));
+        }
+
         return ConversationResource::collection($query->paginate($this->perPageFrom($request)));
     }
 

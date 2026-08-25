@@ -63,6 +63,18 @@ it('filters conversation listing by contactId', function () {
     expect($ids->all())->toBe([$target->uuid]);
 });
 
+it('filters conversation listing by contact search term', function () {
+    $target = Conversation::factory()->for(Contact::factory()->state(['name' => 'Vinay Kumar']), 'contact')->create();
+    Conversation::factory()->for(Contact::factory()->state(['name' => 'Someone Else']), 'contact')->create();
+    $user = actingAsConversationRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/conversations?search=vinay');
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids->all())->toBe([$target->uuid]);
+});
+
 it('lists messages for a conversation in chronological order', function () {
     $conversation = Conversation::factory()->create();
     $first = Message::factory()->create(['conversation_id' => $conversation->id, 'sent_at' => now()->subHour()]);

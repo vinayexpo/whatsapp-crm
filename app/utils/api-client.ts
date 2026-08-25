@@ -358,12 +358,14 @@ async function updateContact(
 async function listConversations(params?: {
   assignedTo?: string;
   contactId?: string;
+  search?: string;
   page?: number;
   perPage?: number;
 }): Promise<PaginatedResponse<Conversation>> {
   const query = buildQuery({
     assignedTo: params?.assignedTo,
     contactId: params?.contactId,
+    search: params?.search,
     page: params?.page,
     per_page: params?.perPage,
   });

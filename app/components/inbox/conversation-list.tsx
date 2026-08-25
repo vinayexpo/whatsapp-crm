@@ -7,6 +7,9 @@ import Badge from "@mui/material/Badge";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Chip from "@mui/material/Chip";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import classNames from "classnames";
 import Tooltip from "@mui/material/Tooltip";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
@@ -25,6 +28,8 @@ interface ConversationListProps {
   onSelect: (conversationId: string) => void;
   onFilteredChange?: (filtered: Conversation[]) => void;
   hideAssigneeFilter?: boolean;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 const STATUS_TABS: { label: string; value: Conversation["status"] | "all" }[] = [
@@ -43,6 +48,8 @@ export function ConversationList({
   onSelect,
   onFilteredChange,
   hideAssigneeFilter = false,
+  searchValue = "",
+  onSearchChange,
 }: ConversationListProps) {
   const [statusFilter, setStatusFilter] = useState<Conversation["status"] | "all">("all");
   const [channelFilter, setChannelFilter] = useState<FilterChannel>("all");
@@ -69,6 +76,25 @@ export function ConversationList({
         <Typography variant="h6" sx={{ fontSize: "1.05rem", mb: 1.5 }}>
           Conversations
         </Typography>
+        {onSearchChange && (
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Search by name or phone"
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            sx={{ mb: 1.5 }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" sx={{ color: "text.secondary" }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+        )}
         <Stack direction="row" spacing={1} sx={{ mb: 1.5, flexWrap: "wrap", rowGap: 1 }}>
           <Chip
             label="All channels"
