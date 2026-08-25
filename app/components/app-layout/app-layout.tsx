@@ -12,8 +12,6 @@ import ListItemText from "@mui/material/ListItemText";
 import IconButton from "@mui/material/IconButton";
 import Avatar from "@mui/material/Avatar";
 import Stack from "@mui/material/Stack";
-import InputBase from "@mui/material/InputBase";
-import Paper from "@mui/material/Paper";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Divider from "@mui/material/Divider";
@@ -31,7 +29,6 @@ import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import PhoneInTalkRoundedIcon from "@mui/icons-material/PhoneInTalkRounded";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
@@ -42,6 +39,7 @@ import { useAuth } from "~/hooks/use-auth";
 import { apiClient } from "~/utils/api-client";
 import { AuthGuard } from "~/components/auth-guard/auth-guard";
 import { NotificationMenu } from "~/components/app-layout/notification-menu";
+import { GlobalSearch } from "~/components/app-layout/global-search";
 
 const DRAWER_WIDTH = 248;
 
@@ -172,22 +170,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { md: "none" } }}>
             <MenuRoundedIcon />
           </IconButton>
-          <Paper
-            variant="outlined"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              px: 1.5,
-              py: 0.5,
-              borderRadius: 2,
-              flex: 1,
-              maxWidth: 420,
-              bgcolor: "background.default",
-            }}
-          >
-            <SearchRoundedIcon fontSize="small" sx={{ color: "text.secondary", mr: 1 }} />
-            <InputBase placeholder="Search contacts, chats, campaigns…" sx={{ fontSize: "0.9rem", flex: 1 }} />
-          </Paper>
+          <GlobalSearch />
           <Box sx={{ flex: 1 }} />
           <NotificationMenu />
           <IconButton onClick={(e) => setProfileMenuAnchor(e.currentTarget)} sx={{ p: 0.25 }}>
