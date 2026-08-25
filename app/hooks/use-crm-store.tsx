@@ -162,6 +162,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+  const pinnedConversationRef = useRef<Conversation | null>(null);
   const [conversationsPagination, setConversationsPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
   const [conversationsPage, setConversationsPage] = useState(1);
   const [conversationsAssignedTo, setConversationsAssignedTo] = useState<string | undefined>(undefined);
@@ -236,17 +237,22 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   }, [authStatus]);
 
   const fetchConversationsPage = useCallback((page: number, assignedTo?: string) => {
+    pinnedConversationRef.current = null;
     setConversationsPage(page);
     setConversationsAssignedTo(assignedTo);
   }, []);
 
   const findConversationByContact = useCallback(async (contactId: string): Promise<string | null> => {
     const existing = conversationsRef.current.find((c) => c.contactId === contactId);
-    if (existing) return existing.id;
+    if (existing) {
+      pinnedConversationRef.current = existing;
+      return existing.id;
+    }
 
     const { data } = await apiClient.listConversations({ contactId, perPage: 1 });
     const found = data[0] ?? null;
     if (found) {
+      pinnedConversationRef.current = found;
       setConversations((prev) => (prev.some((c) => c.id === found.id) ? prev : [found, ...prev]));
     }
     return found?.id ?? null;
@@ -259,7 +265,9 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       .listConversations({ page: conversationsPage, assignedTo: conversationsAssignedTo })
       .then(({ data, meta }) => {
         if (!cancelled) {
-          setConversations(data);
+          const pinned = pinnedConversationRef.current;
+          const merged = pinned && !data.some((c) => c.id === pinned.id) ? [pinned, ...data] : data;
+          setConversations(merged);
           setConversationsPagination(meta);
         }
       })
