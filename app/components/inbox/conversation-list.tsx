@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -17,8 +16,8 @@ import { formatRelativeTime } from "~/utils/format";
 import type { Contact, Conversation } from "~/data/types";
 import styles from "./conversation-list.module.css";
 
-type FilterChannel = "all" | "whatsapp" | "instagram" | "website";
-type FilterAssignee = "all" | "mine" | "unassigned";
+export type FilterChannel = "all" | "whatsapp" | "instagram" | "website";
+export type FilterAssignee = "all" | "mine" | "unassigned";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -26,10 +25,15 @@ interface ConversationListProps {
   activeConversationId: string | null;
   currentUserId?: string;
   onSelect: (conversationId: string) => void;
-  onFilteredChange?: (filtered: Conversation[]) => void;
   hideAssigneeFilter?: boolean;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  statusFilter: Conversation["status"] | "all";
+  onStatusFilterChange: (value: Conversation["status"] | "all") => void;
+  channelFilter: FilterChannel;
+  onChannelFilterChange: (value: FilterChannel) => void;
+  assigneeFilter: FilterAssignee;
+  onAssigneeFilterChange: (value: FilterAssignee) => void;
 }
 
 const STATUS_TABS: { label: string; value: Conversation["status"] | "all" }[] = [
@@ -44,31 +48,20 @@ export function ConversationList({
   conversations,
   contactsById,
   activeConversationId,
-  currentUserId,
   onSelect,
-  onFilteredChange,
   hideAssigneeFilter = false,
   searchValue = "",
   onSearchChange,
+  statusFilter,
+  onStatusFilterChange,
+  channelFilter,
+  onChannelFilterChange,
+  assigneeFilter,
+  onAssigneeFilterChange,
 }: ConversationListProps) {
-  const [statusFilter, setStatusFilter] = useState<Conversation["status"] | "all">("all");
-  const [channelFilter, setChannelFilter] = useState<FilterChannel>("all");
-  const [assigneeFilter, setAssigneeFilter] = useState<FilterAssignee>("all");
-
-  const filtered = conversations
-    .filter((c) => statusFilter === "all" || c.status === statusFilter)
-    .filter((c) => channelFilter === "all" || c.channel === channelFilter)
-    .filter((c) => {
-      if (assigneeFilter === "all") return true;
-      if (assigneeFilter === "unassigned") return !c.assignedTo;
-      return c.assignedTo?.id === currentUserId;
-    })
-    .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-
-  useEffect(() => {
-    onFilteredChange?.(filtered);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered.map((c) => c.id).join(","), onFilteredChange]);
+  const sorted = [...conversations].sort(
+    (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
+  );
 
   return (
     <Box className={styles.container}>
@@ -99,7 +92,7 @@ export function ConversationList({
           <Chip
             label="All channels"
             size="small"
-            onClick={() => setChannelFilter("all")}
+            onClick={() => onChannelFilterChange("all")}
             color={channelFilter === "all" ? "primary" : "default"}
             variant={channelFilter === "all" ? "filled" : "outlined"}
           />
@@ -107,7 +100,7 @@ export function ConversationList({
             label="WhatsApp"
             size="small"
             icon={<ChannelIcon channel="whatsapp" size={14} />}
-            onClick={() => setChannelFilter("whatsapp")}
+            onClick={() => onChannelFilterChange("whatsapp")}
             color={channelFilter === "whatsapp" ? "primary" : "default"}
             variant={channelFilter === "whatsapp" ? "filled" : "outlined"}
           />
@@ -115,7 +108,7 @@ export function ConversationList({
             label="Instagram"
             size="small"
             icon={<ChannelIcon channel="instagram" size={14} />}
-            onClick={() => setChannelFilter("instagram")}
+            onClick={() => onChannelFilterChange("instagram")}
             color={channelFilter === "instagram" ? "primary" : "default"}
             variant={channelFilter === "instagram" ? "filled" : "outlined"}
           />
@@ -123,7 +116,7 @@ export function ConversationList({
             label="Website"
             size="small"
             icon={<ChannelIcon channel="website" size={14} />}
-            onClick={() => setChannelFilter("website")}
+            onClick={() => onChannelFilterChange("website")}
             color={channelFilter === "website" ? "primary" : "default"}
             variant={channelFilter === "website" ? "filled" : "outlined"}
           />
@@ -133,21 +126,21 @@ export function ConversationList({
             <Chip
               label="All conversations"
               size="small"
-              onClick={() => setAssigneeFilter("all")}
+              onClick={() => onAssigneeFilterChange("all")}
               color={assigneeFilter === "all" ? "primary" : "default"}
               variant={assigneeFilter === "all" ? "filled" : "outlined"}
             />
             <Chip
               label="Assigned to me"
               size="small"
-              onClick={() => setAssigneeFilter("mine")}
+              onClick={() => onAssigneeFilterChange("mine")}
               color={assigneeFilter === "mine" ? "primary" : "default"}
               variant={assigneeFilter === "mine" ? "filled" : "outlined"}
             />
             <Chip
               label="Unassigned"
               size="small"
-              onClick={() => setAssigneeFilter("unassigned")}
+              onClick={() => onAssigneeFilterChange("unassigned")}
               color={assigneeFilter === "unassigned" ? "primary" : "default"}
               variant={assigneeFilter === "unassigned" ? "filled" : "outlined"}
             />
@@ -155,7 +148,7 @@ export function ConversationList({
         )}
         <Tabs
           value={statusFilter}
-          onChange={(_, value) => setStatusFilter(value)}
+          onChange={(_, value) => onStatusFilterChange(value)}
           variant="scrollable"
           scrollButtons={false}
           sx={{ minHeight: 32, "& .MuiTab-root": { minHeight: 32, py: 0.5, fontSize: "0.8rem" } }}
@@ -167,12 +160,12 @@ export function ConversationList({
       </Box>
 
       <Box className={styles.list}>
-        {filtered.length === 0 && (
+        {sorted.length === 0 && (
           <Typography variant="body2" sx={{ color: "text.secondary", p: 3, textAlign: "center" }}>
             No conversations match this filter.
           </Typography>
         )}
-        {filtered.map((conversation) => {
+        {sorted.map((conversation) => {
           const contact = conversation.contact ?? contactsById.get(conversation.contactId);
           if (!contact) return null;
           const isActive = conversation.id === activeConversationId;

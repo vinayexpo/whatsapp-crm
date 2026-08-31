@@ -359,6 +359,8 @@ async function listConversations(params?: {
   assignedTo?: string;
   contactId?: string;
   search?: string;
+  status?: string;
+  channel?: string;
   page?: number;
   perPage?: number;
 }): Promise<PaginatedResponse<Conversation>> {
@@ -366,6 +368,8 @@ async function listConversations(params?: {
     assignedTo: params?.assignedTo,
     contactId: params?.contactId,
     search: params?.search,
+    status: params?.status,
+    channel: params?.channel,
     page: params?.page,
     per_page: params?.perPage,
   });

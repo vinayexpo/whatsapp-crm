@@ -6,7 +6,7 @@ import IconButton from "@mui/material/IconButton";
 import Drawer from "@mui/material/Drawer";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { AppLayout } from "~/components/app-layout/app-layout";
-import { ConversationList } from "~/components/inbox/conversation-list";
+import { ConversationList, type FilterAssignee, type FilterChannel } from "~/components/inbox/conversation-list";
 import { ChatWindow } from "~/components/inbox/chat-window";
 import { ContactDetailsPanel } from "~/components/inbox/contact-details-panel";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
@@ -48,6 +48,9 @@ export default function Inbox() {
   const hasAutoSelected = useRef(false);
   const [searchInput, setSearchInput] = useState("");
   const isFirstSearchRender = useRef(true);
+  const [statusFilter, setStatusFilter] = useState<Conversation["status"] | "all">("all");
+  const [channelFilter, setChannelFilter] = useState<FilterChannel>("all");
+  const [assigneeFilter, setAssigneeFilter] = useState<FilterAssignee>("all");
 
   const requestedContactId = searchParams.get("contactId");
 
@@ -57,10 +60,17 @@ export default function Inbox() {
       return;
     }
     const handle = setTimeout(() => {
-      fetchConversationsPage(1, undefined, searchInput.trim() || undefined);
+      fetchConversationsPage(
+        1,
+        assigneeFilter === "all" ? undefined : assigneeFilter,
+        searchInput.trim() || undefined,
+        statusFilter === "all" ? undefined : statusFilter,
+        channelFilter === "all" ? undefined : channelFilter,
+      );
     }, 300);
     return () => clearTimeout(handle);
-  }, [searchInput, fetchConversationsPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput, statusFilter, channelFilter, assigneeFilter, fetchConversationsPage]);
 
   useEffect(() => {
     if (!requestedContactId) return;
@@ -89,11 +99,11 @@ export default function Inbox() {
     }
   }, [activeConversationId, conversations, loadMessagesForConversation]);
 
-  function handleFilteredChange(filtered: Conversation[]) {
-    if (activeConversationId !== null && !filtered.some((c) => c.id === activeConversationId)) {
+  useEffect(() => {
+    if (activeConversationId !== null && !conversations.some((c) => c.id === activeConversationId)) {
       setActiveConversationId(null);
     }
-  }
+  }, [conversations, activeConversationId]);
 
   const contactsById = useMemo(() => new Map(allContacts.map((c) => [c.id, c])), [allContacts]);
 
@@ -139,16 +149,29 @@ export default function Inbox() {
               activeConversationId={activeConversationId}
               currentUserId={currentUser?.id}
               onSelect={handleSelectConversation}
-              onFilteredChange={handleFilteredChange}
               hideAssigneeFilter={currentUser?.role === "agent"}
               searchValue={searchInput}
               onSearchChange={setSearchInput}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              channelFilter={channelFilter}
+              onChannelFilterChange={setChannelFilter}
+              assigneeFilter={assigneeFilter}
+              onAssigneeFilterChange={setAssigneeFilter}
             />
           </Box>
           <PaginatedListFooter
             page={conversationsPagination.currentPage}
             lastPage={conversationsPagination.lastPage}
-            onPageChange={(page) => fetchConversationsPage(page)}
+            onPageChange={(page) =>
+              fetchConversationsPage(
+                page,
+                assigneeFilter === "all" ? undefined : assigneeFilter,
+                searchInput.trim() || undefined,
+                statusFilter === "all" ? undefined : statusFilter,
+                channelFilter === "all" ? undefined : channelFilter,
+              )
+            }
           />
         </Box>
 

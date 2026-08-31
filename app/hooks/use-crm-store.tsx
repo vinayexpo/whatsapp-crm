@@ -50,7 +50,7 @@ interface CrmStoreValue {
   allContacts: Contact[];
   conversations: Conversation[];
   conversationsPagination: PaginationMeta;
-  fetchConversationsPage: (page: number, assignedTo?: string, search?: string) => void;
+  fetchConversationsPage: (page: number, assignedTo?: string, search?: string, status?: string, channel?: string) => void;
   findConversationByContact: (contactId: string) => Promise<string | null>;
   allConversations: Conversation[];
   messages: Message[];
@@ -167,6 +167,8 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [conversationsPage, setConversationsPage] = useState(1);
   const [conversationsAssignedTo, setConversationsAssignedTo] = useState<string | undefined>(undefined);
   const [conversationsSearch, setConversationsSearch] = useState<string | undefined>(undefined);
+  const [conversationsStatus, setConversationsStatus] = useState<string | undefined>(undefined);
+  const [conversationsChannel, setConversationsChannel] = useState<string | undefined>(undefined);
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -237,12 +239,17 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [authStatus]);
 
-  const fetchConversationsPage = useCallback((page: number, assignedTo?: string, search?: string) => {
-    pinnedConversationRef.current = null;
-    setConversationsPage(page);
-    setConversationsAssignedTo(assignedTo);
-    setConversationsSearch(search);
-  }, []);
+  const fetchConversationsPage = useCallback(
+    (page: number, assignedTo?: string, search?: string, status?: string, channel?: string) => {
+      pinnedConversationRef.current = null;
+      setConversationsPage(page);
+      setConversationsAssignedTo(assignedTo);
+      setConversationsSearch(search);
+      setConversationsStatus(status);
+      setConversationsChannel(channel);
+    },
+    [],
+  );
 
   const findConversationByContact = useCallback(async (contactId: string): Promise<string | null> => {
     const existing = conversationsRef.current.find((c) => c.contactId === contactId);
@@ -264,7 +271,13 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     if (authStatus !== "authenticated") return;
     let cancelled = false;
     apiClient
-      .listConversations({ page: conversationsPage, assignedTo: conversationsAssignedTo, search: conversationsSearch })
+      .listConversations({
+        page: conversationsPage,
+        assignedTo: conversationsAssignedTo,
+        search: conversationsSearch,
+        status: conversationsStatus,
+        channel: conversationsChannel,
+      })
       .then(({ data, meta }) => {
         if (!cancelled) {
           const pinned = pinnedConversationRef.current;
@@ -279,7 +292,15 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus, currentUser?.role, conversationsPage, conversationsAssignedTo, conversationsSearch]);
+  }, [
+    authStatus,
+    currentUser?.role,
+    conversationsPage,
+    conversationsAssignedTo,
+    conversationsSearch,
+    conversationsStatus,
+    conversationsChannel,
+  ]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;

@@ -75,6 +75,30 @@ it('filters conversation listing by contact search term', function () {
     expect($ids->all())->toBe([$target->uuid]);
 });
 
+it('filters conversation listing by channel', function () {
+    $target = Conversation::factory()->create(['channel' => 'website']);
+    Conversation::factory()->create(['channel' => 'whatsapp']);
+    $user = actingAsConversationRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/conversations?channel=website');
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids->all())->toBe([$target->uuid]);
+});
+
+it('filters conversation listing by status', function () {
+    $target = Conversation::factory()->create(['status' => 'pending']);
+    Conversation::factory()->create(['status' => 'open']);
+    $user = actingAsConversationRole('manager');
+
+    $response = $this->actingAs($user)->getJson('/api/v1/conversations?status=pending');
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids->all())->toBe([$target->uuid]);
+});
+
 it('lists messages for a conversation in chronological order', function () {
     $conversation = Conversation::factory()->create();
     $first = Message::factory()->create(['conversation_id' => $conversation->id, 'sent_at' => now()->subHour()]);

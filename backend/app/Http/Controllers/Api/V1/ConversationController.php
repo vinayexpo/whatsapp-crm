@@ -45,6 +45,14 @@ class ConversationController extends Controller
             $query->whereHas('contact', fn ($q) => $q->where('uuid', $request->query('contactId')));
         }
 
+        if ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        }
+
+        if ($request->filled('channel')) {
+            $query->where('channel', $request->query('channel'));
+        }
+
         if ($request->filled('search')) {
             $search = $request->query('search');
             $query->whereHas('contact', fn ($q) => $q->where('name', 'like', "%{$search}%")
