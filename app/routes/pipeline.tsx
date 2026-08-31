@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { AppLayout } from "~/components/app-layout/app-layout";
@@ -22,27 +23,31 @@ export function meta({}: Route.MetaArgs) {
 export default function Pipeline() {
   const { currentUser } = useCrmStore();
   const [pipelineContacts, setPipelineContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
     if (!currentUser) return;
     let cancelled = false;
+    setLoading(true);
 
     async function loadAllContacts() {
       const perPage = 100;
       const first = await apiClient.listContacts({ page: 1, perPage });
       if (cancelled) return;
-      let all = first.data;
-      for (let page = 2; page <= first.meta.lastPage; page++) {
-        const next = await apiClient.listContacts({ page, perPage });
-        if (cancelled) return;
-        all = all.concat(next.data);
-      }
+      const remainingPages = Array.from(
+        { length: Math.max(0, first.meta.lastPage - 1) },
+        (_, i) => i + 2,
+      );
+      const rest = await Promise.all(remainingPages.map((page) => apiClient.listContacts({ page, perPage })));
+      if (cancelled) return;
+      const all = first.data.concat(...rest.map((r) => r.data));
       setPipelineContacts(all);
+      setLoading(false);
     }
 
     loadAllContacts().catch(() => {
-      // pipeline board stays empty on failure
+      if (!cancelled) setLoading(false);
     });
 
     return () => {
@@ -80,18 +85,27 @@ export default function Pipeline() {
           </Typography>
         </Stack>
 
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Stack direction="row" spacing={2} sx={{ flex: 1, overflowX: "auto", pb: 2, alignItems: "flex-start" }}>
-            {PIPELINE_STAGES.map((stage) => (
-              <PipelineColumn
-                key={stage.id}
-                stage={stage}
-                contacts={pipelineContacts.filter((c) => c.pipelineStage === stage.id)}
-                onCardClick={setSelectedContact}
-              />
-            ))}
-          </Stack>
-        </DragDropContext>
+        {loading ? (
+          <Box sx={{ m: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, py: 8 }}>
+            <CircularProgress size={28} />
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Loading contacts…
+            </Typography>
+          </Box>
+        ) : (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Stack direction="row" spacing={2} sx={{ flex: 1, overflowX: "auto", pb: 2, alignItems: "flex-start" }}>
+              {PIPELINE_STAGES.map((stage) => (
+                <PipelineColumn
+                  key={stage.id}
+                  stage={stage}
+                  contacts={pipelineContacts.filter((c) => c.pipelineStage === stage.id)}
+                  onCardClick={setSelectedContact}
+                />
+              ))}
+            </Stack>
+          </DragDropContext>
+        )}
       </Box>
 
       <ContactDetailDrawer contact={selectedContact} onClose={() => setSelectedContact(null)} />
