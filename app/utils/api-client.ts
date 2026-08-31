@@ -324,6 +324,11 @@ async function getPipelineFunnel(): Promise<{ stage: string; count: number }[]> 
   return data;
 }
 
+async function getContact(contactId: string): Promise<Contact> {
+  const { data } = await apiRequest<{ data: Contact }>(`/api/v1/contacts/${contactId}`);
+  return data;
+}
+
 async function updateContactPipelineStage(
   contactId: string,
   pipelineStage: PipelineStageId,
@@ -1354,6 +1359,7 @@ export const apiClient = {
   listCompanyAdmins,
   createCompanyAdmin,
   listContacts,
+  getContact,
   listPipelineStages,
   getPipelineFunnel,
   updateContactPipelineStage,

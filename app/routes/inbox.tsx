@@ -11,7 +11,8 @@ import { ChatWindow } from "~/components/inbox/chat-window";
 import { ContactDetailsPanel } from "~/components/inbox/contact-details-panel";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { useCrmStore } from "~/hooks/use-crm-store";
-import type { Conversation } from "~/data/types";
+import { apiClient } from "~/utils/api-client";
+import type { Contact, Conversation } from "~/data/types";
 import type { Route } from "./+types/inbox";
 
 export function meta({}: Route.MetaArgs) {
@@ -51,6 +52,7 @@ export default function Inbox() {
   const [statusFilter, setStatusFilter] = useState<Conversation["status"] | "all">("all");
   const [channelFilter, setChannelFilter] = useState<FilterChannel>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<FilterAssignee>("all");
+  const [pinnedContact, setPinnedContact] = useState<Contact | null>(null);
 
   const requestedContactId = searchParams.get("contactId");
 
@@ -108,7 +110,23 @@ export default function Inbox() {
   const contactsById = useMemo(() => new Map(allContacts.map((c) => [c.id, c])), [allContacts]);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId) ?? null;
-  const activeContact = activeConversation ? contactsById.get(activeConversation.contactId) : null;
+  const activeContact = activeConversation
+    ? (contactsById.get(activeConversation.contactId) ?? pinnedContact)
+    : null;
+
+  useEffect(() => {
+    if (!activeConversation) return;
+    if (contactsById.has(activeConversation.contactId)) return;
+    if (pinnedContact?.id === activeConversation.contactId) return;
+    let cancelled = false;
+    apiClient.getContact(activeConversation.contactId).then((contact) => {
+      if (!cancelled) setPinnedContact(contact);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConversation, contactsById, pinnedContact]);
+
   const activeMessages = messages
     .filter((m) => m.conversationId === activeConversationId)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
