@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -8,6 +8,7 @@ import { PipelineColumn } from "~/components/pipeline/pipeline-column";
 import { ContactDetailDrawer } from "~/components/contacts/contact-detail-drawer";
 import { PIPELINE_STAGES } from "~/data/pipeline-stages";
 import { useCrmStore } from "~/hooks/use-crm-store";
+import { apiClient } from "~/utils/api-client";
 import type { Contact, PipelineStageId } from "~/data/types";
 import type { Route } from "./+types/pipeline";
 
@@ -19,13 +20,52 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Pipeline() {
-  const { allContacts, moveContactToStage } = useCrmStore();
+  const { currentUser } = useCrmStore();
+  const [pipelineContacts, setPipelineContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+
+    async function loadAllContacts() {
+      const perPage = 100;
+      const first = await apiClient.listContacts({ page: 1, perPage });
+      if (cancelled) return;
+      let all = first.data;
+      for (let page = 2; page <= first.meta.lastPage; page++) {
+        const next = await apiClient.listContacts({ page, perPage });
+        if (cancelled) return;
+        all = all.concat(next.data);
+      }
+      setPipelineContacts(all);
+    }
+
+    loadAllContacts().catch(() => {
+      // pipeline board stays empty on failure
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   function handleDragEnd(result: DropResult) {
     const { destination, draggableId } = result;
     if (!destination) return;
-    moveContactToStage(draggableId, destination.droppableId as PipelineStageId);
+    const stage = destination.droppableId as PipelineStageId;
+    const previous = pipelineContacts.find((c) => c.id === draggableId);
+    if (!previous) return;
+
+    setPipelineContacts((prev) => prev.map((c) => (c.id === draggableId ? { ...c, pipelineStage: stage } : c)));
+    apiClient.updateContactPipelineStage(draggableId, stage, previous.updatedAt).then(
+      (updated) => {
+        setPipelineContacts((prev) => prev.map((c) => (c.id === draggableId ? updated : c)));
+      },
+      () => {
+        setPipelineContacts((prev) => prev.map((c) => (c.id === draggableId ? previous : c)));
+      },
+    );
   }
 
   return (
@@ -46,7 +86,7 @@ export default function Pipeline() {
               <PipelineColumn
                 key={stage.id}
                 stage={stage}
-                contacts={allContacts.filter((c) => c.pipelineStage === stage.id)}
+                contacts={pipelineContacts.filter((c) => c.pipelineStage === stage.id)}
                 onCardClick={setSelectedContact}
               />
             ))}
