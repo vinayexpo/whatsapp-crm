@@ -324,6 +324,22 @@ async function getPipelineFunnel(): Promise<{ stage: string; count: number }[]> 
   return data;
 }
 
+interface DashboardSummary {
+  totalContacts: number;
+  activeLeads: number;
+  wonValue: number;
+  openChats: number;
+  unreadMessages: number;
+  activeCampaigns: number;
+  totalCampaigns: number;
+  conversionRate: number;
+}
+
+async function getDashboardSummary(): Promise<DashboardSummary> {
+  const { data } = await apiRequest<{ data: DashboardSummary }>("/api/v1/analytics/dashboard-summary");
+  return data;
+}
+
 async function getContact(contactId: string): Promise<Contact> {
   const { data } = await apiRequest<{ data: Contact }>(`/api/v1/contacts/${contactId}`);
   return data;
@@ -1362,6 +1378,7 @@ export const apiClient = {
   getContact,
   listPipelineStages,
   getPipelineFunnel,
+  getDashboardSummary,
   updateContactPipelineStage,
   addContactTag,
   updateContact,

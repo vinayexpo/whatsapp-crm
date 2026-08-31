@@ -79,6 +79,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/pipeline-stages', [PipelineStageController::class, 'index']);
         Route::get('/analytics/pipeline-funnel', [AnalyticsController::class, 'pipelineFunnel']);
+        Route::get('/analytics/dashboard-summary', [AnalyticsController::class, 'dashboardSummary']);
 
         Route::get('/contacts', [ContactController::class, 'index']);
         Route::post('/contacts', [ContactController::class, 'store']);

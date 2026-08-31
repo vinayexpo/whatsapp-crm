@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
@@ -17,6 +18,7 @@ import CampaignIcon from "@mui/icons-material/Campaign";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
 import { useCrmStore } from "~/hooks/use-crm-store";
+import { apiClient } from "~/utils/api-client";
 import { formatCurrency, formatRelativeTime } from "~/utils/format";
 import type { Route } from "./+types/home";
 
@@ -38,45 +40,56 @@ const ACTIVITY_ICONS = {
 };
 
 export default function Home() {
-  const { allContacts, allConversations, allCampaigns, activityFeed } = useCrmStore();
+  const { allCampaigns, activityFeed } = useCrmStore();
+  const [summary, setSummary] = useState({
+    totalContacts: 0,
+    activeLeads: 0,
+    wonValue: 0,
+    openChats: 0,
+    unreadMessages: 0,
+    activeCampaigns: 0,
+    totalCampaigns: 0,
+    conversionRate: 0,
+  });
 
-  const activeLeads = allContacts.filter((c) => !["won", "lost"].includes(c.pipelineStage)).length;
-  const openChats = allConversations.filter((c) => c.status === "open" || c.status === "pending").length;
-  const activeCampaigns = allCampaigns.filter((c) => c.status === "active" || c.status === "scheduled").length;
-  const totalReplied = allCampaigns.reduce((sum, c) => sum + c.repliedCount, 0);
-  const totalRecipients = allCampaigns.reduce((sum, c) => sum + c.recipientCount, 0);
-  const conversionRate = totalRecipients > 0 ? Math.round((totalReplied / totalRecipients) * 100) : 0;
-  const wonDeals = allContacts.filter((c) => c.pipelineStage === "won");
-  const wonValue = wonDeals.reduce((sum, c) => sum + c.dealValue, 0);
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.getDashboardSummary().then((data) => {
+      if (!cancelled) setSummary(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const metrics = [
     {
       label: "Active Leads",
-      value: activeLeads,
+      value: summary.activeLeads,
       icon: PeopleAltRoundedIcon,
       color: "#3B82C4",
-      helper: `${allContacts.length} total contacts`,
+      helper: `${summary.totalContacts} total contacts`,
     },
     {
       label: "Open Chats",
-      value: openChats,
+      value: summary.openChats,
       icon: ChatBubbleOutlineRoundedIcon,
       color: "#00A884",
-      helper: `${allConversations.reduce((s, c) => s + c.unreadCount, 0)} unread messages`,
+      helper: `${summary.unreadMessages} unread messages`,
     },
     {
       label: "Active Campaigns",
-      value: activeCampaigns,
+      value: summary.activeCampaigns,
       icon: CampaignRoundedIcon,
       color: "#7C4DFF",
-      helper: `${allCampaigns.length} campaigns total`,
+      helper: `${summary.totalCampaigns} campaigns total`,
     },
     {
       label: "Conversion Rate",
-      value: `${conversionRate}%`,
+      value: `${summary.conversionRate}%`,
       icon: TrendingUpRoundedIcon,
       color: "#F2A93B",
-      helper: `${formatCurrency(wonValue)} won this quarter`,
+      helper: `${formatCurrency(summary.wonValue)} won this quarter`,
     },
   ];
 
