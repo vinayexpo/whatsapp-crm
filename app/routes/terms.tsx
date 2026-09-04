@@ -163,7 +163,7 @@ export default function Terms() {
             <Body>
               If you have questions about these Terms, please contact us at{" "}
               <Box component="span" sx={{ fontWeight: 600 }}>
-                vpraveenvarma1238@gmail.com
+                support@creativeconnects.web.id
               </Box>
               .
             </Body>

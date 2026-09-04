@@ -168,7 +168,7 @@ export default function PrivacyPolicy() {
             <Body>
               If you have questions about this Privacy Policy, please contact us at{" "}
               <Box component="span" sx={{ fontWeight: 600 }}>
-                vpraveenvarma1238@gmail.com
+                support@creativeconnects.web.id
               </Box>
               .
             </Body>
