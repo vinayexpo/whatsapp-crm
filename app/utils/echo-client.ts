@@ -31,6 +31,7 @@ export function getEcho(): Echo<"reverb"> {
     wsHost: REVERB_HOST,
     wsPort: REVERB_PORT,
     wssPort: REVERB_PORT,
+    wsPath: import.meta.env.VITE_REVERB_PATH ?? "",
     forceTLS: REVERB_FORCE_TLS,
     enabledTransports: ["ws", "wss"],
     authEndpoint: AUTH_ENDPOINT,

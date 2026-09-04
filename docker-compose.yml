@@ -56,6 +56,7 @@ services:
         VITE_REVERB_PORT: ${VITE_REVERB_PORT}
         VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME}
         VITE_REVERB_APP_KEY: ${VITE_REVERB_APP_KEY}
+        VITE_REVERB_PATH: ${VITE_REVERB_PATH}
     restart: unless-stopped
     ports:
       - "3000:3000"

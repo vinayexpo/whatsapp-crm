@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -134,6 +134,11 @@ export default function Login() {
           <Button type="submit" variant="contained" size="large" disabled={submitting} fullWidth>
             {submitting ? "Signing in…" : "Sign in"}
           </Button>
+
+          <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center" }}>
+            By signing in, you agree to our <Link to="/terms">Terms</Link> and{" "}
+            <Link to="/privacy-policy">Privacy Policy</Link>.
+          </Typography>
         </Stack>
       </Paper>
     </Box>
