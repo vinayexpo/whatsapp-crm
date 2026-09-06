@@ -1,0 +1,45 @@
+# Creative Connects
+
+> Creative Connects is a WhatsApp and Instagram customer relationship management (CRM) platform. It lets businesses manage conversations, contacts, sales pipelines, campaigns, chatbots, and voice calling across WhatsApp Business and Instagram Messaging from a single dashboard.
+
+## Overview
+
+Creative Connects connects a business's WhatsApp Business API and Instagram Messaging API accounts to a shared team inbox and CRM. Each business operates as an isolated "Company" account with its own Agents, contacts, and conversation data. The platform is account-based: all functionality beyond sign-in and the legal pages requires authentication, and there is no public marketing or content site.
+
+## Core features
+
+- **Unified Inbox**: Agents view and reply to WhatsApp and Instagram conversations in one place, including text, media attachments, and interactive button replies.
+- **Contacts & Phonebook**: Stores contact details (name, phone/handle, email, location, notes, purchase history) and organizes them into phonebook folders and tags.
+- **Sales Pipeline**: A visual, stage-based pipeline for tracking deals and customer journeys tied to each contact.
+- **Campaigns**: Broadcast messaging campaigns sent to segments of contacts over WhatsApp/Instagram.
+- **Templates**: Management of WhatsApp message templates, including submission to Meta for approval.
+- **Chatbots & Chat Menus**: Configurable automated chatbot flows and interactive chat menus for handling common customer requests without an Agent.
+- **Automations**: Automation flows that trigger actions based on conversation or contact events.
+- **AI Assistant**: AI-assisted reply suggestions and conversation help, configurable per Company (including choice of AI provider/model).
+- **Voice Agents & WhatsApp Calling**: Outbound/inbound WhatsApp voice calling with AI voice agents, call recordings, transcripts, and call summaries.
+- **Analytics**: Dashboards covering conversation volume, leads, campaign performance, and daily metrics.
+- **Notifications**: In-app notifications and optional browser push notifications (Web Push/VAPID) for new messages and events.
+- **Roles & Permissions**: Company admins manage Agent accounts and role-based permissions; a separate superadmin role manages Companies at the platform level.
+
+## Integrations
+
+- **Meta WhatsApp Business API** and **Instagram Messaging API** — the core channels through which all customer messages and calls flow.
+- **Amazon S3** — stores message attachments and media.
+- **AI language model providers** (OpenAI-compatible) — power the AI Assistant and voice agent transcription/summarization features, where enabled by a Company.
+
+## Access model
+
+- **Agents** sign in at `/login` with an email and password issued by their Company.
+- **Companies** are the tenant boundary — each Company's contacts, conversations, and settings are isolated from other Companies.
+- **Superadmins** manage Company accounts platform-wide via a separate superadmin area.
+- First-time platform setup (`/setup`) creates the initial superadmin account.
+
+## Docs
+
+- [Privacy Policy](https://creativeconnects.web.id/privacy-policy): describes what personal data is collected (account, contact, message, call, and push-notification data), how it's used, third-party processors (Meta, AWS, AI providers, telephony providers), retention, and user rights.
+- [Terms & Conditions](https://creativeconnects.web.id/terms): governs use of the platform, including account responsibilities, acceptable use, third-party platform dependency, intellectual property, and liability terms.
+- [Sign in](https://creativeconnects.web.id/login): account sign-in page for existing Agents.
+
+## Notes for crawlers
+
+This is a private, authenticated business application. Pages other than `/login`, `/privacy-policy`, and `/terms` require an active session and represent per-Company customer data — they are not public content and should not be indexed or attributed as general web content.

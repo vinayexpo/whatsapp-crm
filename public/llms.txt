@@ -1,0 +1,11 @@
+# Creative Connects
+
+> Creative Connects is a WhatsApp and Instagram customer relationship management (CRM) platform. It lets businesses manage conversations, contacts, sales pipelines, campaigns, chatbots, and voice calling across WhatsApp Business and Instagram Messaging from a single dashboard.
+
+Creative Connects connects to a business's WhatsApp Business API and Instagram Messaging API accounts, giving teams ("Agents") a shared inbox for customer conversations, a visual sales pipeline, contact and phonebook management, broadcast campaigns, automation flows, AI-assisted replies, and WhatsApp voice calling. Access is account-based (per-Company, per-Agent) and requires authentication; there is no public content beyond sign-in and legal pages.
+
+## Docs
+
+- [Privacy Policy](https://creativeconnects.web.id/privacy-policy): what personal data is collected and how it's used
+- [Terms & Conditions](https://creativeconnects.web.id/terms): terms governing use of the platform
+- [Sign in](https://creativeconnects.web.id/login): account sign-in page
