@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /login
+Allow: /privacy-policy
+Allow: /terms
+Disallow: /
+
+Sitemap: https://creativeconnects.web.id/sitemap.xml
