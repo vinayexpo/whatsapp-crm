@@ -239,6 +239,29 @@ it('falls back to a STUN-only ICE server list when Twilio credentials are not co
     expect($response->json('data.iceServers'))->toBe([['urls' => ['stun:stun.l.google.com:19302']]]);
 });
 
+it('returns coturn TURN credentials as ICE servers when configured, preferring it over Twilio', function () {
+    config([
+        'services.coturn.host' => 'turn.example.com',
+        'services.coturn.secret' => 'sekret',
+        'services.twilio.account_sid' => 'ACtest',
+        'services.twilio.auth_token' => 'secret',
+    ]);
+    $manager = actingAsInitiateCallRole('manager');
+
+    $response = $this->actingAs($manager)->getJson('/api/v1/whatsapp-calls/ice-servers');
+
+    $response->assertOk();
+    $iceServers = $response->json('data.iceServers');
+
+    expect($iceServers)->toHaveCount(2);
+    expect($iceServers[0]['urls'])->toBe(['stun:turn.example.com:3478']);
+    expect($iceServers[1]['urls'])->toBe(['turn:turn.example.com:3478?transport=udp', 'turn:turn.example.com:3478?transport=tcp']);
+    expect($iceServers[1]['username'])->toBeString();
+
+    $expectedCredential = base64_encode(hash_hmac('sha1', $iceServers[1]['username'], 'sekret', true));
+    expect($iceServers[1]['credential'])->toBe($expectedCredential);
+});
+
 it('returns Twilio TURN credentials as ICE servers when configured', function () {
     config(['services.twilio.account_sid' => 'ACtest', 'services.twilio.auth_token' => 'secret']);
     $manager = actingAsInitiateCallRole('manager');

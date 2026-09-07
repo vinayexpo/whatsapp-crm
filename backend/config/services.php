@@ -47,6 +47,11 @@ return [
         'auth_token' => env('TWILIO_AUTH_TOKEN'),
     ],
 
+    'coturn' => [
+        'host' => env('COTURN_HOST'),
+        'secret' => env('COTURN_SECRET'),
+    ],
+
     'web_push' => [
         'vapid_public_key' => env('VAPID_PUBLIC_KEY'),
         'vapid_private_key' => env('VAPID_PRIVATE_KEY'),

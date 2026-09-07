@@ -46,6 +46,23 @@ services:
       mysql:
         condition: service_healthy
 
+  coturn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49200
+      - --realm=${COTURN_HOST}
+      - --use-auth-secret
+      - --static-auth-secret=${COTURN_SECRET}
+      - --no-cli
+      - --no-tls
+      - --no-dtls
+
   frontend:
     build:
       context: .

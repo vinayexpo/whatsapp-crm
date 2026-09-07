@@ -226,10 +226,17 @@ class WhatsappCallController extends Controller
     {
         $this->authorize('create', WhatsappCall::class);
 
+        $fallback = [['urls' => ['stun:stun.l.google.com:19302']]];
+
+        $turnHost = config('services.coturn.host');
+        $turnSecret = config('services.coturn.secret');
+
+        if ($turnHost && $turnSecret) {
+            return response()->json(['data' => ['iceServers' => $this->coturnIceServers($turnHost, $turnSecret)]]);
+        }
+
         $accountSid = config('services.twilio.account_sid');
         $authToken = config('services.twilio.auth_token');
-
-        $fallback = [['urls' => ['stun:stun.l.google.com:19302']]];
 
         if (! $accountSid || ! $authToken) {
             return response()->json(['data' => ['iceServers' => $fallback]]);
@@ -254,6 +261,31 @@ class WhatsappCallController extends Controller
         }
 
         return response()->json(['data' => ['iceServers' => $response->json('ice_servers', $fallback)]]);
+    }
+
+    /**
+     * Builds coturn's REST API (RFC 5766 "TURN REST API") time-limited
+     * credentials: username is "<expiry-unix-ts>", password is
+     * base64(HMAC-SHA1(username, sharedSecret)). coturn is configured with
+     * the matching `use-auth-secret`/`static-auth-secret` so it derives and
+     * checks the same password independently -- no credential exchange or
+     * external API call needed.
+     *
+     * @return array<int, array{urls: array<int, string>, username?: string, credential?: string}>
+     */
+    private function coturnIceServers(string $host, string $secret): array
+    {
+        $username = (string) (now()->timestamp + 3600);
+        $credential = base64_encode(hash_hmac('sha1', $username, $secret, true));
+
+        return [
+            ['urls' => ["stun:{$host}:3478"]],
+            [
+                'urls' => ["turn:{$host}:3478?transport=udp", "turn:{$host}:3478?transport=tcp"],
+                'username' => $username,
+                'credential' => $credential,
+            ],
+        ];
     }
 
     private function describeMetaError(RequestException $e): string
