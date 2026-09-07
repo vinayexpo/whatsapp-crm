@@ -239,6 +239,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         component="main"
         sx={{
           flexGrow: 1,
+          minWidth: 0,
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
           display: "flex",
           flexDirection: "column",
@@ -246,7 +247,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         }}
       >
         <Toolbar />
-        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>{children}</Box>
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>{children}</Box>
       </Box>
     </Box>
   );
