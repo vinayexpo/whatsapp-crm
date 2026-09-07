@@ -201,7 +201,7 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
             )}
           </Box>
         </Stack>
-        <Stack direction="row" sx={{ alignItems: "center", gap: 1.5 }}>
+        <Stack direction="row" sx={{ alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
           <Chip
             label={isConnected ? "Connected" : "Disconnected"}
             size="small"
