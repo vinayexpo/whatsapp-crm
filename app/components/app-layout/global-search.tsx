@@ -68,7 +68,7 @@ export function GlobalSearch() {
 
   return (
     <ClickAwayListener onClickAway={() => setOpen(false)}>
-      <Box ref={anchorRef} sx={{ position: "relative", flex: 1, maxWidth: 420 }}>
+      <Box ref={anchorRef} sx={{ position: "relative", flex: 1, minWidth: 0, maxWidth: 420 }}>
         <Paper
           variant="outlined"
           sx={{
@@ -80,10 +80,17 @@ export function GlobalSearch() {
             bgcolor: "background.default",
           }}
         >
-          <SearchRoundedIcon fontSize="small" sx={{ color: "text.secondary", mr: 1 }} />
+          <SearchRoundedIcon fontSize="small" sx={{ color: "text.secondary", mr: 1, flexShrink: 0 }} />
           <InputBase
-            placeholder="Search contacts, chats, campaigns…"
-            sx={{ fontSize: "0.9rem", flex: 1 }}
+            placeholder="Search…"
+            sx={{
+              fontSize: "0.9rem",
+              flex: 1,
+              minWidth: 0,
+              "& input::placeholder": {
+                fontSize: { xs: "0.8rem", sm: "0.9rem" },
+              },
+            }}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setOpen(true)}

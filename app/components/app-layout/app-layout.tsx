@@ -154,7 +154,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   );
 
   const layout = (
-    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden", bgcolor: "background.default" }}>
+    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden", overflowX: "hidden", bgcolor: "background.default" }}>
       <AppBar
         position="fixed"
         color="inherit"
