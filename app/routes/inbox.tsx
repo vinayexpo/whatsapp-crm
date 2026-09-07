@@ -212,6 +212,7 @@ export default function Inbox() {
               onStatusChange={(status) => updateConversationStatus(activeConversation.id, status)}
               onAssign={(userId) => assignConversation(activeConversation.id, userId)}
               onToggleDetails={() => setDetailsOpen(true)}
+              onBack={() => setActiveConversationId(null)}
               aiAssistantSettings={aiAssistantSettings}
             />
           ) : (
@@ -240,7 +241,14 @@ export default function Inbox() {
         {activeContact && (
           <IconButton
             onClick={() => setDetailsOpen(true)}
-            sx={{ position: "fixed", top: 76, right: 16, display: { xs: "flex", lg: "none" }, bgcolor: "background.paper", boxShadow: 1 }}
+            sx={{
+              position: "fixed",
+              top: { xs: 68, sm: 76 },
+              right: 16,
+              display: { xs: "flex", lg: "none" },
+              bgcolor: "background.paper",
+              boxShadow: 1,
+            }}
           >
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>

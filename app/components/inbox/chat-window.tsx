@@ -23,6 +23,7 @@ import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import InsertDriveFileRoundedIcon from "@mui/icons-material/InsertDriveFileRounded";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
 import { QUICK_REPLIES } from "~/data/types";
 import type { AiAssistantSettings, Contact, Conversation, Message, TeamMember } from "~/data/types";
@@ -46,6 +47,7 @@ interface ChatWindowProps {
   onStatusChange: (status: Conversation["status"]) => void;
   onAssign: (userId: string | null) => void;
   onToggleDetails: () => void;
+  onBack?: () => void;
   aiAssistantSettings: AiAssistantSettings;
 }
 
@@ -60,6 +62,7 @@ export function ChatWindow({
   onStatusChange,
   onAssign,
   onToggleDetails,
+  onBack,
   aiAssistantSettings,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState("");
@@ -139,6 +142,11 @@ export function ChatWindow({
   return (
     <Box className={styles.container}>
       <Stack direction="row" className={styles.header} sx={{ alignItems: "center", gap: 1.5 }}>
+        {onBack && (
+          <IconButton size="small" onClick={onBack} sx={{ display: { xs: "inline-flex", sm: "none" } }} aria-label="Back to conversations">
+            <ArrowBackRoundedIcon fontSize="small" />
+          </IconButton>
+        )}
         <button type="button" className={styles.contactButton} onClick={onToggleDetails}>
           <Avatar src={contact.avatarUrl} alt={contact.name} sx={{ width: 40, height: 40 }} />
           <Box sx={{ textAlign: "start" }}>
