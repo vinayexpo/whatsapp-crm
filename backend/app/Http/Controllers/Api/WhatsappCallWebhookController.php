@@ -29,8 +29,11 @@ class WhatsappCallWebhookController extends Controller
             'payload' => $request->all(),
         ]);
 
-        $status = data_get($request->all(), 'entry.0.changes.0.value.calls.0.status');
-        $metaCallId = data_get($request->all(), 'entry.0.changes.0.value.calls.0.id');
+        $status = data_get($request->all(), 'entry.0.changes.0.value.calls.0.status')
+            ?? data_get($request->all(), 'entry.0.changes.0.value.statuses.0.status');
+        $status = $status ? strtolower($status) : null;
+        $metaCallId = data_get($request->all(), 'entry.0.changes.0.value.calls.0.id')
+            ?? data_get($request->all(), 'entry.0.changes.0.value.statuses.0.id');
         $session = data_get($request->all(), 'entry.0.changes.0.value.calls.0.session');
 
         $existingCall = $metaCallId ? WhatsappCall::query()->where('meta_call_id', $metaCallId)->first() : null;
@@ -120,6 +123,7 @@ class WhatsappCallWebhookController extends Controller
             'ringing' => 'ringing',
             'accepted' => 'in_progress',
             'terminated' => 'completed',
+            'completed' => 'completed',
             'failed' => 'failed',
             'missed' => 'missed',
             'rejected' => 'missed',
@@ -133,7 +137,7 @@ class WhatsappCallWebhookController extends Controller
             $attributes['sdp_exchange_status'] = 'connected';
         }
 
-        $terminal = in_array($status, ['terminated', 'failed', 'missed', 'rejected'], true);
+        $terminal = in_array($status, ['terminated', 'completed', 'failed', 'missed', 'rejected'], true);
 
         if ($terminal) {
             $attributes['ended_at'] = now();

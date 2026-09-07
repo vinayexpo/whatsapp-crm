@@ -245,6 +245,49 @@ it('returns 404 on an action request for an unknown call id', function () {
     ])->assertNotFound();
 });
 
+it('marks a call in_progress from an uppercase ACCEPTED status delivered via the statuses array', function () {
+    Queue::fake();
+    config(['services.meta.app_secret' => null]);
+
+    $whatsappCall = WhatsappCall::factory()->create([
+        'meta_call_id' => 'wacid.777',
+        'status' => 'ringing',
+        'started_at' => null,
+    ]);
+
+    $this->postJson('/api/webhooks/whatsapp-call', [
+        'entry' => [['changes' => [['value' => [
+            'statuses' => [['id' => 'wacid.777', 'type' => 'call', 'status' => 'ACCEPTED']],
+        ]]]]],
+    ])->assertNoContent();
+
+    $whatsappCall->refresh();
+    expect($whatsappCall->status)->toBe('in_progress');
+    expect($whatsappCall->started_at)->not->toBeNull();
+});
+
+it('marks a call completed from an uppercase COMPLETED status delivered via the statuses array', function () {
+    Queue::fake();
+    config(['services.meta.app_secret' => null]);
+
+    $whatsappCall = WhatsappCall::factory()->create([
+        'meta_call_id' => 'wacid.888',
+        'status' => 'in_progress',
+    ]);
+
+    $this->postJson('/api/webhooks/whatsapp-call', [
+        'entry' => [['changes' => [['value' => [
+            'statuses' => [['id' => 'wacid.888', 'type' => 'call', 'status' => 'COMPLETED']],
+        ]]]]],
+    ])->assertNoContent();
+
+    $whatsappCall->refresh();
+    expect($whatsappCall->status)->toBe('completed');
+    expect($whatsappCall->ended_at)->not->toBeNull();
+
+    Queue::assertPushed(ProcessWhatsappCallCompletion::class);
+});
+
 it('stores the remote SDP answer and dispatches WhatsappCallSdpAnswerReceived', function () {
     Event::fake([WhatsappCallSdpAnswerReceived::class]);
     config(['services.meta.app_secret' => null]);
