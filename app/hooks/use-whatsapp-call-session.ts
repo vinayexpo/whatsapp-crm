@@ -99,7 +99,12 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
       echo.private(channelName).listen(".whatsapp-call.sdp-answer", async (payload: { sdp: string }) => {
         try {
           await pcRef.current?.setRemoteDescription({ type: "answer", sdp: payload.sdp });
-        } catch {
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error("Failed to apply remote SDP answer", error, {
+            signalingState: pcRef.current?.signalingState,
+            hasPeerConnection: Boolean(pcRef.current),
+          });
           setCallState("failed");
           setErrorMessage("Couldn't establish the audio connection.");
         }
