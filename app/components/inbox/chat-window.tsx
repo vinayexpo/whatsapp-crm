@@ -29,6 +29,7 @@ import type { AiAssistantSettings, Contact, Conversation, Message, TeamMember } 
 import { formatTime } from "~/utils/format";
 import { useAiChatCompletion } from "~/hooks/use-ai-chat-completion";
 import { apiClient } from "~/utils/api-client";
+import { WhatsappText } from "~/utils/whatsapp-text";
 import { WhatsappCallSummary } from "./whatsapp-call-summary";
 import { WhatsappCallPanel } from "./whatsapp-call-panel";
 import classNames from "classnames";
@@ -270,7 +271,9 @@ export function ChatWindow({
                   <Typography variant="caption">Proposal.pdf</Typography>
                 </Stack>
               )}
-              <Typography variant="body2">{message.text}</Typography>
+              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                <WhatsappText text={message.text} />
+              </Typography>
               <Stack direction="row" sx={{ alignItems: "center", justifyContent: "flex-end", gap: 0.4, mt: 0.5 }}>
                 <Typography variant="caption" sx={{ opacity: 0.7, fontSize: "0.68rem" }}>
                   {formatTime(message.timestamp)}
