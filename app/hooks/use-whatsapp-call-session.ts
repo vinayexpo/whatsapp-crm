@@ -98,7 +98,12 @@ export function useWhatsappCallSession(): UseWhatsappCallSessionResult {
       });
       echo.private(channelName).listen(".whatsapp-call.sdp-answer", async (payload: { sdp: string }) => {
         try {
-          await pcRef.current?.setRemoteDescription({ type: "answer", sdp: payload.sdp });
+          // Meta's webhook payload strips the trailing line terminator from
+          // the last SDP line, which Chrome's parser rejects outright
+          // ("Invalid SDP line"). Every SDP line, including the last, must
+          // end with a CRLF.
+          const sdp = payload.sdp.endsWith("\r\n") ? payload.sdp : `${payload.sdp.replace(/\r?\n?$/, "")}\r\n`;
+          await pcRef.current?.setRemoteDescription({ type: "answer", sdp });
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error("Failed to apply remote SDP answer", error, {
