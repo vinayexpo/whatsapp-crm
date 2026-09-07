@@ -56,6 +56,8 @@ services:
       - --listening-port=3478
       - --min-port=49160
       - --max-port=49200
+      - --listening-ip=${COTURN_PRIVATE_IP}
+      - --relay-ip=${COTURN_PRIVATE_IP}
       - --realm=${COTURN_HOST}
       - --external-ip=${COTURN_PUBLIC_IP}/${COTURN_PRIVATE_IP}
       - --use-auth-secret
