@@ -13,6 +13,7 @@
 .list {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .item {
@@ -23,6 +24,7 @@
   text-align: start;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   transition: background-color 0.15s ease;
+  touch-action: manipulation;
 }
 
 .item:hover {
