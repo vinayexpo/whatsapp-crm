@@ -239,9 +239,50 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 'status' => 'failed',
                 'failure_reason' => trim(($reason ?? 'Message delivery failed.').($details ? " {$details}" : '')),
             ]);
+        } elseif (in_array($newStatus, ['delivered', 'read'], true)) {
+            $this->applyCampaignRecipientStatus($message->id, $newStatus);
         }
 
         MessageStatusUpdated::dispatch($message->load('conversation'));
+    }
+
+    private function applyCampaignRecipientStatus(int $messageId, string $newStatus): void
+    {
+        $recipient = CampaignRecipient::query()->where('message_id', $messageId)->first();
+
+        if (! $recipient || $recipient->status === 'failed') {
+            return;
+        }
+
+        // Meta redelivers status webhooks, and delivered can arrive after read
+        // out of order -- only move the recipient forward, and only increment
+        // each campaign counter the first time that status is reached.
+        $rank = ['pending' => 0, 'sent' => 1, 'delivered' => 2, 'read' => 3, 'replied' => 4];
+
+        if (($rank[$newStatus] ?? 0) <= ($rank[$recipient->status] ?? 0)) {
+            return;
+        }
+
+        $previousRank = $rank[$recipient->status] ?? 0;
+
+        $recipient->update([
+            'status' => $newStatus,
+            'delivered_at' => $newStatus === 'delivered' ? now() : $recipient->delivered_at,
+            'read_at' => $newStatus === 'read' ? now() : $recipient->read_at,
+        ]);
+
+        // If "read" arrives without a prior "delivered" webhook (Meta doesn't
+        // guarantee ordering), the recipient skips the delivered rank -- credit
+        // delivered_count too, since a read message was necessarily delivered.
+        if ($newStatus === 'read' && $previousRank < $rank['delivered']) {
+            $recipient->campaign?->increment('delivered_count');
+        }
+
+        if ($newStatus === 'delivered') {
+            $recipient->campaign?->increment('delivered_count');
+        } elseif ($newStatus === 'read') {
+            $recipient->campaign?->increment('read_count');
+        }
     }
 
     private function applyPermissionRequestStatusUpdate(string $externalId, string $newStatus, array $status): void
