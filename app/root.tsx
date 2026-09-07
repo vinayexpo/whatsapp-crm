@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 
 import type { Route } from "./+types/root";
@@ -18,6 +19,14 @@ export const links: Route.LinksFunction = () => [
     rel: "icon",
     href: favicon,
     type: "image/svg+xml",
+  },
+  {
+    rel: "apple-touch-icon",
+    href: "/icons/apple-touch-icon.png",
+  },
+  {
+    rel: "manifest",
+    href: "/manifest.webmanifest",
   },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
@@ -47,6 +56,11 @@ gtag('config', 'G-JYJVR9YZW2');`,
         />
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#00A884" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Creative Connects" />
         <Meta />
         <script src={colorSchemeApi} data-light-class="light-theme" data-dark-class="dark-theme"></script>
         <Links />
@@ -61,6 +75,14 @@ gtag('config', 'G-JYJVR9YZW2');`,
 }
 
 export default function App() {
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/push-worker.js").catch(() => {
+        // Service worker registration failed; PWA install and offline shell are unavailable, but the app still works online.
+      });
+    }
+  }, []);
+
   return (
     <MuiProvider>
       <AuthProvider>
