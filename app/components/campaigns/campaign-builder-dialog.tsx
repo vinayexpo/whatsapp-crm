@@ -243,10 +243,16 @@ export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiCo
     <Dialog open={open} onClose={resetAndClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>Create Broadcast Campaign</DialogTitle>
       <DialogContent>
-        <Stepper activeStep={activeStep} sx={{ mb: 3, mt: 1 }}>
+        <Stepper activeStep={activeStep} sx={{ mb: 3, mt: 1, px: { xs: 0, sm: 1 } }}>
           {steps.map((label) => (
             <Step key={label}>
-              <StepLabel>{label}</StepLabel>
+              <StepLabel
+                slotProps={{
+                  label: { sx: { display: { xs: "none", sm: "block" } } },
+                }}
+              >
+                {label}
+              </StepLabel>
             </Step>
           ))}
         </Stepper>

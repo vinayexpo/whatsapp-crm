@@ -88,7 +88,12 @@ export function ChatbotSettingsPanel({ chatbot, onUpdated, onDelete }: ChatbotSe
 
       <Stack spacing={0.75}>
         <Typography variant="subtitle2">Channels</Typography>
-        <ToggleButtonGroup value={channels} onChange={handleChannelsChange} size="small" sx={{ alignSelf: "flex-start" }}>
+        <ToggleButtonGroup
+          value={channels}
+          onChange={handleChannelsChange}
+          size="small"
+          sx={{ alignSelf: "flex-start", flexWrap: "wrap", gap: 0.5, "& .MuiToggleButtonGroup-grouped": { borderRadius: "8px !important", border: "1px solid rgba(0, 0, 0, 0.12) !important" } }}
+        >
           <ToggleButton value="website">
             <ChannelIcon channel="website" size={16} />
             <Typography component="span" variant="body2" sx={{ ml: 1 }}>

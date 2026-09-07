@@ -62,7 +62,14 @@ export function ChatbotDetailDrawer({ chatbot, onClose, onUpdated, onDeleted }: 
             </IconButton>
           </Stack>
 
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, minHeight: 36 }}>
+          <Tabs
+            value={tab}
+            onChange={(_, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ px: 3, minHeight: 36 }}
+          >
             <Tab value="settings" label="Settings" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="training" label="Training" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="embed" label="Embed" sx={{ minHeight: 36, py: 0.5 }} />

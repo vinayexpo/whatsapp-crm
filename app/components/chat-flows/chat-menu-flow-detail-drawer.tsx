@@ -63,7 +63,14 @@ export function ChatMenuFlowDetailDrawer({ flow, onClose, onUpdated, onDelete }:
             </IconButton>
           </Stack>
 
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, minHeight: 36 }}>
+          <Tabs
+            value={tab}
+            onChange={(_, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ px: 3, minHeight: 36 }}
+          >
             <Tab value="settings" label="Settings" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="flow" label="Menu Builder" sx={{ minHeight: 36, py: 0.5 }} />
           </Tabs>

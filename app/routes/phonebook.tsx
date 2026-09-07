@@ -136,7 +136,7 @@ export default function Phonebook() {
               {folders.length} folder{folders.length === 1 ? "" : "s"} for organizing bulk campaign audiences
             </Typography>
           </Stack>
-          <Stack direction="row" spacing={1.5}>
+          <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1.5 }}>
             <Button
               variant="outlined"
               startIcon={<DownloadRoundedIcon />}

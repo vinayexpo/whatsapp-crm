@@ -67,7 +67,14 @@ export default function Settings() {
         </Box>
 
         <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
-          <Tabs value={tab} onChange={handleTabChange} sx={{ px: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Tabs
+            value={tab}
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ px: 2, borderBottom: "1px solid", borderColor: "divider" }}
+          >
             <Tab value="profile" label="My Profile" />
             <Tab value="connections" label="API Connections" />
             <Tab value="team" label="Team Members" />

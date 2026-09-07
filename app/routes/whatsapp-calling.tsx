@@ -118,7 +118,14 @@ export default function WhatsappCalling() {
             )}
           </Stack>
 
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, minHeight: 36 }}>
+          <Tabs
+            value={tab}
+            onChange={(_, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ mb: 3, minHeight: 36 }}
+          >
             <Tab value="flows" label="Call Flows" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="followups" label="Needs Follow-up" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="setup" label="Setup" sx={{ minHeight: 36, py: 0.5 }} />

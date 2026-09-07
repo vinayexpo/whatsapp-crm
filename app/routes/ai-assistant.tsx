@@ -63,7 +63,14 @@ export default function AiAssistant() {
           variant="outlined"
           sx={{ borderRadius: 3, overflow: "hidden", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}
         >
-          <Tabs value={tab} onChange={handleTabChange} sx={{ px: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Tabs
+            value={tab}
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ px: 2, borderBottom: "1px solid", borderColor: "divider" }}
+          >
             <Tab value="chat" label="Chat" />
             <Tab value="call" label="AI Calling" />
           </Tabs>
