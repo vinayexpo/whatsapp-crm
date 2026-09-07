@@ -17,7 +17,11 @@ export function isPushSupported(): boolean {
 
 export async function getPushSubscriptionState(): Promise<NotificationPermission | "unsupported"> {
   if (!isPushSupported()) return "unsupported";
-  return Notification.permission;
+  if (Notification.permission !== "granted") return Notification.permission;
+
+  const registration = await navigator.serviceWorker.getRegistration("/push-worker.js");
+  const subscription = await registration?.pushManager.getSubscription();
+  return subscription ? "granted" : "default";
 }
 
 export async function enablePushNotifications(): Promise<boolean> {
