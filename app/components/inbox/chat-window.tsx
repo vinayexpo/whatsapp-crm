@@ -141,31 +141,47 @@ export function ChatWindow({
 
   return (
     <Box className={styles.container}>
-      <Stack direction="row" className={styles.header} sx={{ alignItems: "center", gap: 1.5 }}>
+      <Stack
+        direction="row"
+        className={styles.header}
+        sx={{
+          alignItems: "center",
+          gap: 1.5,
+          overflowX: { xs: "auto", sm: "visible" },
+          flexWrap: { xs: "nowrap", sm: "wrap" },
+          "&::-webkit-scrollbar": { display: "none" },
+          scrollbarWidth: "none",
+        }}
+      >
         {onBack && (
-          <IconButton size="small" onClick={onBack} sx={{ display: { xs: "inline-flex", sm: "none" } }} aria-label="Back to conversations">
+          <IconButton
+            size="small"
+            onClick={onBack}
+            sx={{ display: { xs: "inline-flex", sm: "none" }, flexShrink: 0 }}
+            aria-label="Back to conversations"
+          >
             <ArrowBackRoundedIcon fontSize="small" />
           </IconButton>
         )}
-        <button type="button" className={styles.contactButton} onClick={onToggleDetails}>
+        <button type="button" className={styles.contactButton} style={{ flexShrink: 0 }} onClick={onToggleDetails}>
           <Avatar src={contact.avatarUrl} alt={contact.name} sx={{ width: 40, height: 40 }} />
           <Box sx={{ textAlign: "start" }}>
             <Stack direction="row" sx={{ alignItems: "center", gap: 0.75 }}>
-              <Typography variant="body1" sx={{ fontWeight: 700 }}>
+              <Typography variant="body1" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
                 {contact.name}
               </Typography>
               <ChannelIcon channel={conversation.channel} size={15} />
             </Stack>
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "nowrap" }}>
               {contact.handle}
             </Typography>
           </Box>
         </button>
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{ flex: 1, minWidth: { xs: 0, sm: "auto" } }} />
         {conversation.channel === "whatsapp" && (
           <Tooltip title={`Call ${contact.name} on WhatsApp`}>
             <span>
-              <IconButton size="small" onClick={handleQuickCall}>
+              <IconButton size="small" onClick={handleQuickCall} sx={{ flexShrink: 0 }}>
                 <CallRoundedIcon fontSize="small" />
               </IconButton>
             </span>
@@ -188,7 +204,7 @@ export function ChatWindow({
               </Stack>
             )
           }
-          sx={{ minWidth: 150, fontSize: "0.85rem" }}
+          sx={{ minWidth: 150, fontSize: "0.85rem", flexShrink: 0 }}
         >
           <MenuItem value="">Unassigned</MenuItem>
           {teamMembers.map((member) => (
@@ -204,7 +220,7 @@ export function ChatWindow({
           size="small"
           value={conversation.status}
           onChange={(e) => onStatusChange(e.target.value as Conversation["status"])}
-          sx={{ minWidth: 130, fontSize: "0.85rem" }}
+          sx={{ minWidth: 130, fontSize: "0.85rem", flexShrink: 0 }}
         >
           <MenuItem value="open">Open</MenuItem>
           <MenuItem value="pending">Pending</MenuItem>
