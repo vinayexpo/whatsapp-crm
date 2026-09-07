@@ -57,6 +57,7 @@ services:
       - --min-port=49160
       - --max-port=49200
       - --realm=${COTURN_HOST}
+      - --external-ip=${COTURN_PUBLIC_IP}
       - --use-auth-secret
       - --static-auth-secret=${COTURN_SECRET}
       - --no-cli
