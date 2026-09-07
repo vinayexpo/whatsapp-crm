@@ -155,7 +155,7 @@ export default function Inbox() {
             flexShrink: 0,
             borderRight: "1px solid",
             borderColor: "divider",
-            display: { xs: activeConversationId ? "flex" : "none", sm: "flex" },
+            display: { xs: activeConversationId ? "none" : "flex", sm: "flex" },
             flexDirection: "column",
             minHeight: 0,
           }}
