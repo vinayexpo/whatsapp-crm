@@ -41,4 +41,28 @@ class CampaignRecipient extends Model
     {
         return $this->belongsTo(Message::class);
     }
+
+    /**
+     * Marks the contact's most recent campaign send as replied, if it hasn't
+     * been already. Called when an inbound message arrives on that contact's
+     * conversation, since a recipient has no direct link to a conversation --
+     * only to the contact the campaign message was sent to.
+     */
+    public static function markMostRecentAsRepliedForContact(int $contactId): void
+    {
+        $recipient = static::query()
+            ->where('contact_id', $contactId)
+            ->whereNotNull('sent_at')
+            ->whereNull('replied_at')
+            ->whereNotIn('status', ['failed'])
+            ->orderByDesc('sent_at')
+            ->first();
+
+        if (! $recipient) {
+            return;
+        }
+
+        $recipient->update(['status' => 'replied', 'replied_at' => now()]);
+        $recipient->campaign?->increment('replied_count');
+    }
 }

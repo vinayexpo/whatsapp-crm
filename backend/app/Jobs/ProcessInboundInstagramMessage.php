@@ -6,6 +6,7 @@ use App\Events\ConversationUpdated;
 use App\Events\MessageReceived;
 use App\Events\MessageStatusUpdated;
 use App\Models\ApiConnection;
+use App\Models\CampaignRecipient;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\InstagramComment;
@@ -230,6 +231,8 @@ class ProcessInboundInstagramMessage implements ShouldQueue
 
             return [$conversation, $message, $isNewContact];
         });
+
+        CampaignRecipient::markMostRecentAsRepliedForContact($conversation->contact_id);
 
         MessageReceived::dispatch($message->load('conversation'));
         ConversationUpdated::dispatch($conversation);

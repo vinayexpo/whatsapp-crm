@@ -156,6 +156,8 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             return [$conversation, $message, $isNewContact, $isNewConversation];
         });
 
+        CampaignRecipient::markMostRecentAsRepliedForContact($conversation->contact_id);
+
         MessageReceived::dispatch($message->load('conversation'));
 
         // A brand-new conversation has no agent subscribed to its per-conversation
