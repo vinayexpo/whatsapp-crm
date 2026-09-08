@@ -59,9 +59,13 @@ class NotificationDispatchService
 
         Event::dispatch(new NotificationCreated($notification));
 
-        PushSubscription::query()->where('user_id', $user->id)->each(
-            fn (PushSubscription $subscription) => $this->pushService->send($subscription, $title, $body, $data)
-        );
+        PushSubscription::query()->where('user_id', $user->id)->each(function (PushSubscription $subscription) use ($title, $body, $data) {
+            try {
+                $this->pushService->send($subscription, $title, $body, $data);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
 
         return $notification;
     }
