@@ -12,6 +12,7 @@ use App\Models\CampaignRecipient;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Models\WhatsappCall;
 use App\Events\WhatsappCallStatusUpdated;
@@ -176,15 +177,18 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             ConversationUpdated::dispatch($conversation);
         }
 
-        if ($conversation->assigned_to && $agent = $conversation->assignedTo()->first()) {
-            app(NotificationDispatchService::class)->notify(
-                $agent,
+        $dispatchService = app(NotificationDispatchService::class);
+
+        User::query()
+            ->where('company_id', $companyId)
+            ->permission('conversations.reply')
+            ->each(fn (User $user) => $dispatchService->notify(
+                $user,
                 'new_message',
                 'New WhatsApp message',
                 "New message from {$profileName}",
                 ['conversationId' => $conversation->uuid],
-            );
-        }
+            ));
 
         $handledByChatFlow = app(ChatMenuFlowEngine::class)->handle($conversation, $message);
 

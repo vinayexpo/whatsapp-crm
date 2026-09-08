@@ -13,6 +13,7 @@ use App\Models\Conversation;
 use App\Models\InstagramComment;
 use App\Models\InstagramStoryMention;
 use App\Models\Message;
+use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Jobs\Concerns\NotifiesOnFailure;
 use App\Scopes\CompanyScope;
@@ -244,15 +245,18 @@ class ProcessInboundInstagramMessage implements ShouldQueue
         MessageReceived::dispatch($message->load('conversation'));
         ConversationUpdated::dispatch($conversation);
 
-        if ($conversation->assigned_to && $agent = $conversation->assignedTo()->first()) {
-            app(NotificationDispatchService::class)->notify(
-                $agent,
+        $dispatchService = app(NotificationDispatchService::class);
+
+        User::query()
+            ->where('company_id', $companyId)
+            ->permission('conversations.reply')
+            ->each(fn (User $user) => $dispatchService->notify(
+                $user,
                 'new_message',
                 'New Instagram message',
                 "New message from {$handle}",
                 ['conversationId' => $conversation->uuid],
-            );
-        }
+            ));
 
         EvaluateAutomationFlows::dispatch($conversation->id, $message->id, $isNewContact);
         GenerateChatbotInstagramReply::dispatch($conversation->id, $message->id);
