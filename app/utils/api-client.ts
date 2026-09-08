@@ -318,9 +318,7 @@ async function listPipelineStages(): Promise<PipelineStage[]> {
 }
 
 async function getPipelineFunnel(): Promise<{ stage: string; count: number }[]> {
-  const { data } = await apiRequest<{ data: { stage: string; count: number }[] }>(
-    "/api/v1/analytics/pipeline-funnel",
-  );
+  const { data } = await apiRequest<{ data: { stage: string; count: number }[] }>("/api/v1/analytics/pipeline-funnel");
   return data;
 }
 
@@ -432,10 +430,7 @@ async function markConversationRead(conversationId: string): Promise<Conversatio
   return data;
 }
 
-async function updateConversationStatus(
-  conversationId: string,
-  status: Conversation["status"],
-): Promise<Conversation> {
+async function updateConversationStatus(conversationId: string, status: Conversation["status"]): Promise<Conversation> {
   const { data } = await apiRequest<{ data: Conversation }>(`/api/v1/conversations/${conversationId}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
@@ -738,10 +733,9 @@ async function listFlows(connectionId: string): Promise<WhatsappFlow[]> {
 }
 
 async function syncFlows(connectionId: string): Promise<WhatsappFlow[]> {
-  const { data } = await apiRequest<{ data: WhatsappFlow[] }>(
-    `/api/v1/api-connections/${connectionId}/flows/sync`,
-    { method: "POST" },
-  );
+  const { data } = await apiRequest<{ data: WhatsappFlow[] }>(`/api/v1/api-connections/${connectionId}/flows/sync`, {
+    method: "POST",
+  });
   return data;
 }
 
@@ -778,7 +772,9 @@ async function updateAiAssistantSettings(updates: Partial<AiAssistantSettings>):
   return data;
 }
 
-async function sendAiAssistantChat(messages: { role: "system" | "user" | "assistant"; content: string }[]): Promise<string> {
+async function sendAiAssistantChat(
+  messages: { role: "system" | "user" | "assistant"; content: string }[],
+): Promise<string> {
   const { data } = await apiRequest<{ data: { content: string } }>("/api/v1/ai-assistant/chat", {
     method: "POST",
     body: JSON.stringify({ messages }),
@@ -786,9 +782,13 @@ async function sendAiAssistantChat(messages: { role: "system" | "user" | "assist
   return data.content;
 }
 
-async function listActivityFeed(): Promise<ActivityItem[]> {
-  const { data } = await apiRequest<{ data: ActivityItem[] }>("/api/v1/activity-logs");
-  return data;
+async function listActivityFeed(params?: {
+  page?: number;
+  perPage?: number;
+}): Promise<PaginatedResponse<ActivityItem>> {
+  const query = buildQuery({ page: params?.page, per_page: params?.perPage });
+  const body = await apiRequest<RawPaginatedResponse<ActivityItem>>(`/api/v1/activity-logs${query}`);
+  return unwrapPaginated(body);
 }
 
 async function listPhonebookFolders(params?: {
@@ -954,10 +954,10 @@ async function createTrainingEntry(
   chatbotId: string,
   entry: { question: string; answer: string; source?: ChatbotTrainingEntrySource },
 ): Promise<ChatbotTrainingEntry> {
-  const { data } = await apiRequest<{ data: ChatbotTrainingEntry }>(
-    `/api/v1/chatbots/${chatbotId}/training-entries`,
-    { method: "POST", body: JSON.stringify(entry) },
-  );
+  const { data } = await apiRequest<{ data: ChatbotTrainingEntry }>(`/api/v1/chatbots/${chatbotId}/training-entries`, {
+    method: "POST",
+    body: JSON.stringify(entry),
+  });
   return data;
 }
 

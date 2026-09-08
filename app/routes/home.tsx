@@ -6,6 +6,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
 import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
@@ -15,11 +16,13 @@ import MessageRoundedIcon from "@mui/icons-material/MessageRounded";
 import PersonAddRoundedIcon from "@mui/icons-material/PersonAddRounded";
 import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
-import { useCrmStore } from "~/hooks/use-crm-store";
 import { apiClient } from "~/utils/api-client";
 import { formatCurrency, formatRelativeTime } from "~/utils/format";
+import type { ActivityItem, Campaign } from "~/data/types";
 import type { Route } from "./+types/home";
 
 export function meta({}: Route.MetaArgs) {
@@ -46,8 +49,10 @@ function getGreeting(hour: number): string {
   return "Good evening";
 }
 
+const CAMPAIGNS_PER_PAGE = 4;
+const ACTIVITY_PER_PAGE = 5;
+
 export default function Home() {
-  const { allCampaigns, activityFeed } = useCrmStore();
   const greeting = getGreeting(new Date().getHours());
   const [summary, setSummary] = useState({
     totalContacts: 0,
@@ -60,6 +65,14 @@ export default function Home() {
     conversionRate: 0,
   });
 
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaignsPage, setCampaignsPage] = useState(1);
+  const [campaignsLastPage, setCampaignsLastPage] = useState(1);
+
+  const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
+  const [activityPage, setActivityPage] = useState(1);
+  const [activityLastPage, setActivityLastPage] = useState(1);
+
   useEffect(() => {
     let cancelled = false;
     apiClient.getDashboardSummary().then((data) => {
@@ -69,6 +82,32 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.listCampaigns({ page: campaignsPage, perPage: CAMPAIGNS_PER_PAGE }).then(({ data, meta }) => {
+      if (!cancelled) {
+        setCampaigns(data);
+        setCampaignsLastPage(meta.lastPage);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignsPage]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.listActivityFeed({ page: activityPage, perPage: ACTIVITY_PER_PAGE }).then(({ data, meta }) => {
+      if (!cancelled) {
+        setActivityFeed(data);
+        setActivityLastPage(meta.lastPage);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activityPage]);
 
   const metrics = [
     {
@@ -152,11 +191,34 @@ export default function Home() {
         <Grid container spacing={2.5}>
           <Grid size={{ xs: 12, lg: 7 }}>
             <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
-              <Typography variant="h6" sx={{ fontSize: "1.05rem", mb: 2 }}>
-                Campaign Performance
-              </Typography>
+              <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                <Typography variant="h6" sx={{ fontSize: "1.05rem" }}>
+                  Campaign Performance
+                </Typography>
+                {campaignsLastPage > 1 && (
+                  <Stack direction="row" sx={{ alignItems: "center", gap: 0.5 }}>
+                    <IconButton
+                      size="small"
+                      disabled={campaignsPage <= 1}
+                      onClick={() => setCampaignsPage((p) => p - 1)}
+                    >
+                      <ChevronLeftRoundedIcon fontSize="small" />
+                    </IconButton>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      {campaignsPage} / {campaignsLastPage}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      disabled={campaignsPage >= campaignsLastPage}
+                      onClick={() => setCampaignsPage((p) => p + 1)}
+                    >
+                      <ChevronRightRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                )}
+              </Stack>
               <Stack spacing={2.5}>
-                {allCampaigns.slice(0, 4).map((campaign) => {
+                {campaigns.map((campaign) => {
                   const readRate =
                     campaign.deliveredCount > 0 ? Math.round((campaign.readCount / campaign.deliveredCount) * 100) : 0;
                   return (
@@ -208,9 +270,28 @@ export default function Home() {
 
           <Grid size={{ xs: 12, lg: 5 }}>
             <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, height: "100%" }}>
-              <Typography variant="h6" sx={{ fontSize: "1.05rem", mb: 2 }}>
-                Recent Activity
-              </Typography>
+              <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                <Typography variant="h6" sx={{ fontSize: "1.05rem" }}>
+                  Recent Activity
+                </Typography>
+                {activityLastPage > 1 && (
+                  <Stack direction="row" sx={{ alignItems: "center", gap: 0.5 }}>
+                    <IconButton size="small" disabled={activityPage <= 1} onClick={() => setActivityPage((p) => p - 1)}>
+                      <ChevronLeftRoundedIcon fontSize="small" />
+                    </IconButton>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      {activityPage} / {activityLastPage}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      disabled={activityPage >= activityLastPage}
+                      onClick={() => setActivityPage((p) => p + 1)}
+                    >
+                      <ChevronRightRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                )}
+              </Stack>
               {activityFeed.length === 0 ? (
                 <Typography variant="body2" sx={{ color: "text.secondary" }}>
                   No recent activity yet.

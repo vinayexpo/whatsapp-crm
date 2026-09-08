@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { apiClient } from "~/utils/api-client";
 import { getEcho } from "~/utils/echo-client";
 import type {
-  ActivityItem,
   AiAssistantSettings,
   ApiConnection,
   AutomationFlow,
@@ -50,7 +49,13 @@ interface CrmStoreValue {
   allContacts: Contact[];
   conversations: Conversation[];
   conversationsPagination: PaginationMeta;
-  fetchConversationsPage: (page: number, assignedTo?: string, search?: string, status?: string, channel?: string) => void;
+  fetchConversationsPage: (
+    page: number,
+    assignedTo?: string,
+    search?: string,
+    status?: string,
+    channel?: string,
+  ) => void;
   findConversationByContact: (contactId: string) => Promise<string | null>;
   allConversations: Conversation[];
   messages: Message[];
@@ -124,7 +129,6 @@ interface CrmStoreValue {
   isCurrentUserAdmin: boolean;
   aiAssistantSettings: AiAssistantSettings;
   updateAiAssistantSettings: (updates: Partial<AiAssistantSettings>) => void;
-  activityFeed: ActivityItem[];
 }
 
 const CrmStoreContext = createContext<CrmStoreValue | null>(null);
@@ -196,7 +200,6 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   );
   const { user: currentUser, status: authStatus } = useAuth();
   const [aiAssistantSettings, setAiAssistantSettings] = useState<AiAssistantSettings>(DEFAULT_AI_ASSISTANT_SETTINGS);
-  const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
 
   const fetchContactsPage = useCallback((page: number, filters?: ContactFilters, perPage?: number) => {
     setContactsPage(page);
@@ -375,14 +378,10 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       echo
         .private(`conversation.${c.id}`)
         .listen(".message.received", (payload: { message: Message }) => {
-          setMessages((prev) =>
-            prev.some((m) => m.id === payload.message.id) ? prev : [...prev, payload.message],
-          );
+          setMessages((prev) => (prev.some((m) => m.id === payload.message.id) ? prev : [...prev, payload.message]));
         })
         .listen(".message.status-updated", (payload: { messageId: string; status: Message["status"] }) => {
-          setMessages((prev) =>
-            prev.map((m) => (m.id === payload.messageId ? { ...m, status: payload.status } : m)),
-          );
+          setMessages((prev) => prev.map((m) => (m.id === payload.messageId ? { ...m, status: payload.status } : m)));
         })
         .listen(".conversation.updated", (payload: { conversation: Conversation }) => {
           setConversations((prev) => {
@@ -570,22 +569,6 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [authStatus]);
 
-  useEffect(() => {
-    if (authStatus !== "authenticated") return;
-    let cancelled = false;
-    apiClient
-      .listActivityFeed()
-      .then((data) => {
-        if (!cancelled) setActivityFeed(data);
-      })
-      .catch(() => {
-        // activity feed stays empty on failure
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [authStatus]);
-
   const moveContactToStage = useCallback(
     (contactId: string, stage: PipelineStageId) => {
       const previous = allContacts.find((c) => c.id === contactId) ?? contacts.find((c) => c.id === contactId);
@@ -634,9 +617,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     apiClient.sendMessage(conversationId, text, attachmentFile).then((sent) => {
       setMessages((prev) => [...prev, sent]);
       const patch = (c: Conversation) =>
-        c.id === conversationId
-          ? { ...c, lastMessagePreview: text || "Attachment", lastMessageAt: sent.timestamp }
-          : c;
+        c.id === conversationId ? { ...c, lastMessagePreview: text || "Attachment", lastMessageAt: sent.timestamp } : c;
       setConversations((prev) => prev.map(patch));
       setAllConversations((prev) => prev.map(patch));
     });
@@ -817,12 +798,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const inviteTeamMember = useCallback(
-    (member: {
-      name: string;
-      email: string;
-      password: string;
-      role: Extract<TeamMemberRole, "manager" | "agent">;
-    }) => {
+    (member: { name: string; email: string; password: string; role: Extract<TeamMemberRole, "manager" | "agent"> }) => {
       apiClient.inviteTeamMember(member).then((created) => {
         setTeamMembers((prev) => [...prev, created]);
       });
@@ -868,9 +844,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       findConversationByContact,
       allConversations,
       messages,
-      hasMoreOlderMessages: activeConversationId
-        ? (hasMoreOlderByConversation[activeConversationId] ?? true)
-        : false,
+      hasMoreOlderMessages: activeConversationId ? (hasMoreOlderByConversation[activeConversationId] ?? true) : false,
       loadOlderMessages,
       campaigns,
       campaignsPagination,
@@ -907,7 +881,6 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       isCurrentUserAdmin,
       aiAssistantSettings,
       updateAiAssistantSettings,
-      activityFeed,
     }),
     [
       contacts,
@@ -958,7 +931,6 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       isCurrentUserAdmin,
       aiAssistantSettings,
       updateAiAssistantSettings,
-      activityFeed,
     ],
   );
 
