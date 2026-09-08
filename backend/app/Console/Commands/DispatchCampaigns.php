@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\InitiateOutboundVoiceCall;
 use App\Jobs\InitiateOutboundWhatsappCall;
 use App\Jobs\SendCampaignMessage;
+use App\Models\ActivityLog;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\Contact;
@@ -111,6 +112,15 @@ class DispatchCampaigns extends Command
                 'Campaign completed',
                 "\"{$campaign->name}\" has finished sending to {$recipientCount} recipient(s).",
             ];
+
+        $activityLog = new ActivityLog([
+            'type' => 'campaign',
+            'description' => $body,
+            'channel' => in_array($campaign->channel, ['whatsapp', 'instagram'], true) ? $campaign->channel : null,
+            'occurred_at' => now(),
+        ]);
+        $activityLog->company_id = $campaign->company_id;
+        $activityLog->save();
 
         User::query()
             ->where('company_id', $campaign->company_id)

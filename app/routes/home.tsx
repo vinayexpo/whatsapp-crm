@@ -211,26 +211,32 @@ export default function Home() {
               <Typography variant="h6" sx={{ fontSize: "1.05rem", mb: 2 }}>
                 Recent Activity
               </Typography>
-              <Stack spacing={2}>
-                {activityFeed.map((activity) => {
-                  const Icon = ACTIVITY_ICONS[activity.type];
-                  return (
-                    <Stack key={activity.id} direction="row" sx={{ gap: 1.5, alignItems: "flex-start" }}>
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: "action.hover" }}>
-                        <Icon sx={{ fontSize: 17, color: "text.secondary" }} />
-                      </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="body2" sx={{ lineHeight: 1.4 }}>
-                          {activity.description}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                          {formatRelativeTime(activity.timestamp)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  );
-                })}
-              </Stack>
+              {activityFeed.length === 0 ? (
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  No recent activity yet.
+                </Typography>
+              ) : (
+                <Stack spacing={2}>
+                  {activityFeed.map((activity) => {
+                    const Icon = ACTIVITY_ICONS[activity.type];
+                    return (
+                      <Stack key={activity.id} direction="row" sx={{ gap: 1.5, alignItems: "flex-start" }}>
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: "action.hover" }}>
+                          <Icon sx={{ fontSize: 17, color: "text.secondary" }} />
+                        </Avatar>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ lineHeight: 1.4 }}>
+                            {activity.description}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                            {formatRelativeTime(activity.timestamp)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    );
+                  })}
+                </Stack>
+              )}
             </Paper>
           </Grid>
         </Grid>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ContactResource;
+use App\Models\ActivityLog;
 use App\Models\Contact;
 use App\Models\PipelineStage;
 use App\Models\Tag;
@@ -91,6 +92,13 @@ class ContactController extends Controller
             'purchases' => [],
         ]);
 
+        ActivityLog::query()->create([
+            'type' => 'contact',
+            'description' => "New contact added: {$contact->name}",
+            'channel' => $contact->channel,
+            'occurred_at' => now(),
+        ]);
+
         return response()->json(['data' => new ContactResource($contact->load('tags'))], 201);
     }
 
@@ -160,6 +168,15 @@ class ContactController extends Controller
         }
 
         $contact->update(['pipeline_stage_id' => $data['pipelineStage']]);
+
+        $stageName = PipelineStage::query()->find($data['pipelineStage'])?->name ?? $data['pipelineStage'];
+
+        ActivityLog::query()->create([
+            'type' => 'pipeline',
+            'description' => "{$contact->name} moved to {$stageName}",
+            'channel' => $contact->channel,
+            'occurred_at' => now(),
+        ]);
 
         return response()->json(['data' => new ContactResource($contact->load('tags'))]);
     }

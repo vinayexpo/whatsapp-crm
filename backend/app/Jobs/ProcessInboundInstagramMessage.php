@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\ConversationUpdated;
 use App\Events\MessageReceived;
 use App\Events\MessageStatusUpdated;
+use App\Models\ActivityLog;
 use App\Models\ApiConnection;
 use App\Models\CampaignRecipient;
 use App\Models\Contact;
@@ -234,6 +235,12 @@ class ProcessInboundInstagramMessage implements ShouldQueue
 
         CampaignRecipient::markMostRecentAsRepliedForContact($conversation->contact_id);
 
+        if ($isNewContact) {
+            $this->logActivity($companyId, 'contact', "New contact added: {$handle}", 'instagram');
+        }
+
+        $this->logActivity($companyId, 'message', "New Instagram message from {$handle}", 'instagram');
+
         MessageReceived::dispatch($message->load('conversation'));
         ConversationUpdated::dispatch($conversation);
 
@@ -249,6 +256,18 @@ class ProcessInboundInstagramMessage implements ShouldQueue
 
         EvaluateAutomationFlows::dispatch($conversation->id, $message->id, $isNewContact);
         GenerateChatbotInstagramReply::dispatch($conversation->id, $message->id);
+    }
+
+    private function logActivity(?int $companyId, string $type, string $description, string $channel): void
+    {
+        $activityLog = new ActivityLog([
+            'type' => $type,
+            'description' => $description,
+            'channel' => $channel,
+            'occurred_at' => now(),
+        ]);
+        $activityLog->company_id = $companyId;
+        $activityLog->save();
     }
 
     private function applyStatusUpdate(array $messagingEvent): void

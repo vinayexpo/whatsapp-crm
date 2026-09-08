@@ -6,6 +6,7 @@ use App\Events\ConversationCreated;
 use App\Events\ConversationUpdated;
 use App\Events\MessageReceived;
 use App\Events\MessageStatusUpdated;
+use App\Models\ActivityLog;
 use App\Models\ApiConnection;
 use App\Models\CampaignRecipient;
 use App\Models\Contact;
@@ -158,6 +159,12 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
 
         CampaignRecipient::markMostRecentAsRepliedForContact($conversation->contact_id);
 
+        if ($isNewContact) {
+            $this->logActivity($companyId, 'contact', "New contact added: {$profileName}", 'whatsapp');
+        }
+
+        $this->logActivity($companyId, 'message', "New WhatsApp message from {$profileName}", 'whatsapp');
+
         MessageReceived::dispatch($message->load('conversation'));
 
         // A brand-new conversation has no agent subscribed to its per-conversation
@@ -185,6 +192,18 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             EvaluateAutomationFlows::dispatch($conversation->id, $message->id, $isNewContact);
             GenerateChatbotWhatsAppReply::dispatch($conversation->id, $message->id);
         }
+    }
+
+    private function logActivity(?int $companyId, string $type, string $description, string $channel): void
+    {
+        $activityLog = new ActivityLog([
+            'type' => $type,
+            'description' => $description,
+            'channel' => $channel,
+            'occurred_at' => now(),
+        ]);
+        $activityLog->company_id = $companyId;
+        $activityLog->save();
     }
 
     /**
