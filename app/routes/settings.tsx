@@ -11,6 +11,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { ConnectionCard } from "~/components/settings/connection-card";
+import { WhatsAppEmbeddedSignupButton } from "~/components/settings/whatsapp-embedded-signup-button";
 import { TeamMemberRow } from "~/components/settings/team-member-row";
 import { InviteMemberDialog } from "~/components/settings/invite-member-dialog";
 import { NotificationPreferencesForm } from "~/components/settings/notification-preferences-form";
@@ -37,6 +38,7 @@ export default function Settings() {
     toggleApiConnection,
     connectApiConnection,
     saveWebhookVerifyToken,
+    addWhatsAppEmbeddedSignupConnection,
     teamMembers,
     inviteTeamMember,
     updateTeamMemberRole,
@@ -94,6 +96,14 @@ export default function Settings() {
                   <Alert severity="info" icon={<LockRoundedIcon fontSize="small" />}>
                     Only Admins can connect or disconnect API accounts. Contact an admin to make changes.
                   </Alert>
+                )}
+                {isCurrentUserAdmin && (
+                  <WhatsAppEmbeddedSignupButton
+                    disabled={!isCurrentUserAdmin}
+                    onComplete={async (payload) => {
+                      await addWhatsAppEmbeddedSignupConnection(payload);
+                    }}
+                  />
                 )}
                 {apiConnections.map((connection) => (
                   <ConnectionCard

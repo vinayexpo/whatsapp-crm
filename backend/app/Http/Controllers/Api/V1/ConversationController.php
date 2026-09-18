@@ -139,7 +139,9 @@ class ConversationController extends Controller
             // to externally. The widget picks this reply up via its
             // GET /widget/messages polling endpoint instead.
         } else {
-            $connection = ApiConnection::query()->where('channel', $conversation->channel)->first();
+            $connection = $conversation->api_connection_id
+                ? ApiConnection::find($conversation->api_connection_id)
+                : ApiConnection::query()->where('channel', $conversation->channel)->first();
             $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection, null, $attachmentFile);
             $message->update(['external_message_id' => $externalId]);
         }

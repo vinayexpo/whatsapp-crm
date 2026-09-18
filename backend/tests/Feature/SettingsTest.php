@@ -61,6 +61,81 @@ it('allows an admin to connect a whatsapp connection after Meta verifies the tok
     expect($connection->fresh()->phone_number_id)->toBe('phone-456');
 });
 
+it('rejects unauthenticated embedded signup exchange', function () {
+    $this->postJson('/api/v1/api-connections/embedded-signup', [
+        'code' => 'auth-code',
+        'wabaId' => 'waba-123',
+        'phoneNumberId' => 'phone-456',
+    ])->assertUnauthorized();
+});
+
+it('forbids a non-admin from completing embedded signup', function () {
+    $user = actingAsSettingsRole('agent');
+
+    $this->actingAs($user)->postJson('/api/v1/api-connections/embedded-signup', [
+        'code' => 'auth-code',
+        'wabaId' => 'waba-123',
+        'phoneNumberId' => 'phone-456',
+    ])->assertForbidden();
+});
+
+it('creates a new coexistence api connection without touching an existing manual whatsapp connection', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['access_token' => 'long-lived-token-abc'], 200),
+    ]);
+
+    $existing = ApiConnection::factory()->create([
+        'channel' => 'whatsapp',
+        'status' => 'connected',
+        'access_token' => 'manual-token',
+        'waba_id' => 'manual-waba',
+        'phone_number_id' => 'manual-phone',
+        'onboarding_type' => 'manual',
+    ]);
+    $admin = actingAsSettingsRole('admin');
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/api-connections/embedded-signup', [
+        'code' => 'auth-code-xyz',
+        'wabaId' => 'waba-coexistence',
+        'phoneNumberId' => 'phone-coexistence',
+        'waBusinessAppPhoneNumber' => '+15551234567',
+    ]);
+
+    $response->assertCreated();
+    $response->assertJsonPath('data.onboardingType', 'coexistence');
+    $response->assertJsonPath('data.status', 'connected');
+    expect($response->json('data'))->not->toHaveKey('accessToken');
+
+    expect(ApiConnection::query()->where('channel', 'whatsapp')->count())->toBe(2);
+
+    $created = ApiConnection::query()->where('waba_id', 'waba-coexistence')->first();
+    expect($created)->not->toBeNull();
+    expect($created->access_token)->toBe('long-lived-token-abc');
+    expect($created->onboarding_type)->toBe('coexistence');
+    expect($created->smb_app_linked_at)->not->toBeNull();
+    expect($created->wa_business_app_phone_number)->toBe('+15551234567');
+    expect($created->company_id)->toBe($admin->company_id);
+
+    expect($existing->fresh()->access_token)->toBe('manual-token');
+    expect($existing->fresh()->onboarding_type)->toBe('manual');
+});
+
+it('rejects embedded signup when Meta rejects the authorization code', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['error' => ['message' => 'invalid code']], 400),
+    ]);
+
+    $admin = actingAsSettingsRole('admin');
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/api-connections/embedded-signup', [
+        'code' => 'bad-code',
+        'wabaId' => 'waba-123',
+        'phoneNumberId' => 'phone-456',
+    ]);
+
+    $response->assertUnprocessable();
+});
+
 it('allows an admin to connect an instagram connection after Meta verifies the token', function () {
     Http::fake([
         'graph.facebook.com/*' => Http::response(['id' => 'ig-123'], 200),

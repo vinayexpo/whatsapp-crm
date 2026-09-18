@@ -6,6 +6,7 @@ use App\Events\MessageReceived;
 use App\Events\MessageStatusUpdated;
 use App\Jobs\ProcessInboundWhatsAppMessage;
 use App\Jobs\SimulateMessageDeliveryTick;
+use App\Models\ApiConnection;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -16,11 +17,14 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(PipelineStagesSeeder::class);
 });
 
 it('broadcasts MessageReceived and ConversationCreated when an inbound whatsapp message starts a new conversation', function () {
     Event::fake([MessageReceived::class, ConversationCreated::class]);
+
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
 
     $event = WebhookEvent::query()->create([
         'provider' => 'whatsapp',

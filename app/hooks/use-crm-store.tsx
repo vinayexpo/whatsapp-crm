@@ -113,6 +113,12 @@ interface CrmStoreValue {
     },
   ) => Promise<void>;
   saveWebhookVerifyToken: (connectionId: string, verifyToken: string) => Promise<void>;
+  addWhatsAppEmbeddedSignupConnection: (payload: {
+    code: string;
+    wabaId: string;
+    phoneNumberId: string;
+    waBusinessAppPhoneNumber?: string;
+  }) => Promise<ApiConnection>;
   teamMembers: TeamMember[];
   assignableMembers: TeamMember[];
   inviteTeamMember: (member: {
@@ -797,6 +803,20 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     [apiConnections],
   );
 
+  const addWhatsAppEmbeddedSignupConnection = useCallback(
+    async (payload: {
+      code: string;
+      wabaId: string;
+      phoneNumberId: string;
+      waBusinessAppPhoneNumber?: string;
+    }) => {
+      const created = await apiClient.createWhatsAppEmbeddedSignupConnection(payload);
+      setApiConnections((prev) => [...prev, created]);
+      return created;
+    },
+    [],
+  );
+
   const inviteTeamMember = useCallback(
     (member: { name: string; email: string; password: string; role: Extract<TeamMemberRole, "manager" | "agent"> }) => {
       apiClient.inviteTeamMember(member).then((created) => {
@@ -870,6 +890,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       toggleApiConnection,
       connectApiConnection,
       saveWebhookVerifyToken,
+      addWhatsAppEmbeddedSignupConnection,
       teamMembers,
       assignableMembers,
       inviteTeamMember,
@@ -920,6 +941,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       toggleApiConnection,
       connectApiConnection,
       saveWebhookVerifyToken,
+      addWhatsAppEmbeddedSignupConnection,
       teamMembers,
       assignableMembers,
       inviteTeamMember,

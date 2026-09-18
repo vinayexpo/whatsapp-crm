@@ -103,7 +103,9 @@ class SendCampaignMessage implements ShouldQueue
             return $message;
         });
 
-        $connection = ApiConnection::query()->where('channel', $conversation->channel)->first();
+        $connection = $conversation->api_connection_id
+            ? ApiConnection::find($conversation->api_connection_id)
+            : ApiConnection::query()->where('channel', $conversation->channel)->first();
 
         $templatePayload = $template ? $this->buildTemplatePayload($template, $campaign->template_variables ?? [], $message->attachment_url) : null;
 

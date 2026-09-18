@@ -69,12 +69,19 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         $profileName = collect(data_get($value, 'contacts', []))
             ->firstWhere('wa_id', $waId)['profile']['name'] ?? $waId;
 
-        $connection = ApiConnection::query()->where('channel', 'whatsapp')->first();
-        $companyId = $connection?->company_id;
+        $phoneNumberId = data_get($value, 'metadata.phone_number_id');
+        $connection = ApiConnection::findWhatsAppByPhoneNumberId($phoneNumberId);
+
+        if (! $connection) {
+            return;
+        }
+
+        $companyId = $connection->company_id;
+        $connectionId = $connection->id;
 
         $attachment = $this->resolveInboundAttachment($inboundMessage, $connection);
 
-        [$conversation, $message, $isNewContact, $isNewConversation] = DB::transaction(function () use ($waId, $profileName, $inboundMessage, $companyId, $attachment) {
+        [$conversation, $message, $isNewContact, $isNewConversation] = DB::transaction(function () use ($waId, $profileName, $inboundMessage, $companyId, $connectionId, $attachment) {
             $contact = Contact::withoutGlobalScope(CompanyScope::class)
                 ->where('company_id', $companyId)
                 ->where('handle', $waId)
@@ -112,6 +119,7 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                     'channel' => 'whatsapp',
                     'status' => 'open',
                     'unread_count' => 0,
+                    'api_connection_id' => $connectionId,
                 ]);
                 $conversation->company_id = $companyId;
                 $conversation->save();
@@ -350,7 +358,9 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
 
     public function failed(Throwable $e): void
     {
-        $companyId = ApiConnection::query()->where('channel', 'whatsapp')->value('company_id');
+        $payload = WebhookEvent::query()->find($this->webhookEventId)?->payload;
+        $phoneNumberId = data_get($payload, 'entry.0.changes.0.value.metadata.phone_number_id');
+        $companyId = ApiConnection::findWhatsAppByPhoneNumberId($phoneNumberId)?->company_id;
 
         $this->recordFailure($e, $companyId, $this->webhookEventId);
     }

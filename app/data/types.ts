@@ -291,6 +291,7 @@ export interface AutomationFlow {
 }
 
 export type ApiConnectionStatus = "connected" | "disconnected";
+export type ApiConnectionOnboardingType = "manual" | "coexistence";
 
 export interface ApiConnection {
   id: string;
@@ -308,6 +309,9 @@ export interface ApiConnection {
   callingStatus: "disabled" | "pending" | "active";
   callingVerifiedAt: string | null;
   connectedAt: string | null;
+  onboardingType: ApiConnectionOnboardingType;
+  smbAppLinkedAt: string | null;
+  waBusinessAppPhoneNumber: string | null;
   webhooks: ApiConnectionWebhook[];
 }
 

@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\WhatsappFlowController;
 use App\Http\Controllers\Api\V1\WhatsappTemplateController;
 use App\Http\Controllers\Api\InstagramWebhookController;
 use App\Http\Controllers\Api\TwilioVoiceWebhookController;
+use App\Http\Controllers\Api\V1\WhatsAppEmbeddedSignupController;
 use App\Http\Controllers\Api\V1\WhatsappCallController;
 use App\Http\Controllers\Api\V1\WhatsappCallFlowController;
 use App\Http\Controllers\Api\WhatsAppWebhookController;
@@ -131,6 +132,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/team-members/{teamMember}', [TeamMemberController::class, 'destroy']);
 
         Route::get('/api-connections', [ApiConnectionController::class, 'index']);
+        Route::post('/api-connections/embedded-signup', [WhatsAppEmbeddedSignupController::class, 'exchange']);
         Route::patch('/api-connections/{apiConnection}', [ApiConnectionController::class, 'update']);
         Route::patch('/api-connections/{apiConnection}/calling', [ApiConnectionController::class, 'toggleCalling']);
         Route::get('/api-connections/{apiConnection}/templates', [WhatsappTemplateController::class, 'index']);

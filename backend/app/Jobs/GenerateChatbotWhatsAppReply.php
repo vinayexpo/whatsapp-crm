@@ -68,7 +68,9 @@ class GenerateChatbotWhatsAppReply implements ShouldQueue
 
         $conversation->update(['last_message_at' => $outboundMessage->sent_at]);
 
-        $connection = ApiConnection::query()->where('channel', 'whatsapp')->first();
+        $connection = $conversation->api_connection_id
+            ? ApiConnection::find($conversation->api_connection_id)
+            : ApiConnection::query()->where('channel', 'whatsapp')->first();
         $externalId = $resolver->forConnection($connection)->send($outboundMessage, $connection ?? new ApiConnection);
         $outboundMessage->update(['external_message_id' => $externalId]);
 

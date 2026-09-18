@@ -15,7 +15,7 @@ class Conversation extends Model
     use BelongsToCompany, HasFactory, HasUuid, SoftDeletes;
 
     protected $fillable = [
-        'contact_id', 'assigned_to', 'chatbot_id', 'channel', 'status', 'unread_count', 'last_message_at',
+        'contact_id', 'assigned_to', 'chatbot_id', 'api_connection_id', 'channel', 'status', 'unread_count', 'last_message_at',
         'no_reply_notified_at', 'current_chat_flow_id', 'current_chat_flow_node_id',
     ];
 
@@ -46,6 +46,11 @@ class Conversation extends Model
     public function chatbot(): BelongsTo
     {
         return $this->belongsTo(Chatbot::class);
+    }
+
+    public function apiConnection(): BelongsTo
+    {
+        return $this->belongsTo(ApiConnection::class);
     }
 
     public function currentChatFlow(): BelongsTo

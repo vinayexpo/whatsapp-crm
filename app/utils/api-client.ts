@@ -654,6 +654,19 @@ async function toggleWhatsappCalling(connectionId: string, callingEnabled: boole
   return data;
 }
 
+async function createWhatsAppEmbeddedSignupConnection(payload: {
+  code: string;
+  wabaId: string;
+  phoneNumberId: string;
+  waBusinessAppPhoneNumber?: string;
+}): Promise<ApiConnection> {
+  const { data } = await apiRequest<{ data: ApiConnection }>("/api/v1/api-connections/embedded-signup", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return data;
+}
+
 async function listTemplates(
   connectionId: string,
   params?: { page?: number; perPage?: number; status?: string; search?: string; from?: string; to?: string },
@@ -1406,6 +1419,7 @@ export const apiClient = {
   listApiConnections,
   updateApiConnection,
   toggleWhatsappCalling,
+  createWhatsAppEmbeddedSignupConnection,
   listTemplates,
   syncTemplates,
   createTemplate,

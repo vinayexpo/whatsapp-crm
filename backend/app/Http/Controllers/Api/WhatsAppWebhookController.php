@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessInboundWhatsAppMessage;
+use App\Jobs\ProcessWhatsAppHistorySync;
 use App\Models\ApiConnection;
 use App\Models\WebhookEvent;
 use Illuminate\Http\Request;
@@ -62,7 +63,15 @@ class WhatsAppWebhookController extends Controller
             'payload' => $request->all(),
         ]);
 
-        ProcessInboundWhatsAppMessage::dispatch($event->id);
+        // Coexistence history-sync backfills (pre-linking contacts/messages
+        // from the phone) arrive as a distinct field on the same webhook
+        // rather than value.messages, and must be imported silently -- no
+        // broadcasts/automations -- so they get their own job.
+        if (! empty(data_get($request->all(), 'entry.0.changes.0.value.smb_app_state_sync'))) {
+            ProcessWhatsAppHistorySync::dispatch($event->id);
+        } else {
+            ProcessInboundWhatsAppMessage::dispatch($event->id);
+        }
 
         return response()->noContent();
     }

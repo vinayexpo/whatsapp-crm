@@ -167,7 +167,9 @@ class ChatMenuFlowEngine
         $conversation->update(['last_message_at' => $outboundMessage->sent_at]);
 
         if ($conversation->channel === 'whatsapp') {
-            $connection = ApiConnection::query()->where('channel', 'whatsapp')->first();
+            $connection = $conversation->api_connection_id
+                ? ApiConnection::find($conversation->api_connection_id)
+                : ApiConnection::query()->where('channel', 'whatsapp')->first();
             $externalId = $this->resolver->forConnection($connection)->send($outboundMessage, $connection ?? new ApiConnection);
             $outboundMessage->update(['external_message_id' => $externalId]);
         }

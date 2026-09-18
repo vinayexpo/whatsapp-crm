@@ -12,6 +12,11 @@ class ApiConnectionPolicy
         return $user->can('settings.manage');
     }
 
+    public function create(User $user): bool
+    {
+        return $user->can('settings.manage');
+    }
+
     public function update(User $user, ApiConnection $apiConnection): bool
     {
         return $user->can('settings.manage');

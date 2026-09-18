@@ -28,6 +28,9 @@ class ApiConnectionResource extends JsonResource
             'callingStatus' => $this->calling_status,
             'callingVerifiedAt' => $this->calling_verified_at?->toIso8601String(),
             'connectedAt' => $this->connected_at?->toIso8601String(),
+            'onboardingType' => $this->onboarding_type,
+            'smbAppLinkedAt' => $this->smb_app_linked_at?->toIso8601String(),
+            'waBusinessAppPhoneNumber' => $this->wa_business_app_phone_number,
             'webhooks' => $this->webhooks(),
         ];
     }

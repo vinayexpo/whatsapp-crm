@@ -38,8 +38,10 @@ return [
     'meta' => [
         'whatsapp_driver' => env('META_WHATSAPP_DRIVER', 'fake'),
         'instagram_driver' => env('META_INSTAGRAM_DRIVER', 'fake'),
+        'app_id' => env('META_APP_ID'),
         'app_secret' => env('META_APP_SECRET'),
         'verify_token' => env('META_VERIFY_TOKEN'),
+        'coexistence_config_id' => env('META_COEXISTENCE_CONFIG_ID'),
     ],
 
     'twilio' => [

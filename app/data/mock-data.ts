@@ -680,6 +680,9 @@ export const API_CONNECTIONS: ApiConnection[] = [
     callingStatus: "disabled",
     callingVerifiedAt: null,
     connectedAt: "2026-04-12T10:00:00Z",
+    onboardingType: "manual",
+    smbAppLinkedAt: null,
+    waBusinessAppPhoneNumber: null,
     webhooks: [],
   },
   {
@@ -698,6 +701,9 @@ export const API_CONNECTIONS: ApiConnection[] = [
     callingStatus: "disabled",
     callingVerifiedAt: null,
     connectedAt: "2026-04-15T14:30:00Z",
+    onboardingType: "manual",
+    smbAppLinkedAt: null,
+    waBusinessAppPhoneNumber: null,
     webhooks: [],
   },
   {
@@ -716,6 +722,9 @@ export const API_CONNECTIONS: ApiConnection[] = [
     callingStatus: "disabled",
     callingVerifiedAt: null,
     connectedAt: null,
+    onboardingType: "manual",
+    smbAppLinkedAt: null,
+    waBusinessAppPhoneNumber: null,
     webhooks: [],
   },
 ];

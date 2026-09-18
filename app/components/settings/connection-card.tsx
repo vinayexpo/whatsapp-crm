@@ -208,6 +208,9 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
             color={isConnected ? "success" : "default"}
             variant={isConnected ? "filled" : "outlined"}
           />
+          {connection.onboardingType === "coexistence" && (
+            <Chip label="Coexistence" size="small" color="info" variant="outlined" />
+          )}
           {connection.channel === "whatsapp" && isConnected && (
             <Button
               variant="outlined"

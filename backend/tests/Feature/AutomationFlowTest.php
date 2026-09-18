@@ -2,6 +2,7 @@
 
 use App\Jobs\EvaluateAutomationFlows;
 use App\Jobs\ProcessInboundWhatsAppMessage;
+use App\Models\ApiConnection;
 use App\Models\AutomationFlow;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -154,6 +155,8 @@ it('allows deleting an automation flow', function () {
 
 it('dispatches automation evaluation when an inbound whatsapp message is processed', function () {
     Queue::fake();
+
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
 
     $event = WebhookEvent::query()->create([
         'provider' => 'whatsapp',

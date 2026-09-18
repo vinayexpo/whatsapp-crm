@@ -8,12 +8,14 @@ use App\Models\Message;
 use App\Models\WebhookEvent;
 use App\Models\WhatsappCall;
 use Database\Seeders\PipelineStagesSeeder;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(PipelineStagesSeeder::class);
 });
 
@@ -98,6 +100,7 @@ it('accepts an inbound webhook without a signature when no app secret is configu
 });
 
 it('creates a contact, conversation, and message when processing an inbound message from an unknown number', function () {
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
     $event = WebhookEvent::query()->create([
         'provider' => 'whatsapp',
         'payload' => inboundWhatsAppPayload('15559876543', 'Is this available?', 'wamid.NEW1'),
@@ -178,6 +181,7 @@ it('downloads and stores inbound media as a message attachment', function () {
 });
 
 it('reuses the existing contact and conversation for a known number', function () {
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
     $contact = Contact::factory()->create(['handle' => '15551112222', 'channel' => 'whatsapp']);
     $conversation = Conversation::factory()->create(['contact_id' => $contact->id, 'channel' => 'whatsapp', 'unread_count' => 2]);
 
@@ -194,6 +198,7 @@ it('reuses the existing contact and conversation for a known number', function (
 });
 
 it('stores the clicked button title and reply id from an inbound interactive button-reply message', function () {
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
     $event = WebhookEvent::query()->create([
         'provider' => 'whatsapp',
         'payload' => [
@@ -235,6 +240,7 @@ it('stores the clicked button title and reply id from an inbound interactive but
 });
 
 it('stores the selected row title and reply id from an inbound interactive list-reply message', function () {
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
     $event = WebhookEvent::query()->create([
         'provider' => 'whatsapp',
         'payload' => [
@@ -311,6 +317,86 @@ it('starts a chat menu flow end-to-end from an inbound WhatsApp trigger keyword 
             && $body['type'] === 'interactive'
             && $body['interactive']['type'] === 'button';
     });
+});
+
+it('routes an inbound message to the connection matching the payload phone_number_id when a company has multiple whatsapp connections', function () {
+    $connectionA = ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token', 'phone_number_id' => '1111111111']);
+    $connectionB = ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token', 'phone_number_id' => '2222222222']);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'metadata' => ['phone_number_id' => '2222222222'],
+                                'contacts' => [
+                                    ['wa_id' => '15550009999', 'profile' => ['name' => 'Multi Connection']],
+                                ],
+                                'messages' => [
+                                    [
+                                        'from' => '15550009999',
+                                        'id' => 'wamid.MULTI1',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'text' => ['body' => 'Hi there'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    $contact = Contact::query()->where('handle', '15550009999')->first();
+    expect($contact)->not->toBeNull();
+
+    $conversation = Conversation::query()->where('contact_id', $contact->id)->first();
+    expect($conversation)->not->toBeNull();
+    expect($conversation->api_connection_id)->toBe($connectionB->id);
+    expect($conversation->api_connection_id)->not->toBe($connectionA->id);
+});
+
+it('does not guess a connection for an unmatched phone_number_id when multiple whatsapp connections exist', function () {
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token', 'phone_number_id' => '1111111111']);
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token', 'phone_number_id' => '2222222222']);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'metadata' => ['phone_number_id' => '9999999999'],
+                                'contacts' => [
+                                    ['wa_id' => '15550008888', 'profile' => ['name' => 'Unmatched']],
+                                ],
+                                'messages' => [
+                                    [
+                                        'from' => '15550008888',
+                                        'id' => 'wamid.UNMATCHED1',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'text' => ['body' => 'Hi there'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    expect(Contact::query()->where('handle', '15550008888')->exists())->toBeFalse();
 });
 
 it('routes a call payload arriving at the message webhook URL to the call handler instead of dropping it', function () {
