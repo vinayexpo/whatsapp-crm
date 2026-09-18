@@ -1,0 +1,27 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to production
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/ubuntu/whatsapp-crm
+            git fetch origin
+            git reset --hard origin/master
+            sudo docker compose build backend reverb frontend
+            sudo docker compose up -d
+            sudo docker compose exec -T backend php artisan migrate --force
+            sudo docker compose exec -T backend php artisan config:cache
+            sudo docker compose exec -T backend php artisan queue:restart
