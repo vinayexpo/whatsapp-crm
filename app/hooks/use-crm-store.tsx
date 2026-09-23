@@ -125,9 +125,10 @@ interface CrmStoreValue {
     name: string;
     email: string;
     password: string;
-    role: Extract<TeamMemberRole, "manager" | "agent">;
+    role: Extract<TeamMemberRole, "manager" | "agent" | "branch_manager" | "staff">;
+    staffBranchId?: string | null;
   }) => void;
-  updateTeamMemberRole: (memberId: string, role: TeamMemberRole) => void;
+  updateTeamMemberRole: (memberId: string, role: TeamMemberRole, staffBranchId?: string | null) => void;
   removeTeamMember: (memberId: string) => void;
   notificationPreferences: NotificationPreferences;
   updateNotificationPreferences: (updates: Partial<NotificationPreferences>) => void;
@@ -818,7 +819,13 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const inviteTeamMember = useCallback(
-    (member: { name: string; email: string; password: string; role: Extract<TeamMemberRole, "manager" | "agent"> }) => {
+    (member: {
+      name: string;
+      email: string;
+      password: string;
+      role: Extract<TeamMemberRole, "manager" | "agent" | "branch_manager" | "staff">;
+      staffBranchId?: string | null;
+    }) => {
       apiClient.inviteTeamMember(member).then((created) => {
         setTeamMembers((prev) => [...prev, created]);
       });
@@ -826,8 +833,8 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const updateTeamMemberRole = useCallback((memberId: string, role: TeamMemberRole) => {
-    apiClient.updateTeamMemberRole(memberId, role).then((updated) => {
+  const updateTeamMemberRole = useCallback((memberId: string, role: TeamMemberRole, staffBranchId?: string | null) => {
+    apiClient.updateTeamMemberRole(memberId, role, staffBranchId).then((updated) => {
       setTeamMembers((prev) => prev.map((m) => (m.id === memberId ? updated : m)));
     });
   }, []);

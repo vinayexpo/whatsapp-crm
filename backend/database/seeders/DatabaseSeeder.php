@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(RolesAndPermissionsSeeder::class);
+        $this->call(BusinessTypeSeeder::class);
 
         $company = Company::query()->firstOrCreate(
             ['name' => 'Default Company'],

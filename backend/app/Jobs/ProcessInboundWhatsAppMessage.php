@@ -19,6 +19,8 @@ use App\Events\WhatsappCallStatusUpdated;
 use App\Jobs\Concerns\NotifiesOnFailure;
 use App\Scopes\CompanyScope;
 use App\Services\ChatFlow\ChatMenuFlowEngine;
+use App\Http\Controllers\Api\V1\PaymentController;
+use App\Services\Commerce\CommerceOrderEngine;
 use App\Services\Messaging\WhatsAppMediaDownloader;
 use App\Services\Notifications\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -143,6 +145,24 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 }
             }
 
+            // WhatsApp Pay (Meta) payment status updates arrive inline as an
+            // "order_status" inbound message. Shape follows Meta's public
+            // WhatsApp Payments (India) docs but is unverified against a live
+            // WABA/PSP account -- confirm against a real payload before relying
+            // on this in production.
+            if ($type === 'order_status') {
+                $referenceId = data_get($inboundMessage, 'order_status.reference_id');
+
+                if ($referenceId) {
+                    app(PaymentController::class)->handleWhatsAppPayStatus($referenceId, [
+                        'payment_status' => [
+                            'status' => data_get($inboundMessage, 'order_status.order.status'),
+                            'description' => data_get($inboundMessage, 'order_status.description'),
+                        ],
+                    ]);
+                }
+            }
+
             $message = Message::query()->create([
                 'conversation_id' => $conversation->id,
                 'direction' => 'inbound',
@@ -198,11 +218,15 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 ['conversationId' => $conversation->uuid],
             ));
 
-        $handledByChatFlow = app(ChatMenuFlowEngine::class)->handle($conversation, $message);
+        $handledByCommerce = app(CommerceOrderEngine::class)->handle($conversation, $message);
 
-        if (! $handledByChatFlow) {
-            EvaluateAutomationFlows::dispatch($conversation->id, $message->id, $isNewContact);
-            GenerateChatbotWhatsAppReply::dispatch($conversation->id, $message->id);
+        if (! $handledByCommerce) {
+            $handledByChatFlow = app(ChatMenuFlowEngine::class)->handle($conversation, $message);
+
+            if (! $handledByChatFlow) {
+                EvaluateAutomationFlows::dispatch($conversation->id, $message->id, $isNewContact);
+                GenerateChatbotWhatsAppReply::dispatch($conversation->id, $message->id);
+            }
         }
     }
 

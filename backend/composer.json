@@ -14,6 +14,7 @@
         "league/flysystem-aws-s3-v3": "^3.35",
         "minishlink/web-push": "^11.0",
         "phpoffice/phpspreadsheet": "^5.9",
+        "razorpay/razorpay": "2.9",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {

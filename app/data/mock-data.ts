@@ -740,6 +740,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     status: "active",
     addedAt: "2026-02-01T09:00:00Z",
     companyId: "company-1",
+    staffBranchId: null,
   },
   {
     id: "tm-2",
@@ -751,6 +752,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     status: "active",
     addedAt: "2026-03-10T09:00:00Z",
     companyId: "company-1",
+    staffBranchId: null,
   },
   {
     id: "tm-3",
@@ -762,6 +764,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     status: "active",
     addedAt: "2026-05-22T09:00:00Z",
     companyId: "company-1",
+    staffBranchId: null,
   },
   {
     id: "tm-4",
@@ -772,6 +775,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     role: "agent",
     status: "invited",
     addedAt: "2026-07-28T09:00:00Z",
+    staffBranchId: null,
     companyId: "company-1",
   },
 ];

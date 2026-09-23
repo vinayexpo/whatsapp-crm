@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -7,11 +8,12 @@ import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import type { TeamMember, TeamMemberRole } from "~/data/types";
+import { apiClient } from "~/utils/api-client";
+import type { Branch, TeamMember, TeamMemberRole } from "~/data/types";
 
 interface TeamMemberRowProps {
   member: TeamMember;
-  onRoleChange: (memberId: string, role: TeamMemberRole) => void;
+  onRoleChange: (memberId: string, role: TeamMemberRole, staffBranchId?: string | null) => void;
   onRemove: (memberId: string) => void;
   readOnly?: boolean;
 }
@@ -21,11 +23,28 @@ const ROLE_OPTIONS: { value: TeamMemberRole; label: string }[] = [
   { value: "admin", label: "Admin" },
   { value: "manager", label: "Manager" },
   { value: "agent", label: "Agent" },
+  { value: "branch_manager", label: "Branch Manager" },
+  { value: "staff", label: "Staff" },
 ];
+
+const BRANCH_SCOPED_ROLES: TeamMemberRole[] = ["branch_manager", "staff"];
 
 export function TeamMemberRow({ member, onRoleChange, onRemove, readOnly = false }: TeamMemberRowProps) {
   const isLocked = member.role === "admin" || member.role === "superadmin";
   const disabled = readOnly || isLocked;
+  const needsBranch = BRANCH_SCOPED_ROLES.includes(member.role);
+
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    if (!needsBranch) return;
+    apiClient
+      .listBranches({ perPage: 100 })
+      .then(({ data }) => setBranches(data))
+      .catch(() => {
+        // branches stay empty on failure
+      });
+  }, [needsBranch]);
 
   return (
     <Stack
@@ -50,7 +69,13 @@ export function TeamMemberRow({ member, onRoleChange, onRemove, readOnly = false
         <Select
           size="small"
           value={member.role}
-          onChange={(e) => onRoleChange(member.id, e.target.value as TeamMemberRole)}
+          onChange={(e) =>
+            onRoleChange(
+              member.id,
+              e.target.value as TeamMemberRole,
+              BRANCH_SCOPED_ROLES.includes(e.target.value as TeamMemberRole) ? member.staffBranchId : null,
+            )
+          }
           sx={{ minWidth: 130 }}
           disabled={disabled}
         >
@@ -60,6 +85,25 @@ export function TeamMemberRow({ member, onRoleChange, onRemove, readOnly = false
             </MenuItem>
           ))}
         </Select>
+        {needsBranch && (
+          <Select
+            size="small"
+            value={member.staffBranchId ?? ""}
+            onChange={(e) => onRoleChange(member.id, member.role, e.target.value || null)}
+            displayEmpty
+            sx={{ minWidth: 140 }}
+            disabled={disabled}
+          >
+            <MenuItem value="">
+              <em>No branch</em>
+            </MenuItem>
+            {branches.map((branch) => (
+              <MenuItem key={branch.id} value={branch.id}>
+                {branch.name}
+              </MenuItem>
+            ))}
+          </Select>
+        )}
         <IconButton
           aria-label={`Remove ${member.name}`}
           onClick={() => onRemove(member.id)}

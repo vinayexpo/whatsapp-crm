@@ -1,24 +1,36 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ActivityLogController;
+use App\Http\Controllers\Api\V1\AddonDefinitionController;
 use App\Http\Controllers\Api\V1\AiAssistantSettingController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\ApiConnectionController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationFlowController;
+use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\CampaignController;
+use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatbotController;
 use App\Http\Controllers\Api\V1\ChatMenuFlowController;
 use App\Http\Controllers\Api\V1\ChatbotTrainingEntryController;
+use App\Http\Controllers\Api\V1\CommerceReportController;
+use App\Http\Controllers\Api\V1\CommerceSettingController;
 use App\Http\Controllers\Api\V1\CompanyAdminController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ConversationController;
 use App\Http\Controllers\Api\V1\DailyMetricController;
+use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
+use App\Http\Controllers\Api\V1\DeliveryZoneController;
+use App\Http\Controllers\Api\V1\OrderController;
+use App\Http\Controllers\Api\V1\OrderSessionController;
+use App\Http\Controllers\Api\V1\OrderStatusController;
+use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhonebookFolderController;
 use App\Http\Controllers\Api\V1\PipelineStageController;
+use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PushSubscriptionController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
 use App\Http\Controllers\Api\V1\VoiceAgentController;
@@ -43,6 +55,7 @@ Route::prefix('webhooks')->group(function () {
     Route::post('/instagram', [InstagramWebhookController::class, 'handle']);
     Route::post('/whatsapp-call', [WhatsappCallWebhookController::class, 'handle']);
     Route::post('/whatsapp-call/action', [WhatsappCallWebhookController::class, 'action']);
+    Route::post('/commerce-payment/razorpay', [PaymentController::class, 'razorpayWebhook']);
 
     Route::prefix('twilio')->group(function () {
         Route::post('/voice', [TwilioVoiceWebhookController::class, 'handle']);
@@ -206,6 +219,67 @@ Route::prefix('v1')->group(function () {
         Route::post('/whatsapp-calls/{whatsappCall}/permission-request', [WhatsappCallController::class, 'requestCallPermission']);
         Route::patch('/whatsapp-calls/{whatsappCall}/followup', [WhatsappCallController::class, 'assignFollowup']);
         Route::patch('/whatsapp-calls/{whatsappCall}/followup/complete', [WhatsappCallController::class, 'completeFollowup']);
+
+        Route::get('/commerce/branches', [BranchController::class, 'index']);
+        Route::post('/commerce/branches', [BranchController::class, 'store']);
+        Route::get('/commerce/branches/{branch}', [BranchController::class, 'show']);
+        Route::patch('/commerce/branches/{branch}', [BranchController::class, 'update']);
+        Route::delete('/commerce/branches/{branch}', [BranchController::class, 'destroy']);
+        Route::put('/commerce/branches/{branch}/products/{product}/availability', [BranchController::class, 'setProductAvailability']);
+        Route::put('/commerce/branches/{branch}/products/{product}/price', [BranchController::class, 'setProductPrice']);
+
+        Route::get('/commerce/categories', [CategoryController::class, 'index']);
+        Route::post('/commerce/categories', [CategoryController::class, 'store']);
+        Route::get('/commerce/categories/{category}', [CategoryController::class, 'show']);
+        Route::patch('/commerce/categories/{category}', [CategoryController::class, 'update']);
+        Route::delete('/commerce/categories/{category}', [CategoryController::class, 'destroy']);
+
+        Route::get('/commerce/products', [ProductController::class, 'index']);
+        Route::post('/commerce/products', [ProductController::class, 'store']);
+        Route::get('/commerce/products/{product}', [ProductController::class, 'show']);
+        Route::patch('/commerce/products/{product}', [ProductController::class, 'update']);
+        Route::delete('/commerce/products/{product}', [ProductController::class, 'destroy']);
+        Route::post('/commerce/products/{product}/variants', [ProductController::class, 'storeVariant']);
+        Route::patch('/commerce/products/{product}/variants/{variant}', [ProductController::class, 'updateVariant']);
+        Route::delete('/commerce/products/{product}/variants/{variant}', [ProductController::class, 'destroyVariant']);
+        Route::put('/commerce/products/{product}/addons', [ProductController::class, 'syncAddons']);
+
+        Route::get('/commerce/addon-definitions', [AddonDefinitionController::class, 'index']);
+        Route::post('/commerce/addon-definitions', [AddonDefinitionController::class, 'store']);
+        Route::get('/commerce/addon-definitions/{addonDefinition}', [AddonDefinitionController::class, 'show']);
+        Route::patch('/commerce/addon-definitions/{addonDefinition}', [AddonDefinitionController::class, 'update']);
+        Route::delete('/commerce/addon-definitions/{addonDefinition}', [AddonDefinitionController::class, 'destroy']);
+
+        Route::get('/commerce/inventory', [InventoryController::class, 'index']);
+        Route::post('/commerce/inventory', [InventoryController::class, 'upsert']);
+        Route::put('/commerce/inventory/{inventory}', [InventoryController::class, 'update']);
+
+        Route::get('/commerce/settings', [CommerceSettingController::class, 'show']);
+        Route::patch('/commerce/settings', [CommerceSettingController::class, 'update']);
+
+        Route::get('/commerce/orders', [OrderController::class, 'index']);
+        Route::get('/commerce/orders/{order}', [OrderController::class, 'show']);
+        Route::patch('/commerce/orders/{order}/status', [OrderController::class, 'updateStatus']);
+        Route::patch('/commerce/orders/{order}/assign', [OrderController::class, 'assign']);
+
+        Route::get('/commerce/delivery-zones', [DeliveryZoneController::class, 'index']);
+        Route::post('/commerce/delivery-zones', [DeliveryZoneController::class, 'store']);
+        Route::get('/commerce/delivery-zones/{deliveryZone}', [DeliveryZoneController::class, 'show']);
+        Route::patch('/commerce/delivery-zones/{deliveryZone}', [DeliveryZoneController::class, 'update']);
+        Route::delete('/commerce/delivery-zones/{deliveryZone}', [DeliveryZoneController::class, 'destroy']);
+
+        Route::get('/commerce/payments', [PaymentController::class, 'index']);
+        Route::patch('/commerce/payments/{payment}/mark-paid', [PaymentController::class, 'markPaid']);
+
+        Route::get('/commerce/order-sessions', [OrderSessionController::class, 'index']);
+        Route::get('/commerce/order-sessions/{orderSession}', [OrderSessionController::class, 'show']);
+
+        Route::get('/commerce/reports/sales', [CommerceReportController::class, 'sales']);
+        Route::get('/commerce/reports/sales-by-branch', [CommerceReportController::class, 'salesByBranch']);
+        Route::get('/commerce/reports/top-products', [CommerceReportController::class, 'topProducts']);
+
+        Route::get('/commerce/order-statuses', [OrderStatusController::class, 'index']);
+        Route::patch('/commerce/order-statuses/{orderStatus}', [OrderStatusController::class, 'update']);
 
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 

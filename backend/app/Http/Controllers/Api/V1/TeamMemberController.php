@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Validation\Rule;
 
 class TeamMemberController extends Controller
 {
+    private const ASSIGNABLE_ROLES = ['manager', 'agent', 'branch_manager', 'staff'];
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', User::class);
@@ -44,7 +46,8 @@ class TeamMemberController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'in:manager,agent'],
+            'role' => ['required', Rule::in(self::ASSIGNABLE_ROLES)],
+            'staffBranchId' => ['nullable', 'string', 'exists:branches,uuid'],
         ]);
 
         $user = User::query()->create([
@@ -52,6 +55,7 @@ class TeamMemberController extends Controller
             'email' => $data['email'],
             'password' => $data['password'],
             'company_id' => $request->user()->company_id,
+            'staff_branch_id' => $this->resolveBranchId($data['staffBranchId'] ?? null, $request->user()->company_id),
             'status' => 'active',
         ]);
 
@@ -65,12 +69,28 @@ class TeamMemberController extends Controller
         $this->authorize('update', $teamMember);
 
         $data = $request->validate([
-            'role' => ['required', Rule::in(['manager', 'agent'])],
+            'role' => ['required', Rule::in(self::ASSIGNABLE_ROLES)],
+            'staffBranchId' => ['nullable', 'string', 'exists:branches,uuid'],
         ]);
 
         $teamMember->syncRoles([$data['role']]);
 
+        if (array_key_exists('staffBranchId', $data)) {
+            $teamMember->update([
+                'staff_branch_id' => $this->resolveBranchId($data['staffBranchId'], $teamMember->company_id),
+            ]);
+        }
+
         return response()->json(['data' => new UserResource($teamMember)]);
+    }
+
+    private function resolveBranchId(?string $branchUuid, ?int $companyId): ?int
+    {
+        if (! $branchUuid) {
+            return null;
+        }
+
+        return Branch::query()->where('uuid', $branchUuid)->where('company_id', $companyId)->value('id');
     }
 
     public function destroy(Request $request, User $teamMember): JsonResponse

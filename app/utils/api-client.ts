@@ -1,14 +1,20 @@
 import type {
   ActivityItem,
+  AddonDefinition,
   AiAssistantSettings,
   ApiConnection,
   ApiConnectionStatus,
   AppNotification,
   AutomationFlow,
   AutomationStatus,
+  Branch,
+  BranchProductAvailability,
+  BranchProductPrice,
+  BranchStatus,
   Campaign,
   CampaignDashboardData,
   CampaignRecipient,
+  Category,
   ChannelType,
   Chatbot,
   ChatbotChannel,
@@ -16,17 +22,30 @@ import type {
   ChatbotTrainingCandidate,
   ChatbotTrainingEntry,
   ChatbotTrainingEntrySource,
+  CommerceSalesByBranchRow,
+  CommerceSalesReportRow,
+  CommerceTopProductRow,
   Company,
   Contact,
   Conversation,
   DailyMetric,
+  DeliveryZone,
+  DeliveryZoneType,
   ImportSummary,
+  InventoryRow,
   Message,
   NotificationPreferences,
+  Order,
+  OrderSession,
+  OrderSessionStatus,
+  OrderStatus,
   PaginatedResponse,
+  Payment,
   PhonebookFolder,
   PipelineStage,
   PipelineStageId,
+  Product,
+  ProductVariant,
   TeamMember,
   TeamMemberRole,
   VoiceAgent,
@@ -593,7 +612,8 @@ async function inviteTeamMember(member: {
   name: string;
   email: string;
   password: string;
-  role: Extract<TeamMemberRole, "manager" | "agent">;
+  role: Extract<TeamMemberRole, "manager" | "agent" | "branch_manager" | "staff">;
+  staffBranchId?: string | null;
 }): Promise<TeamMember> {
   const { data } = await apiRequest<{ data: TeamMember }>("/api/v1/team-members", {
     method: "POST",
@@ -602,10 +622,14 @@ async function inviteTeamMember(member: {
   return data;
 }
 
-async function updateTeamMemberRole(memberId: string, role: TeamMemberRole): Promise<TeamMember> {
+async function updateTeamMemberRole(
+  memberId: string,
+  role: TeamMemberRole,
+  staffBranchId?: string | null,
+): Promise<TeamMember> {
   const { data } = await apiRequest<{ data: TeamMember }>(`/api/v1/team-members/${memberId}/role`, {
     method: "PATCH",
-    body: JSON.stringify({ role }),
+    body: JSON.stringify({ role, staffBranchId }),
   });
   return data;
 }
@@ -1067,6 +1091,590 @@ async function deleteVoiceAgent(voiceAgentId: string): Promise<void> {
   await apiRequest(`/api/v1/voice-agents/${voiceAgentId}`, { method: "DELETE" });
 }
 
+// --- Commerce: Branches ---
+
+async function listBranches(params?: {
+  page?: number;
+  perPage?: number;
+  status?: BranchStatus;
+  search?: string;
+}): Promise<PaginatedResponse<Branch>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    search: params?.search,
+  });
+  const body = await apiRequest<RawPaginatedResponse<Branch>>(`/api/v1/commerce/branches${query}`);
+  return unwrapPaginated(body);
+}
+
+async function createBranch(branch: {
+  apiConnectionId?: string | null;
+  businessTypeId?: number | null;
+  name: string;
+  slug: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  phone?: string | null;
+  status?: BranchStatus;
+  operatingHours?: Record<string, unknown> | null;
+  holidays?: Record<string, unknown> | null;
+  timezone?: string;
+  minOrderAmount?: number | null;
+  defaultDeliveryCharge?: number | null;
+  deliveryRadiusKm?: number | null;
+  currency?: string;
+  isDefault?: boolean;
+}): Promise<Branch> {
+  const { data } = await apiRequest<{ data: Branch }>("/api/v1/commerce/branches", {
+    method: "POST",
+    body: JSON.stringify(branch),
+  });
+  return data;
+}
+
+async function getBranch(branchId: string): Promise<Branch> {
+  const { data } = await apiRequest<{ data: Branch }>(`/api/v1/commerce/branches/${branchId}`);
+  return data;
+}
+
+async function updateBranch(
+  branchId: string,
+  updates: Partial<{
+    apiConnectionId: string | null;
+    businessTypeId: number | null;
+    name: string;
+    slug: string;
+    address: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    phone: string | null;
+    status: BranchStatus;
+    operatingHours: Record<string, unknown> | null;
+    holidays: Record<string, unknown> | null;
+    timezone: string;
+    minOrderAmount: number | null;
+    defaultDeliveryCharge: number | null;
+    deliveryRadiusKm: number | null;
+    currency: string;
+    isDefault: boolean;
+  }>,
+): Promise<Branch> {
+  const { data } = await apiRequest<{ data: Branch }>(`/api/v1/commerce/branches/${branchId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  return data;
+}
+
+async function deleteBranch(branchId: string): Promise<void> {
+  await apiRequest(`/api/v1/commerce/branches/${branchId}`, { method: "DELETE" });
+}
+
+async function setBranchProductAvailability(
+  branchId: string,
+  productId: string,
+  isAvailable: boolean,
+): Promise<BranchProductAvailability> {
+  const { data } = await apiRequest<{ data: BranchProductAvailability }>(
+    `/api/v1/commerce/branches/${branchId}/products/${productId}/availability`,
+    { method: "PUT", body: JSON.stringify({ isAvailable }) },
+  );
+  return data;
+}
+
+async function setBranchProductPrice(
+  branchId: string,
+  productId: string,
+  payload: { productVariantId?: string | null; price: number },
+): Promise<BranchProductPrice> {
+  const { data } = await apiRequest<{ data: BranchProductPrice }>(
+    `/api/v1/commerce/branches/${branchId}/products/${productId}/price`,
+    { method: "PUT", body: JSON.stringify(payload) },
+  );
+  return data;
+}
+
+// --- Commerce: Categories ---
+
+async function listCategories(params?: {
+  page?: number;
+  perPage?: number;
+  parentId?: string;
+  search?: string;
+}): Promise<PaginatedResponse<Category>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    parentId: params?.parentId,
+    search: params?.search,
+  });
+  const body = await apiRequest<RawPaginatedResponse<Category>>(`/api/v1/commerce/categories${query}`);
+  return unwrapPaginated(body);
+}
+
+async function createCategory(category: {
+  parentId?: string | null;
+  name: string;
+  slug: string;
+  imageUrl?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
+}): Promise<Category> {
+  const { data } = await apiRequest<{ data: Category }>("/api/v1/commerce/categories", {
+    method: "POST",
+    body: JSON.stringify(category),
+  });
+  return data;
+}
+
+async function getCategory(categoryId: string): Promise<Category> {
+  const { data } = await apiRequest<{ data: Category }>(`/api/v1/commerce/categories/${categoryId}`);
+  return data;
+}
+
+async function updateCategory(
+  categoryId: string,
+  updates: Partial<{
+    parentId: string | null;
+    name: string;
+    slug: string;
+    imageUrl: string | null;
+    sortOrder: number;
+    isActive: boolean;
+  }>,
+): Promise<Category> {
+  const { data } = await apiRequest<{ data: Category }>(`/api/v1/commerce/categories/${categoryId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  return data;
+}
+
+async function deleteCategory(categoryId: string): Promise<void> {
+  await apiRequest(`/api/v1/commerce/categories/${categoryId}`, { method: "DELETE" });
+}
+
+// --- Commerce: Products ---
+
+async function listProducts(params?: {
+  page?: number;
+  perPage?: number;
+  categoryId?: string;
+  search?: string;
+  isActive?: boolean;
+}): Promise<PaginatedResponse<Product>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    categoryId: params?.categoryId,
+    search: params?.search,
+    isActive: params?.isActive,
+  });
+  const body = await apiRequest<RawPaginatedResponse<Product>>(`/api/v1/commerce/products${query}`);
+  return unwrapPaginated(body);
+}
+
+async function createProduct(product: {
+  categoryId?: string | null;
+  brand?: string | null;
+  name: string;
+  sku?: string | null;
+  description?: string | null;
+  images?: string[];
+  basePrice: number;
+  salePrice?: number | null;
+  taxRateBp?: number;
+  weightGrams?: number | null;
+  dimensions?: Record<string, unknown> | null;
+  attributes?: Record<string, unknown> | null;
+  deliveryAvailable?: boolean;
+  pickupAvailable?: boolean;
+  isService?: boolean;
+  isActive?: boolean;
+}): Promise<Product> {
+  const { data } = await apiRequest<{ data: Product }>("/api/v1/commerce/products", {
+    method: "POST",
+    body: JSON.stringify(product),
+  });
+  return data;
+}
+
+async function getProduct(productId: string): Promise<Product> {
+  const { data } = await apiRequest<{ data: Product }>(`/api/v1/commerce/products/${productId}`);
+  return data;
+}
+
+async function updateProduct(
+  productId: string,
+  updates: Partial<{
+    categoryId: string | null;
+    brand: string | null;
+    name: string;
+    sku: string | null;
+    description: string | null;
+    images: string[];
+    basePrice: number;
+    salePrice: number | null;
+    taxRateBp: number;
+    weightGrams: number | null;
+    dimensions: Record<string, unknown> | null;
+    attributes: Record<string, unknown> | null;
+    deliveryAvailable: boolean;
+    pickupAvailable: boolean;
+    isService: boolean;
+    isActive: boolean;
+  }>,
+): Promise<Product> {
+  const { data } = await apiRequest<{ data: Product }>(`/api/v1/commerce/products/${productId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  return data;
+}
+
+async function deleteProduct(productId: string): Promise<void> {
+  await apiRequest(`/api/v1/commerce/products/${productId}`, { method: "DELETE" });
+}
+
+async function createProductVariant(
+  productId: string,
+  variant: {
+    name: string;
+    attributes?: Record<string, unknown> | null;
+    sku?: string | null;
+    priceDelta?: number;
+    stockTracked?: boolean;
+    isActive?: boolean;
+  },
+): Promise<ProductVariant> {
+  const { data } = await apiRequest<{ data: ProductVariant }>(`/api/v1/commerce/products/${productId}/variants`, {
+    method: "POST",
+    body: JSON.stringify(variant),
+  });
+  return data;
+}
+
+async function updateProductVariant(
+  productId: string,
+  variantId: string,
+  updates: Partial<{
+    name: string;
+    attributes: Record<string, unknown> | null;
+    sku: string | null;
+    priceDelta: number;
+    stockTracked: boolean;
+    isActive: boolean;
+  }>,
+): Promise<ProductVariant> {
+  const { data } = await apiRequest<{ data: ProductVariant }>(
+    `/api/v1/commerce/products/${productId}/variants/${variantId}`,
+    { method: "PATCH", body: JSON.stringify(updates) },
+  );
+  return data;
+}
+
+async function deleteProductVariant(productId: string, variantId: string): Promise<void> {
+  await apiRequest(`/api/v1/commerce/products/${productId}/variants/${variantId}`, { method: "DELETE" });
+}
+
+async function syncProductAddons(productId: string, addonDefinitionIds: string[]): Promise<Product> {
+  const { data } = await apiRequest<{ data: Product }>(`/api/v1/commerce/products/${productId}/addons`, {
+    method: "PUT",
+    body: JSON.stringify({ addonDefinitionIds }),
+  });
+  return data;
+}
+
+// --- Commerce: Addon Definitions (shared addon library) ---
+
+async function listAddonDefinitions(params?: {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  isActive?: boolean;
+}): Promise<PaginatedResponse<AddonDefinition>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    search: params?.search,
+    isActive: params?.isActive,
+  });
+  const body = await apiRequest<RawPaginatedResponse<AddonDefinition>>(`/api/v1/commerce/addon-definitions${query}`);
+  return unwrapPaginated(body);
+}
+
+async function createAddonDefinition(addon: {
+  name: string;
+  price?: number;
+  maxQuantity?: number;
+  isActive?: boolean;
+}): Promise<AddonDefinition> {
+  const { data } = await apiRequest<{ data: AddonDefinition }>("/api/v1/commerce/addon-definitions", {
+    method: "POST",
+    body: JSON.stringify(addon),
+  });
+  return data;
+}
+
+async function getAddonDefinition(addonDefinitionId: string): Promise<AddonDefinition> {
+  const { data } = await apiRequest<{ data: AddonDefinition }>(
+    `/api/v1/commerce/addon-definitions/${addonDefinitionId}`,
+  );
+  return data;
+}
+
+async function updateAddonDefinition(
+  addonDefinitionId: string,
+  updates: Partial<{ name: string; price: number; maxQuantity: number; isActive: boolean }>,
+): Promise<AddonDefinition> {
+  const { data } = await apiRequest<{ data: AddonDefinition }>(
+    `/api/v1/commerce/addon-definitions/${addonDefinitionId}`,
+    { method: "PATCH", body: JSON.stringify(updates) },
+  );
+  return data;
+}
+
+async function deleteAddonDefinition(addonDefinitionId: string): Promise<void> {
+  await apiRequest(`/api/v1/commerce/addon-definitions/${addonDefinitionId}`, { method: "DELETE" });
+}
+
+// --- Commerce: Inventory ---
+
+async function listInventory(params?: {
+  page?: number;
+  perPage?: number;
+  branchId?: string;
+  productId?: string;
+}): Promise<PaginatedResponse<InventoryRow>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    branchId: params?.branchId,
+    productId: params?.productId,
+  });
+  const body = await apiRequest<RawPaginatedResponse<InventoryRow>>(`/api/v1/commerce/inventory${query}`);
+  return unwrapPaginated(body);
+}
+
+async function upsertInventory(payload: {
+  branchId: string;
+  productId: string;
+  productVariantId?: string | null;
+  stockQuantity?: number;
+  lowStockThreshold?: number | null;
+  trackStock?: boolean;
+}): Promise<InventoryRow> {
+  const { data } = await apiRequest<{ data: InventoryRow }>("/api/v1/commerce/inventory", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return data;
+}
+
+async function updateInventory(
+  inventoryId: number,
+  updates: Partial<{ stockQuantity: number; lowStockThreshold: number | null; trackStock: boolean }>,
+): Promise<InventoryRow> {
+  const { data } = await apiRequest<{ data: InventoryRow }>(`/api/v1/commerce/inventory/${inventoryId}`, {
+    method: "PUT",
+    body: JSON.stringify(updates),
+  });
+  return data;
+}
+
+// --- Commerce: Orders ---
+
+async function listOrders(params?: {
+  page?: number;
+  perPage?: number;
+  status?: OrderStatus;
+  branchId?: string;
+}): Promise<PaginatedResponse<Order>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+    branch_id: params?.branchId,
+  });
+  const body = await apiRequest<RawPaginatedResponse<Order>>(`/api/v1/commerce/orders${query}`);
+  return unwrapPaginated(body);
+}
+
+async function getOrder(orderId: string): Promise<Order> {
+  const { data } = await apiRequest<{ data: Order }>(`/api/v1/commerce/orders/${orderId}`);
+  return data;
+}
+
+async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
+  const { data } = await apiRequest<{ data: Order }>(`/api/v1/commerce/orders/${orderId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+  return data;
+}
+
+async function assignOrder(orderId: string, staffUserId: string | null): Promise<Order> {
+  const { data } = await apiRequest<{ data: Order }>(`/api/v1/commerce/orders/${orderId}/assign`, {
+    method: "PATCH",
+    body: JSON.stringify({ staffUserId }),
+  });
+  return data;
+}
+
+// --- Commerce: Order Sessions ---
+
+async function listOrderSessions(params?: {
+  page?: number;
+  perPage?: number;
+  status?: OrderSessionStatus;
+}): Promise<PaginatedResponse<OrderSession>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    status: params?.status,
+  });
+  const body = await apiRequest<RawPaginatedResponse<OrderSession>>(`/api/v1/commerce/order-sessions${query}`);
+  return unwrapPaginated(body);
+}
+
+async function getOrderSession(orderSessionId: string): Promise<OrderSession> {
+  const { data } = await apiRequest<{ data: OrderSession }>(`/api/v1/commerce/order-sessions/${orderSessionId}`);
+  return data;
+}
+
+// --- Commerce: Delivery Zones ---
+
+async function listDeliveryZones(params?: {
+  page?: number;
+  perPage?: number;
+  branchId?: string;
+}): Promise<PaginatedResponse<DeliveryZone>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    branch_id: params?.branchId,
+  });
+  const body = await apiRequest<RawPaginatedResponse<DeliveryZone>>(`/api/v1/commerce/delivery-zones${query}`);
+  return unwrapPaginated(body);
+}
+
+async function createDeliveryZone(zone: {
+  branchId: string;
+  name: string;
+  type?: DeliveryZoneType;
+  radiusKm?: number | null;
+  polygon?: Record<string, unknown> | null;
+  deliveryCharge: number;
+  freeDeliveryThreshold?: number | null;
+  minOrderAmount?: number | null;
+  isActive?: boolean;
+  sortOrder?: number;
+}): Promise<DeliveryZone> {
+  const { data } = await apiRequest<{ data: DeliveryZone }>("/api/v1/commerce/delivery-zones", {
+    method: "POST",
+    body: JSON.stringify(zone),
+  });
+  return data;
+}
+
+async function updateDeliveryZone(
+  deliveryZoneId: string,
+  updates: Partial<{
+    name: string;
+    type: DeliveryZoneType;
+    radiusKm: number | null;
+    polygon: Record<string, unknown> | null;
+    deliveryCharge: number;
+    freeDeliveryThreshold: number | null;
+    minOrderAmount: number | null;
+    isActive: boolean;
+    sortOrder: number;
+  }>,
+): Promise<DeliveryZone> {
+  const { data } = await apiRequest<{ data: DeliveryZone }>(`/api/v1/commerce/delivery-zones/${deliveryZoneId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  return data;
+}
+
+async function deleteDeliveryZone(deliveryZoneId: string): Promise<void> {
+  await apiRequest(`/api/v1/commerce/delivery-zones/${deliveryZoneId}`, { method: "DELETE" });
+}
+
+// --- Commerce: Payments ---
+
+async function listPayments(params?: {
+  page?: number;
+  perPage?: number;
+  orderId?: string;
+}): Promise<PaginatedResponse<Payment>> {
+  const query = buildQuery({
+    page: params?.page,
+    per_page: params?.perPage,
+    order_id: params?.orderId,
+  });
+  const body = await apiRequest<RawPaginatedResponse<Payment>>(`/api/v1/commerce/payments${query}`);
+  return unwrapPaginated(body);
+}
+
+async function markPaymentPaid(paymentId: string): Promise<Payment> {
+  const { data } = await apiRequest<{ data: Payment }>(`/api/v1/commerce/payments/${paymentId}/mark-paid`, {
+    method: "PATCH",
+  });
+  return data;
+}
+
+// --- Commerce: Reports ---
+
+async function getCommerceSalesReport(params?: {
+  branchId?: string;
+  from?: string;
+  to?: string;
+  groupBy?: "day" | "week" | "month";
+}): Promise<CommerceSalesReportRow[]> {
+  const query = buildQuery({
+    branchId: params?.branchId,
+    from: params?.from,
+    to: params?.to,
+    groupBy: params?.groupBy,
+  });
+  const { data } = await apiRequest<{ data: CommerceSalesReportRow[] }>(`/api/v1/commerce/reports/sales${query}`);
+  return data;
+}
+
+async function getCommerceSalesByBranchReport(params?: {
+  from?: string;
+  to?: string;
+}): Promise<CommerceSalesByBranchRow[]> {
+  const query = buildQuery({ from: params?.from, to: params?.to });
+  const { data } = await apiRequest<{ data: CommerceSalesByBranchRow[] }>(
+    `/api/v1/commerce/reports/sales-by-branch${query}`,
+  );
+  return data;
+}
+
+async function getCommerceTopProductsReport(params?: {
+  branchId?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+}): Promise<CommerceTopProductRow[]> {
+  const query = buildQuery({
+    branchId: params?.branchId,
+    from: params?.from,
+    to: params?.to,
+    limit: params?.limit,
+  });
+  const { data } = await apiRequest<{ data: CommerceTopProductRow[] }>(
+    `/api/v1/commerce/reports/top-products${query}`,
+  );
+  return data;
+}
+
 async function listVoiceCalls(filters?: {
   voiceAgentId?: string;
   status?: string;
@@ -1493,6 +2101,50 @@ export const apiClient = {
   subscribeToPush,
   unsubscribeFromPush,
   request: apiRequest,
+  listBranches,
+  createBranch,
+  getBranch,
+  updateBranch,
+  deleteBranch,
+  setBranchProductAvailability,
+  setBranchProductPrice,
+  listCategories,
+  createCategory,
+  getCategory,
+  updateCategory,
+  deleteCategory,
+  listProducts,
+  createProduct,
+  getProduct,
+  updateProduct,
+  deleteProduct,
+  createProductVariant,
+  updateProductVariant,
+  deleteProductVariant,
+  syncProductAddons,
+  listAddonDefinitions,
+  createAddonDefinition,
+  getAddonDefinition,
+  updateAddonDefinition,
+  deleteAddonDefinition,
+  listInventory,
+  upsertInventory,
+  updateInventory,
+  listOrders,
+  getOrder,
+  updateOrderStatus,
+  assignOrder,
+  listOrderSessions,
+  getOrderSession,
+  listDeliveryZones,
+  createDeliveryZone,
+  updateDeliveryZone,
+  deleteDeliveryZone,
+  listPayments,
+  markPaymentPaid,
+  getCommerceSalesReport,
+  getCommerceSalesByBranchReport,
+  getCommerceTopProductsReport,
 };
 
 export { ApiError };

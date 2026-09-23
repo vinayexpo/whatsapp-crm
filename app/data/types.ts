@@ -412,7 +412,7 @@ export interface WhatsappCall {
   createdAt: string;
 }
 
-export type TeamMemberRole = "superadmin" | "admin" | "manager" | "agent";
+export type TeamMemberRole = "superadmin" | "admin" | "manager" | "agent" | "branch_manager" | "staff";
 export type TeamMemberStatus = "active" | "invited";
 
 export interface TeamMember {
@@ -425,6 +425,7 @@ export interface TeamMember {
   status: TeamMemberStatus;
   addedAt: string;
   companyId: string | null;
+  staffBranchId: string | null;
 }
 
 export type CompanyStatus = "active" | "suspended";
@@ -543,6 +544,108 @@ export interface VoiceAgent {
   createdAt: string;
 }
 
+export type BranchStatus = "active" | "inactive";
+
+export interface Branch {
+  id: string;
+  apiConnectionId: string | null;
+  businessTypeId: number | null;
+  name: string;
+  slug: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+  status: BranchStatus;
+  operatingHours: Record<string, unknown> | null;
+  holidays: Record<string, unknown> | null;
+  timezone: string;
+  minOrderAmount: number | null;
+  defaultDeliveryCharge: number | null;
+  deliveryRadiusKm: number | null;
+  currency: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface Category {
+  id: string;
+  parentId: string | null;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  productId?: string;
+  name: string;
+  attributes: Record<string, unknown> | null;
+  sku: string | null;
+  priceDelta: number;
+  stockTracked: boolean;
+  isActive: boolean;
+}
+
+export interface AddonDefinition {
+  id: string;
+  name: string;
+  price: number;
+  maxQuantity: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface Product {
+  id: string;
+  categoryId: string | null;
+  brand: string | null;
+  name: string;
+  sku: string | null;
+  description: string | null;
+  images: string[];
+  basePrice: number;
+  salePrice: number | null;
+  taxRateBp: number;
+  weightGrams: number | null;
+  dimensions: Record<string, unknown> | null;
+  attributes: Record<string, unknown>;
+  deliveryAvailable: boolean;
+  pickupAvailable: boolean;
+  isService: boolean;
+  isActive: boolean;
+  variants: ProductVariant[];
+  addons: AddonDefinition[];
+  createdAt: string;
+}
+
+export interface InventoryRow {
+  id: number;
+  branchId: string | null;
+  productId: string | null;
+  productVariantId: string | null;
+  stockQuantity: number;
+  lowStockThreshold: number | null;
+  trackStock: boolean;
+  updatedAt: string;
+}
+
+export interface BranchProductAvailability {
+  branchId: string;
+  productId: string;
+  isAvailable: boolean;
+}
+
+export interface BranchProductPrice {
+  branchId: string;
+  productId: string;
+  productVariantId: string | null;
+  price: number;
+}
+
 export type VoiceCallDirection = "inbound" | "outbound";
 export type VoiceCallMedium = "browser_simulation" | "telephony";
 export type VoiceCallStatus =
@@ -584,6 +687,128 @@ export interface VoiceCall {
   humanFollowupCompletedAt: string | null;
   startedAt: string | null;
   endedAt: string | null;
+  createdAt: string;
+}
+
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "out_for_delivery"
+  | "delivered"
+  | "completed"
+  | "cancelled";
+
+export type OrderFulfillmentType = "delivery" | "pickup";
+
+export interface OrderItem {
+  id: number;
+  productId: string | null;
+  productVariantId: string | null;
+  nameSnapshot: string;
+  unitPriceSnapshot: number;
+  quantity: number;
+  selectedOptions: Record<string, unknown> | null;
+  lineTotal: number;
+}
+
+export interface Order {
+  id: string;
+  branchId: string | null;
+  branchName: string | null;
+  contactId: string | null;
+  contactName: string | null;
+  conversationId: string | null;
+  orderNumber: string;
+  status: OrderStatus;
+  fulfillmentType: OrderFulfillmentType;
+  deliveryAddress: string | null;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
+  subtotal: number;
+  taxTotal: number;
+  deliveryCharge: number;
+  discountTotal: number;
+  grandTotal: number;
+  currency: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  assignedStaffUserId: string | null;
+  notes: string | null;
+  placedAt: string | null;
+  items: OrderItem[];
+  createdAt: string;
+}
+
+export type OrderSessionStatus = "active" | "completed" | "abandoned" | "expired";
+
+export interface OrderSession {
+  id: string;
+  conversationId: string | null;
+  contactId: string | null;
+  contactName: string | null;
+  branchId: string | null;
+  branchName: string | null;
+  status: OrderSessionStatus;
+  step: string;
+  cartTotal: number;
+  orderId: string | null;
+  lastInteractionAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface CommerceSalesReportRow {
+  period: string;
+  orderCount: number;
+  revenue: number;
+}
+
+export interface CommerceSalesByBranchRow {
+  branchId: string | null;
+  branchName: string | null;
+  orderCount: number;
+  revenue: number;
+}
+
+export interface CommerceTopProductRow {
+  productId: string | null;
+  name: string;
+  totalQuantity: number;
+  totalRevenue: number;
+}
+
+export type DeliveryZoneType = "radius" | "polygon";
+
+export interface DeliveryZone {
+  id: string;
+  branchId: string;
+  name: string;
+  type: DeliveryZoneType;
+  radiusKm: number | null;
+  polygon: Record<string, unknown> | null;
+  deliveryCharge: number;
+  freeDeliveryThreshold: number | null;
+  minOrderAmount: number | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export type PaymentMethod = "cod" | "upi" | "gateway:razorpay" | "gateway:whatsapp";
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+
+export interface Payment {
+  id: string;
+  orderId: string | null;
+  orderNumber: string | null;
+  method: PaymentMethod | string;
+  amount: number;
+  status: PaymentStatus;
+  providerReference: string | null;
+  failureReason: string | null;
+  paidAt: string | null;
   createdAt: string;
 }
 

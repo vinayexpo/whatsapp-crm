@@ -22,6 +22,7 @@ class UserResource extends JsonResource
             'permissions' => $this->getAllPermissions()->pluck('name'),
             'status' => $this->status,
             'companyId' => $this->company?->uuid,
+            'staffBranchId' => $this->staffBranch?->uuid,
             'addedAt' => $this->created_at?->toIso8601String(),
         ];
     }

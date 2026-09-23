@@ -68,6 +68,42 @@ it('allows an admin to invite a new team member with a password', function () {
     expect(\Illuminate\Support\Facades\Hash::check('password123', $user->password))->toBeTrue();
 });
 
+it('allows an admin to invite a branch manager scoped to a branch', function () {
+    $admin = actingAsTeamRole('admin');
+    $branch = App\Models\Branch::factory()->create(['company_id' => $admin->company_id]);
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/team-members', [
+        'name' => 'Branch Mgr',
+        'email' => 'branch.mgr@omnichat.test',
+        'password' => 'password123',
+        'role' => 'branch_manager',
+        'staffBranchId' => $branch->uuid,
+    ]);
+
+    $response->assertCreated();
+    $response->assertJsonPath('data.role', 'branch_manager');
+    $response->assertJsonPath('data.staffBranchId', $branch->uuid);
+
+    $user = User::query()->where('email', 'branch.mgr@omnichat.test')->first();
+    expect($user->staff_branch_id)->toBe($branch->id);
+});
+
+it('allows an admin to update a team member role and staff branch together', function () {
+    $admin = actingAsTeamRole('admin');
+    $branch = App\Models\Branch::factory()->create(['company_id' => $admin->company_id]);
+    $member = User::factory()->create(['company_id' => $admin->company_id]);
+    $member->assignRole('agent');
+
+    $response = $this->actingAs($admin)->patchJson("/api/v1/team-members/{$member->uuid}/role", [
+        'role' => 'staff',
+        'staffBranchId' => $branch->uuid,
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('data.role', 'staff');
+    $response->assertJsonPath('data.staffBranchId', $branch->uuid);
+});
+
 it('forbids an admin from creating another admin via team-members', function () {
     $admin = actingAsTeamRole('admin');
 

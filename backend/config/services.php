@@ -44,6 +44,27 @@ return [
         'coexistence_config_id' => env('META_COEXISTENCE_CONFIG_ID'),
     ],
 
+    'razorpay' => [
+        'key_id' => env('RAZORPAY_KEY_ID'),
+        'key_secret' => env('RAZORPAY_KEY_SECRET'),
+        'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
+    ],
+
+    'whatsapp_pay' => [
+        // Real Meta WhatsApp Pay (Order Details interactive message +
+        // payment_status webhook) is India-only and requires the WABA to be
+        // onboarded with a payments provider via Meta -- gate behind an
+        // explicit flag so it is never offered to a company whose WABA isn't
+        // actually payments-enabled.
+        'enabled' => env('WHATSAPP_PAY_ENABLED', false),
+        'payment_configuration_name' => env('WHATSAPP_PAY_CONFIGURATION_NAME'),
+    ],
+
+    'upi' => [
+        'vpa' => env('UPI_VPA'),
+        'payee_name' => env('UPI_PAYEE_NAME'),
+    ],
+
     'twilio' => [
         'account_sid' => env('TWILIO_ACCOUNT_SID'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),

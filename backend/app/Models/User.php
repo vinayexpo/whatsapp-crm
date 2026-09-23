@@ -14,7 +14,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'avatar_url', 'status', 'company_id'])]
+#[Fillable(['name', 'email', 'password', 'avatar_url', 'status', 'company_id', 'staff_branch_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -47,6 +47,11 @@ class User extends Authenticatable
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function staffBranch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'staff_branch_id');
     }
 
     public function getRouteKeyName(): string

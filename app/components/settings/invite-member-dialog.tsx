@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -7,42 +7,77 @@ import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
-import type { TeamMemberRole } from "~/data/types";
+import { apiClient } from "~/utils/api-client";
+import type { Branch, TeamMemberRole } from "~/data/types";
 
-type InvitableRole = Extract<TeamMemberRole, "manager" | "agent">;
+type InvitableRole = Extract<TeamMemberRole, "manager" | "agent" | "branch_manager" | "staff">;
 
 interface InviteMemberDialogProps {
   open: boolean;
   onClose: () => void;
-  onInvite: (member: { name: string; email: string; password: string; role: InvitableRole }) => void;
+  onInvite: (member: {
+    name: string;
+    email: string;
+    password: string;
+    role: InvitableRole;
+    staffBranchId?: string | null;
+  }) => void;
 }
 
 const ROLE_OPTIONS: { value: InvitableRole; label: string }[] = [
   { value: "manager", label: "Manager" },
   { value: "agent", label: "Agent" },
+  { value: "branch_manager", label: "Branch Manager" },
+  { value: "staff", label: "Staff" },
 ];
+
+const BRANCH_SCOPED_ROLES: InvitableRole[] = ["branch_manager", "staff"];
 
 export function InviteMemberDialog({ open, onClose, onInvite }: InviteMemberDialogProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<InvitableRole>("agent");
+  const [staffBranchId, setStaffBranchId] = useState<string>("");
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    apiClient
+      .listBranches({ perPage: 100 })
+      .then(({ data }) => setBranches(data))
+      .catch(() => {
+        // branches stay empty on failure
+      });
+  }, [open]);
 
   function resetAndClose() {
     setName("");
     setEmail("");
     setPassword("");
     setRole("agent");
+    setStaffBranchId("");
     onClose();
   }
 
   function handleInvite() {
     if (!name.trim() || !email.trim() || password.length < 8) return;
-    onInvite({ name: name.trim(), email: email.trim(), password, role });
+    onInvite({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      role,
+      staffBranchId: BRANCH_SCOPED_ROLES.includes(role) ? staffBranchId || null : undefined,
+    });
     resetAndClose();
   }
 
-  const canInvite = name.trim().length > 0 && /\S+@\S+\.\S+/.test(email.trim()) && password.length >= 8;
+  const needsBranch = BRANCH_SCOPED_ROLES.includes(role);
+  const canInvite =
+    name.trim().length > 0 &&
+    /\S+@\S+\.\S+/.test(email.trim()) &&
+    password.length >= 8 &&
+    (!needsBranch || staffBranchId.length > 0);
 
   return (
     <Dialog open={open} onClose={resetAndClose} maxWidth="xs" fullWidth>
@@ -81,6 +116,22 @@ export function InviteMemberDialog({ open, onClose, onInvite }: InviteMemberDial
               </MenuItem>
             ))}
           </TextField>
+          {needsBranch && (
+            <TextField
+              select
+              label="Branch"
+              value={staffBranchId}
+              onChange={(e) => setStaffBranchId(e.target.value)}
+              fullWidth
+              helperText="This member will only have access to the selected branch"
+            >
+              {branches.map((branch) => (
+                <MenuItem key={branch.id} value={branch.id}>
+                  {branch.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>

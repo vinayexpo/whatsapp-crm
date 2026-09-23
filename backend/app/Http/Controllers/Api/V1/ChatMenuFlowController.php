@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ChatMenuFlowResource;
 use App\Models\ChatMenuFlow;
 use App\Services\ChatFlow\ChatMenuFlowGeneratorServiceInterface;
+use App\Services\Commerce\TriggerKeywordUniquenessValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -32,11 +33,13 @@ class ChatMenuFlowController extends Controller
         );
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, TriggerKeywordUniquenessValidator $validator): JsonResponse
     {
         $this->authorize('create', ChatMenuFlow::class);
 
         $data = $this->validateFlow($request, isUpdate: false);
+
+        $validator->assertNoCommerceCollision($request->user()->company_id, $data['triggerKeyword'] ?? null);
 
         $flow = ChatMenuFlow::query()->create([
             'name' => $data['name'],
@@ -57,11 +60,15 @@ class ChatMenuFlowController extends Controller
         return response()->json(['data' => new ChatMenuFlowResource($chatMenuFlow)]);
     }
 
-    public function update(Request $request, ChatMenuFlow $chatMenuFlow): JsonResponse
+    public function update(Request $request, ChatMenuFlow $chatMenuFlow, TriggerKeywordUniquenessValidator $validator): JsonResponse
     {
         $this->authorize('update', $chatMenuFlow);
 
         $data = $this->validateFlow($request, isUpdate: true);
+
+        if (array_key_exists('triggerKeyword', $data)) {
+            $validator->assertNoCommerceCollision($request->user()->company_id, $data['triggerKeyword']);
+        }
 
         $update = [];
         $map = [

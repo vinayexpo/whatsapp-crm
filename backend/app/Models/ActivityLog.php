@@ -13,7 +13,7 @@ class ActivityLog extends Model
     use BelongsToCompany, HasFactory, HasUuid;
 
     protected $fillable = [
-        'type', 'description', 'channel', 'occurred_at',
+        'company_id', 'type', 'description', 'channel', 'occurred_at',
     ];
 
     protected function casts(): array

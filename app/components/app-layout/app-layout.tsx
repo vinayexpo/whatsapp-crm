@@ -34,6 +34,10 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
 import { useCrmStore } from "~/hooks/use-crm-store";
 import { useAuth } from "~/hooks/use-auth";
 import { apiClient } from "~/utils/api-client";
@@ -45,19 +49,23 @@ const DRAWER_WIDTH = 248;
 
 const NAV_ITEMS = [
   { label: "Home", to: "/", icon: DashboardRoundedIcon },
-  { label: "Inbox", to: "/inbox", icon: ChatBubbleRoundedIcon },
-  { label: "Contacts", to: "/contacts", icon: ContactsRoundedIcon },
-  { label: "Phonebook", to: "/phonebook", icon: ContactPhoneRoundedIcon, hideForAgent: true },
-  { label: "Pipeline", to: "/pipeline", icon: ViewKanbanRoundedIcon },
-  { label: "Campaigns", to: "/campaigns", icon: CampaignRoundedIcon, hideForAgent: true },
-  { label: "Analytics", to: "/analytics", icon: BarChartRoundedIcon, hideForAgent: true },
-  { label: "Automations", to: "/automations", icon: BoltRoundedIcon, hideForAgent: true },
-  { label: "AI Assistant", to: "/ai-assistant", icon: SmartToyRoundedIcon },
-  { label: "Chatbots", to: "/chatbots", icon: ForumRoundedIcon, hideForAgent: true },
-  { label: "Chat Menus", to: "/chat-menus", icon: AccountTreeRoundedIcon, hideForAgent: true },
-  { label: "Templates", to: "/templates", icon: ArticleRoundedIcon, hideForAgent: true },
-  { label: "Voice Agents", to: "/voice-agents", icon: PhoneInTalkRoundedIcon, hideForAgent: true },
-  { label: "WhatsApp Calling", to: "/whatsapp-calling", icon: CallRoundedIcon, hideForAgent: true },
+  { label: "Inbox", to: "/inbox", icon: ChatBubbleRoundedIcon, commerceOnly: true },
+  { label: "Contacts", to: "/contacts", icon: ContactsRoundedIcon, commerceOnly: true },
+  { label: "Phonebook", to: "/phonebook", icon: ContactPhoneRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "Pipeline", to: "/pipeline", icon: ViewKanbanRoundedIcon, commerceOnly: true },
+  { label: "Campaigns", to: "/campaigns", icon: CampaignRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "Analytics", to: "/analytics", icon: BarChartRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "Automations", to: "/automations", icon: BoltRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "AI Assistant", to: "/ai-assistant", icon: SmartToyRoundedIcon, commerceOnly: true },
+  { label: "Chatbots", to: "/chatbots", icon: ForumRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "Chat Menus", to: "/chat-menus", icon: AccountTreeRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "Templates", to: "/templates", icon: ArticleRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "Voice Agents", to: "/voice-agents", icon: PhoneInTalkRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "WhatsApp Calling", to: "/whatsapp-calling", icon: CallRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "Branches", to: "/commerce-branches", icon: StorefrontRoundedIcon, hideForAgent: true, hideForStaff: true },
+  { label: "Catalog", to: "/commerce-catalog", icon: Inventory2RoundedIcon, hideForAgent: true },
+  { label: "Orders", to: "/commerce-orders", icon: ReceiptLongRoundedIcon, hideForAgent: true },
+  { label: "Reports", to: "/commerce-reports", icon: AssessmentRoundedIcon, hideForAgent: true, hideForStaff: true },
   { label: "Settings", to: "/settings", icon: SettingsRoundedIcon },
 ];
 
@@ -112,7 +120,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </Typography>
       </Stack>
       <List sx={{ px: 1.5, flex: 1 }}>
-        {NAV_ITEMS.filter((item) => !(item.hideForAgent && currentUser?.role === "agent")).map((item) => {
+        {NAV_ITEMS.filter(
+          (item) =>
+            !(item.hideForAgent && currentUser?.role === "agent") &&
+            !(item.hideForStaff && currentUser?.role === "staff") &&
+            !(item.commerceOnly && (currentUser?.role === "branch_manager" || currentUser?.role === "staff")),
+        ).map((item) => {
           const isActive = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
           const Icon = item.icon;
           return (
