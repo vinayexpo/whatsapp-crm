@@ -15,8 +15,11 @@ class InventoryResource extends JsonResource
         return [
             'id' => $this->id,
             'branchId' => $this->branch?->uuid,
+            'branchName' => $this->branch?->name,
             'productId' => $this->product?->uuid,
+            'productName' => $this->product?->name,
             'productVariantId' => $this->productVariant?->uuid,
+            'productVariantName' => $this->productVariant?->name,
             'stockQuantity' => $this->stock_quantity,
             'lowStockThreshold' => $this->low_stock_threshold,
             'trackStock' => $this->track_stock,

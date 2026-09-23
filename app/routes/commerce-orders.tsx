@@ -6,13 +6,16 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { OrderListTable } from "~/components/commerce/orders/order-list-table";
 import { OrderDetailDrawer } from "~/components/commerce/orders/order-detail-drawer";
+import { OrderSessionsPanel } from "~/components/commerce/orders/order-sessions-panel";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
-import type { Order, OrderStatus } from "~/data/types";
+import type { Branch, Order, OrderStatus } from "~/data/types";
 import type { Route } from "./+types/commerce-orders";
 
 export function meta({}: Route.MetaArgs) {
@@ -23,19 +26,30 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function CommerceOrders() {
+  const [tab, setTab] = useState<"orders" | "sessions">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const [branchFilter, setBranchFilter] = useState<string | "all">("all");
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setPage(1);
-  }, [statusFilter]);
+    apiClient
+      .listBranches({ perPage: 100 })
+      .then(({ data }) => setBranches(data))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
+    setPage(1);
+  }, [statusFilter, branchFilter]);
+
+  useEffect(() => {
+    if (tab !== "orders") return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -43,6 +57,7 @@ export default function CommerceOrders() {
       .listOrders({
         page,
         status: statusFilter === "all" ? undefined : statusFilter,
+        branchId: branchFilter === "all" ? undefined : branchFilter,
       })
       .then(({ data, meta }) => {
         if (cancelled) return;
@@ -58,7 +73,7 @@ export default function CommerceOrders() {
     return () => {
       cancelled = true;
     };
-  }, [page, statusFilter]);
+  }, [tab, page, statusFilter, branchFilter]);
 
   const selectedOrder = orders.find((o) => o.id === selectedOrderId) ?? null;
 
@@ -84,42 +99,76 @@ export default function CommerceOrders() {
             </Stack>
           </Stack>
 
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2.5 }}>
-            <Select
-              size="small"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "all")}
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="all">All statuses</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="confirmed">Confirmed</MenuItem>
-              <MenuItem value="preparing">Preparing</MenuItem>
-              <MenuItem value="ready">Ready</MenuItem>
-              <MenuItem value="out_for_delivery">Out for delivery</MenuItem>
-              <MenuItem value="delivered">Delivered</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-              <MenuItem value="cancelled">Cancelled</MenuItem>
-            </Select>
-          </Stack>
+          <Tabs
+            value={tab}
+            onChange={(_, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ mb: 3, minHeight: 36 }}
+          >
+            <Tab value="orders" label="Orders" sx={{ minHeight: 36, py: 0.5 }} />
+            <Tab value="sessions" label="Order Sessions" sx={{ minHeight: 36, py: 0.5 }} />
+          </Tabs>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2.5 }}>
-              {error}
-            </Alert>
-          )}
-
-          {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-              <CircularProgress size={28} />
-            </Box>
-          ) : (
+          {tab === "orders" && (
             <>
-              <OrderListTable orders={orders} onSelect={(order) => setSelectedOrderId(order.id)} />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2.5 }}>
+                <Select
+                  size="small"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "all")}
+                  sx={{ minWidth: 180 }}
+                >
+                  <MenuItem value="all">All statuses</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="confirmed">Confirmed</MenuItem>
+                  <MenuItem value="preparing">Preparing</MenuItem>
+                  <MenuItem value="ready">Ready</MenuItem>
+                  <MenuItem value="out_for_delivery">Out for delivery</MenuItem>
+                  <MenuItem value="delivered">Delivered</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="cancelled">Cancelled</MenuItem>
+                </Select>
 
-              <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />
+                {branches.length > 1 && (
+                  <Select
+                    size="small"
+                    value={branchFilter}
+                    onChange={(e) => setBranchFilter(e.target.value)}
+                    sx={{ minWidth: 180 }}
+                  >
+                    <MenuItem value="all">All branches</MenuItem>
+                    {branches.map((branch) => (
+                      <MenuItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                )}
+              </Stack>
+
+              {error && (
+                <Alert severity="error" sx={{ mb: 2.5 }}>
+                  {error}
+                </Alert>
+              )}
+
+              {loading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+                  <CircularProgress size={28} />
+                </Box>
+              ) : (
+                <>
+                  <OrderListTable orders={orders} onSelect={(order) => setSelectedOrderId(order.id)} />
+
+                  <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />
+                </>
+              )}
             </>
           )}
+
+          {tab === "sessions" && <OrderSessionsPanel />}
         </Box>
 
         <OrderDetailDrawer order={selectedOrder} onClose={() => setSelectedOrderId(null)} onUpdated={handleUpdated} />

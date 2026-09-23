@@ -639,8 +639,11 @@ export interface CommerceSetting {
 export interface InventoryRow {
   id: number;
   branchId: string | null;
+  branchName: string | null;
   productId: string | null;
+  productName: string | null;
   productVariantId: string | null;
+  productVariantName: string | null;
   stockQuantity: number;
   lowStockThreshold: number | null;
   trackStock: boolean;

@@ -24,6 +24,7 @@ import { CreateProductDialog } from "~/components/commerce/catalog/create-produc
 import { ProductDetailDrawer } from "~/components/commerce/catalog/product-detail-drawer";
 import { CategoryListPanel } from "~/components/commerce/catalog/category-list-panel";
 import { AddonLibraryPanel } from "~/components/commerce/catalog/addon-library-panel";
+import { InventoryPanel } from "~/components/commerce/catalog/inventory-panel";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
 import type { Category, CommerceSetting, Product } from "~/data/types";
@@ -37,7 +38,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function CommerceCatalog() {
-  const [tab, setTab] = useState<"products" | "categories" | "addons">("products");
+  const [tab, setTab] = useState<"products" | "categories" | "addons" | "inventory">("products");
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [page, setPage] = useState(1);
@@ -266,6 +267,7 @@ export default function CommerceCatalog() {
             <Tab value="products" label="Products" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="categories" label="Categories" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="addons" label="Add-on Library" sx={{ minHeight: 36, py: 0.5 }} />
+            <Tab value="inventory" label="Inventory" sx={{ minHeight: 36, py: 0.5 }} />
           </Tabs>
 
           {tab === "products" && (
@@ -367,6 +369,8 @@ export default function CommerceCatalog() {
           {tab === "categories" && <CategoryListPanel categories={categories} onChanged={refreshCategories} />}
 
           {tab === "addons" && <AddonLibraryPanel />}
+
+          {tab === "inventory" && <InventoryPanel />}
         </Box>
 
         <CreateProductDialog
