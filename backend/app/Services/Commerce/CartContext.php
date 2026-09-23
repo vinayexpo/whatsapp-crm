@@ -105,7 +105,19 @@ class CartContext
 
     public function setFulfillment(string $type, int $deliveryCharge = 0): void
     {
-        $this->context['fulfillment'] = ['type' => $type, 'delivery_charge' => $deliveryCharge];
+        $this->context['fulfillment'] = [
+            'type' => $type,
+            'delivery_charge' => $deliveryCharge,
+            'lat' => $this->context['fulfillment']['lat'] ?? null,
+            'lng' => $this->context['fulfillment']['lng'] ?? null,
+        ];
+    }
+
+    public function setDeliveryCoordinates(?float $lat, ?float $lng): void
+    {
+        $this->context['fulfillment'] ??= ['type' => 'delivery', 'delivery_charge' => 0];
+        $this->context['fulfillment']['lat'] = $lat;
+        $this->context['fulfillment']['lng'] = $lng;
     }
 
     public function fulfillment(): ?array

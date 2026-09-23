@@ -114,6 +114,8 @@ class OrderConfirmationStepHandler implements StepHandlerInterface
             'status' => 'pending',
             'fulfillment_type' => $fulfillment['type'],
             'delivery_address' => $cart->customer('delivery_address'),
+            'delivery_lat' => $fulfillment['lat'] ?? null,
+            'delivery_lng' => $fulfillment['lng'] ?? null,
             'subtotal' => $subtotal,
             'tax_total' => 0,
             'delivery_charge' => $deliveryCharge,

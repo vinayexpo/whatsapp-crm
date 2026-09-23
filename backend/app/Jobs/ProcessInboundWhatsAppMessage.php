@@ -145,6 +145,15 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 }
             }
 
+            $locationLat = null;
+            $locationLng = null;
+
+            if ($type === 'location') {
+                $locationLat = data_get($inboundMessage, 'location.latitude');
+                $locationLng = data_get($inboundMessage, 'location.longitude');
+                $text = data_get($inboundMessage, 'location.address') ?? data_get($inboundMessage, 'location.name') ?? $text;
+            }
+
             // WhatsApp Pay (Meta) payment status updates arrive inline as an
             // "order_status" inbound message. Shape follows Meta's public
             // WhatsApp Payments (India) docs but is unverified against a live
@@ -173,6 +182,8 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 'attachment_url' => $attachment['url'] ?? null,
                 'attachment_type' => $attachment['type'] ?? null,
                 'interactive_reply_id' => $interactiveReplyId,
+                'location_lat' => $locationLat,
+                'location_lng' => $locationLng,
             ]);
 
             $conversation->update([

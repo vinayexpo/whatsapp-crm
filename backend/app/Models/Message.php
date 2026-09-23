@@ -14,6 +14,7 @@ class Message extends Model
     protected $fillable = [
         'conversation_id', 'direction', 'text', 'status', 'external_message_id',
         'attachment_url', 'attachment_type', 'sent_at', 'buttons', 'interactive_reply_id', 'origin',
+        'location_lat', 'location_lng',
     ];
 
     protected function casts(): array
@@ -21,6 +22,8 @@ class Message extends Model
         return [
             'sent_at' => 'datetime',
             'buttons' => 'array',
+            'location_lat' => 'decimal:7',
+            'location_lng' => 'decimal:7',
         ];
     }
 

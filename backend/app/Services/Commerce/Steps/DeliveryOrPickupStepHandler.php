@@ -34,7 +34,7 @@ class DeliveryOrPickupStepHandler implements StepHandlerInterface
             $price = $branch ? $this->pricing->priceFor($branch, $cart->total()) : ['delivery_charge' => 0];
             $cart->setFulfillment('delivery', $price['delivery_charge']);
             $cart->persist('delivery_or_pickup');
-            $this->sender->send($session->conversation, 'What is your delivery address?');
+            $this->sender->send($session->conversation, 'Please share your delivery location, or type your address.');
 
             return true;
         }
@@ -58,10 +58,30 @@ class DeliveryOrPickupStepHandler implements StepHandlerInterface
 
     private function captureAddress(OrderSession $session, CartContext $cart, Message $inboundMessage): bool
     {
+        if ($inboundMessage->location_lat !== null && $inboundMessage->location_lng !== null) {
+            $lat = (float) $inboundMessage->location_lat;
+            $lng = (float) $inboundMessage->location_lng;
+
+            $cart->setDeliveryCoordinates($lat, $lng);
+            $cart->setCustomer('delivery_address', trim($inboundMessage->text ?? '') ?: 'Shared location');
+
+            $branch = $session->branch;
+            if ($branch) {
+                $price = $this->pricing->priceFor($branch, $cart->total(), $lat, $lng);
+                $cart->setFulfillment('delivery', $price['delivery_charge']);
+                $cart->setDeliveryCoordinates($lat, $lng);
+            }
+
+            $cart->persist('payment_method');
+            $this->sender->send($session->conversation, 'Thanks! Delivery location saved.');
+
+            return app(PaymentMethodStepHandler::class)->enter($session);
+        }
+
         $text = trim($inboundMessage->text ?? '');
 
         if ($text === '') {
-            $this->sender->send($session->conversation, 'Please send your delivery address as text.');
+            $this->sender->send($session->conversation, 'Please share your location, or send your delivery address as text.');
 
             return true;
         }

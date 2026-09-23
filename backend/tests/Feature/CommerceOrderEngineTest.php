@@ -27,6 +27,17 @@ function commerceInbound(Conversation $conversation, string $text, ?string $inte
     ]);
 }
 
+function commerceLocationInbound(Conversation $conversation, float $lat, float $lng): Message
+{
+    return Message::factory()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'text' => '',
+        'location_lat' => $lat,
+        'location_lng' => $lng,
+    ]);
+}
+
 function commerceHandle(Conversation $conversation, Message $inbound): bool
 {
     return app(CommerceOrderEngine::class)->handle($conversation, $inbound);
@@ -138,6 +149,45 @@ it('completes a full order end to end via chat', function () {
     expect($order->items->first()->quantity)->toBe(2);
 
     Queue::assertPushed(SendOrderConfirmationMessage::class, fn ($job) => $job->orderId === $order->id);
+});
+
+it('prices delivery by zone and stamps coordinates on the order when the customer shares a location', function () {
+    \App\Models\DeliveryZone::factory()->create([
+        'company_id' => $this->company->id,
+        'branch_id' => $this->branch->id,
+        'radius_km' => 5,
+        'delivery_charge' => 4500,
+        'sort_order' => 0,
+    ]);
+    $this->branch->update(['latitude' => 12.9716, 'longitude' => 77.5946]);
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, 'hi'));
+    $session = OrderSession::query()->where('conversation_id', $this->conversation->id)->first();
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'category:'.$this->category->id));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'product:'.$this->product->id));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '1'));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'cart:checkout'));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, 'Praveen'));
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'fulfillment:delivery'));
+    $session->refresh();
+    expect($session->step)->toBe('delivery_or_pickup');
+
+    // ~1km from the branch, inside the 5km zone.
+    commerceHandle($this->conversation, commerceLocationInbound($this->conversation, 12.98, 77.5946));
+    $session->refresh();
+    expect($session->step)->toBe('payment_method');
+    expect($session->context['fulfillment']['delivery_charge'])->toBe(4500);
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'payment:cod'));
+    $session->refresh();
+
+    $order = Order::find($session->order_id);
+    expect($order->fulfillment_type)->toBe('delivery');
+    expect($order->delivery_charge)->toBe(4500);
+    expect((float) $order->delivery_lat)->toBe(12.98);
+    expect((float) $order->delivery_lng)->toBe(77.5946);
 });
 
 it('resumes an active session by dispatching to its current step handler rather than falling through', function () {
