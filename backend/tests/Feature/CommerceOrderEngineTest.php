@@ -190,6 +190,69 @@ it('prices delivery by zone and stamps coordinates on the order when the custome
     expect((float) $order->delivery_lng)->toBe(77.5946);
 });
 
+it('rejects a shared location outside every configured radius zone instead of silently falling back to a flat charge', function () {
+    \App\Models\DeliveryZone::factory()->create([
+        'company_id' => $this->company->id,
+        'branch_id' => $this->branch->id,
+        'radius_km' => 5,
+        'delivery_charge' => 4500,
+        'sort_order' => 0,
+    ]);
+    $this->branch->update(['latitude' => 12.9716, 'longitude' => 77.5946]);
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, 'hi'));
+    $session = OrderSession::query()->where('conversation_id', $this->conversation->id)->first();
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'category:'.$this->category->id));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'product:'.$this->product->id));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '1'));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'cart:checkout'));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, 'Praveen'));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'fulfillment:delivery'));
+
+    // ~500km from the branch, far outside the 5km zone and no flat zone configured.
+    commerceHandle($this->conversation, commerceLocationInbound($this->conversation, 17.385, 78.4867));
+    $session->refresh();
+    expect($session->step)->toBe('delivery_or_pickup');
+    expect($session->context['customer']['delivery_address'] ?? null)->toBeNull();
+
+    $reply = lastOutbound($this->conversation);
+    expect($reply->text)->toContain('outside our delivery area');
+
+    // Customer can still switch to pickup after being rejected.
+    commerceHandle($this->conversation, commerceInbound($this->conversation, 'pickup'));
+    $session->refresh();
+    expect($session->step)->toBe('payment_method');
+    expect($session->context['fulfillment']['type'])->toBe('pickup');
+});
+
+it('blocks selecting a fulfillment type when the cart contains an item unavailable for it', function () {
+    $this->product->update(['delivery_available' => false]);
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, 'hi'));
+    $session = OrderSession::query()->where('conversation_id', $this->conversation->id)->first();
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'category:'.$this->category->id));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'product:'.$this->product->id));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '1'));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'cart:checkout'));
+    commerceHandle($this->conversation, commerceInbound($this->conversation, 'Praveen'));
+
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'fulfillment:delivery'));
+    $session->refresh();
+    expect($session->step)->toBe('delivery_or_pickup');
+    expect($session->context['fulfillment'] ?? null)->toBeNull();
+
+    $reply = lastOutbound($this->conversation);
+    expect($reply->text)->toContain("aren't available for delivery");
+    expect($reply->text)->toContain($this->product->name);
+
+    // Pickup still works since only delivery_available was disabled.
+    commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'fulfillment:pickup'));
+    $session->refresh();
+    expect($session->step)->toBe('payment_method');
+});
+
 it('resumes an active session by dispatching to its current step handler rather than falling through', function () {
     commerceHandle($this->conversation, commerceInbound($this->conversation, 'hi'));
     $session = OrderSession::query()->where('conversation_id', $this->conversation->id)->first();

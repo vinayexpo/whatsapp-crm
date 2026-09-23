@@ -4,9 +4,11 @@ namespace App\Services\Commerce\Steps;
 
 use App\Models\Message;
 use App\Models\OrderSession;
+use App\Models\Product;
 use App\Services\Commerce\CartContext;
 use App\Services\Commerce\CommerceMessageSender;
 use App\Services\Commerce\DeliveryPricingService;
+use Illuminate\Support\Collection;
 
 class DeliveryOrPickupStepHandler implements StepHandlerInterface
 {
@@ -17,11 +19,28 @@ class DeliveryOrPickupStepHandler implements StepHandlerInterface
         $cart = new CartContext($session);
         $selection = $inboundMessage->interactive_reply_id ?? trim($inboundMessage->text ?? '');
 
-        if ($cart->fulfillment() && $cart->fulfillment()['type'] === 'delivery' && ! $cart->customer('delivery_address')) {
+        $awaitingAddress = $cart->fulfillment() && $cart->fulfillment()['type'] === 'delivery' && ! $cart->customer('delivery_address');
+
+        if ($awaitingAddress && strtolower($selection) === 'pickup') {
+            $cart->setFulfillment('pickup', 0);
+            $cart->persist('payment_method');
+            $this->sender->send($session->conversation, "Got it, we'll have your order ready for pickup.");
+
+            return app(PaymentMethodStepHandler::class)->enter($session);
+        }
+
+        if ($awaitingAddress) {
             return $this->captureAddress($session, $cart, $inboundMessage);
         }
 
         if ($selection === 'fulfillment:pickup') {
+            $unavailable = $this->itemsUnavailableFor($session, $cart, 'pickup_available');
+            if ($unavailable->isNotEmpty()) {
+                $this->sender->send($session->conversation, "Sorry, these items aren't available for pickup: {$unavailable->implode(', ')}. Please remove them from your cart or choose delivery.");
+
+                return true;
+            }
+
             $cart->setFulfillment('pickup', 0);
             $cart->persist('payment_method');
             $this->sender->send($session->conversation, "Got it, we'll have your order ready for pickup.");
@@ -30,6 +49,13 @@ class DeliveryOrPickupStepHandler implements StepHandlerInterface
         }
 
         if ($selection === 'fulfillment:delivery') {
+            $unavailable = $this->itemsUnavailableFor($session, $cart, 'delivery_available');
+            if ($unavailable->isNotEmpty()) {
+                $this->sender->send($session->conversation, "Sorry, these items aren't available for delivery: {$unavailable->implode(', ')}. Please remove them from your cart or choose pickup.");
+
+                return true;
+            }
+
             $branch = $session->branch;
             $price = $branch ? $this->pricing->priceFor($branch, $cart->total()) : ['delivery_charge' => 0];
             $cart->setFulfillment('delivery', $price['delivery_charge']);
@@ -40,6 +66,20 @@ class DeliveryOrPickupStepHandler implements StepHandlerInterface
         }
 
         return $this->enter($session);
+    }
+
+    /**
+     * @return Collection<int, string>
+     */
+    private function itemsUnavailableFor(OrderSession $session, CartContext $cart, string $flag): Collection
+    {
+        $productIds = collect($cart->cart())->pluck('product_id')->unique();
+
+        return Product::query()
+            ->where('company_id', $session->company_id)
+            ->whereIn('id', $productIds)
+            ->where($flag, false)
+            ->pluck('name');
     }
 
     public function enter(OrderSession $session): bool
@@ -62,15 +102,22 @@ class DeliveryOrPickupStepHandler implements StepHandlerInterface
             $lat = (float) $inboundMessage->location_lat;
             $lng = (float) $inboundMessage->location_lng;
 
+            $branch = $session->branch;
+            $price = $branch ? $this->pricing->priceFor($branch, $cart->total(), $lat, $lng) : ['delivery_charge' => 0];
+
+            if ($price['out_of_zone'] ?? false) {
+                $this->sender->send(
+                    $session->conversation,
+                    "Sorry, that location is outside our delivery area. Please share a different location, type an address, or reply \"pickup\" to switch to pickup instead."
+                );
+
+                return true;
+            }
+
             $cart->setDeliveryCoordinates($lat, $lng);
             $cart->setCustomer('delivery_address', trim($inboundMessage->text ?? '') ?: 'Shared location');
-
-            $branch = $session->branch;
-            if ($branch) {
-                $price = $this->pricing->priceFor($branch, $cart->total(), $lat, $lng);
-                $cart->setFulfillment('delivery', $price['delivery_charge']);
-                $cart->setDeliveryCoordinates($lat, $lng);
-            }
+            $cart->setFulfillment('delivery', $price['delivery_charge']);
+            $cart->setDeliveryCoordinates($lat, $lng);
 
             $cart->persist('payment_method');
             $this->sender->send($session->conversation, 'Thanks! Delivery location saved.');

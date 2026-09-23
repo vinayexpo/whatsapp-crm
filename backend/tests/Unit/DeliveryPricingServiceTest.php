@@ -56,7 +56,7 @@ it('charges the zone rate when the destination is within the zone radius', funct
     expect($result['delivery_charge'])->toBe(3000);
 });
 
-it('does not match a zone when the destination is outside the zone radius', function () {
+it('rejects as out of zone when the destination is outside every radius zone and no flat zone exists', function () {
     $branch = Branch::factory()->create([
         'company_id' => $this->company->id,
         'latitude' => 12.9716,
@@ -75,7 +75,38 @@ it('does not match a zone when the destination is outside the zone radius', func
     $result = $this->service->priceFor($branch, 10000, 13.5, 78.2);
 
     expect($result['zone_id'])->toBeNull();
-    expect($result['delivery_charge'])->toBe(9000);
+    expect($result['delivery_charge'])->toBe(0);
+    expect($result['out_of_zone'] ?? false)->toBeTrue();
+});
+
+it('falls back to a flat zone when the destination is outside every radius zone but a flat zone exists', function () {
+    $branch = Branch::factory()->create([
+        'company_id' => $this->company->id,
+        'latitude' => 12.9716,
+        'longitude' => 77.5946,
+        'default_delivery_charge' => 9000,
+    ]);
+    DeliveryZone::factory()->create([
+        'company_id' => $this->company->id,
+        'branch_id' => $branch->id,
+        'radius_km' => 2,
+        'delivery_charge' => 3000,
+        'sort_order' => 0,
+    ]);
+    $flatZone = DeliveryZone::factory()->create([
+        'company_id' => $this->company->id,
+        'branch_id' => $branch->id,
+        'radius_km' => null,
+        'delivery_charge' => 6000,
+        'sort_order' => 1,
+    ]);
+
+    // Far outside the 2km radius zone
+    $result = $this->service->priceFor($branch, 10000, 13.5, 78.2);
+
+    expect($result['zone_id'])->toBe($flatZone->id);
+    expect($result['delivery_charge'])->toBe(6000);
+    expect($result['out_of_zone'] ?? false)->toBeFalse();
 });
 
 it('waives delivery charge once subtotal reaches the zone free delivery threshold', function () {

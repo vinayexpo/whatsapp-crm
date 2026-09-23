@@ -14,11 +14,17 @@ use App\Models\DeliveryZone;
 class DeliveryPricingService
 {
     /**
-     * @return array{delivery_charge: int, zone_id: int|null}
+     * @return array{delivery_charge: int, zone_id: int|null, out_of_zone?: bool}
      */
     public function priceFor(Branch $branch, int $subtotal, ?float $lat = null, ?float $lng = null): array
     {
-        $zone = $this->matchZone($branch, $lat, $lng);
+        $match = $this->matchZone($branch, $lat, $lng);
+
+        if ($match === 'out_of_zone') {
+            return ['delivery_charge' => 0, 'zone_id' => null, 'out_of_zone' => true];
+        }
+
+        $zone = $match;
 
         if ($zone) {
             if ($zone->min_order_amount !== null && $subtotal < $zone->min_order_amount) {
@@ -39,7 +45,13 @@ class DeliveryPricingService
         return ['delivery_charge' => $branch->default_delivery_charge ?? 0, 'zone_id' => null];
     }
 
-    private function matchZone(Branch $branch, ?float $lat, ?float $lng): ?DeliveryZone
+    /**
+     * Returns the matched DeliveryZone, null (no zones configured -- use the
+     * branch's flat default), or the string 'out_of_zone' when coordinates
+     * are known but fall outside every configured radius zone and no flat
+     * (no-radius) zone exists to fall back to.
+     */
+    private function matchZone(Branch $branch, ?float $lat, ?float $lng): DeliveryZone|string|null
     {
         $zones = DeliveryZone::query()
             ->where('branch_id', $branch->id)
@@ -51,10 +63,12 @@ class DeliveryPricingService
             return null;
         }
 
+        $flatZone = $zones->firstWhere('radius_km', null);
+
         if ($lat === null || $lng === null || $branch->latitude === null || $branch->longitude === null) {
             // No coordinates to test radius zones against -- fall back to the
             // first active zone with no radius constraint (a flat zone), if any.
-            return $zones->firstWhere('radius_km', null);
+            return $flatZone;
         }
 
         foreach ($zones as $zone) {
@@ -69,7 +83,9 @@ class DeliveryPricingService
             }
         }
 
-        return null;
+        // Coordinates are known but matched no radius zone -- only reject as
+        // out-of-zone if there's no flat zone to fall back to.
+        return $flatZone ?? 'out_of_zone';
     }
 
     private function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float
