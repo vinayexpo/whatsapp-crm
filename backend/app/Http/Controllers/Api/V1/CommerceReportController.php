@@ -9,9 +9,29 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CommerceReportController extends Controller
 {
+    private function periodGroupExpression(string $groupBy): string
+    {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            return match ($groupBy) {
+                'week' => "strftime('%Y-W%W', placed_at)",
+                'month' => "strftime('%Y-%m', placed_at)",
+                default => "strftime('%Y-%m-%d', placed_at)",
+            };
+        }
+
+        return match ($groupBy) {
+            'week' => "DATE_FORMAT(placed_at, '%x-W%v')",
+            'month' => "DATE_FORMAT(placed_at, '%Y-%m')",
+            default => "DATE_FORMAT(placed_at, '%Y-%m-%d')",
+        };
+    }
+
     public function sales(Request $request): JsonResponse
     {
         $this->authorize('commerce-reports.view');
@@ -26,11 +46,7 @@ class CommerceReportController extends Controller
         ]);
 
         $groupBy = $data['groupBy'] ?? 'day';
-        $dateExpr = match ($groupBy) {
-            'week' => "strftime('%Y-W%W', placed_at)",
-            'month' => "strftime('%Y-%m', placed_at)",
-            default => "strftime('%Y-%m-%d', placed_at)",
-        };
+        $dateExpr = $this->periodGroupExpression($groupBy);
 
         $query = Order::query()
             ->whereNotNull('placed_at')

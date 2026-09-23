@@ -75,6 +75,32 @@ it('scopes sales report to the branch manager own branch', function () {
     expect($totalRevenue)->toBe(1500);
 });
 
+it('returns sales grouped by week', function () {
+    $admin = actingAsReportRole('admin');
+    $branch = Branch::factory()->create(['company_id' => $admin->company_id]);
+    $contact = Contact::factory()->create(['company_id' => $admin->company_id, 'channel' => 'whatsapp']);
+
+    Order::factory()->create(['company_id' => $admin->company_id, 'branch_id' => $branch->id, 'contact_id' => $contact->id, 'grand_total' => 1000, 'placed_at' => now()]);
+
+    $response = $this->actingAs($admin)->getJson('/api/v1/commerce/reports/sales?groupBy=week')->assertOk();
+
+    expect(collect($response->json('data'))->sum('revenue'))->toBe(1000);
+    expect($response->json('data.0.period'))->toBeString();
+});
+
+it('returns sales grouped by month', function () {
+    $admin = actingAsReportRole('admin');
+    $branch = Branch::factory()->create(['company_id' => $admin->company_id]);
+    $contact = Contact::factory()->create(['company_id' => $admin->company_id, 'channel' => 'whatsapp']);
+
+    Order::factory()->create(['company_id' => $admin->company_id, 'branch_id' => $branch->id, 'contact_id' => $contact->id, 'grand_total' => 1000, 'placed_at' => now()]);
+
+    $response = $this->actingAs($admin)->getJson('/api/v1/commerce/reports/sales?groupBy=month')->assertOk();
+
+    expect(collect($response->json('data'))->sum('revenue'))->toBe(1000);
+    expect($response->json('data.0.period'))->toBeString();
+});
+
 it('returns sales grouped by branch for an admin', function () {
     $admin = actingAsReportRole('admin');
     $branch = Branch::factory()->create(['company_id' => $admin->company_id]);
