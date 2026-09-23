@@ -14,6 +14,7 @@ class CommerceSettingResource extends JsonResource
     {
         return [
             'businessTypeId' => $this->business_type_id,
+            'metaCatalogId' => $this->meta_catalog_id,
             'currency' => $this->currency,
             'defaultTaxRateBp' => $this->default_tax_rate_bp,
             'orderNumberPrefix' => $this->order_number_prefix,

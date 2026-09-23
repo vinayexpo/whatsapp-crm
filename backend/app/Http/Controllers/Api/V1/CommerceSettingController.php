@@ -28,6 +28,7 @@ class CommerceSettingController extends Controller
 
         $data = $request->validate([
             'businessTypeId' => ['sometimes', 'nullable', 'integer', 'exists:business_types,id'],
+            'metaCatalogId' => ['sometimes', 'nullable', 'string', 'max:255'],
             'currency' => ['sometimes', 'string', 'size:3'],
             'defaultTaxRateBp' => ['sometimes', 'integer', 'min:0'],
             'orderNumberPrefix' => ['sometimes', 'nullable', 'string', 'max:16'],
@@ -48,6 +49,7 @@ class CommerceSettingController extends Controller
         $update = [];
         $map = [
             'businessTypeId' => 'business_type_id',
+            'metaCatalogId' => 'meta_catalog_id',
             'currency' => 'currency',
             'defaultTaxRateBp' => 'default_tax_rate_bp',
             'orderNumberPrefix' => 'order_number_prefix',

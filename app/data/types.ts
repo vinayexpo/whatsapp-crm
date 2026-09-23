@@ -605,6 +605,8 @@ export interface Product {
   brand: string | null;
   name: string;
   sku: string | null;
+  metaRetailerId: string | null;
+  metaSyncedAt: string | null;
   description: string | null;
   images: string[];
   basePrice: number;
@@ -620,6 +622,16 @@ export interface Product {
   variants: ProductVariant[];
   addons: AddonDefinition[];
   createdAt: string;
+}
+
+export interface CommerceSetting {
+  businessTypeId: number | null;
+  metaCatalogId: string | null;
+  currency: string;
+  defaultTaxRateBp: number;
+  orderNumberPrefix: string | null;
+  sessionTimeoutMinutes: number;
+  settings: Record<string, unknown>;
 }
 
 export interface InventoryRow {

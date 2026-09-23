@@ -14,6 +14,7 @@ class CommerceSetting extends Model
 
     protected $fillable = [
         'business_type_id',
+        'meta_catalog_id',
         'currency',
         'default_tax_rate_bp',
         'order_number_prefix',

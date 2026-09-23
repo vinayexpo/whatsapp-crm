@@ -18,6 +18,8 @@ class ProductResource extends JsonResource
             'brand' => $this->brand,
             'name' => $this->name,
             'sku' => $this->sku,
+            'metaRetailerId' => $this->meta_retailer_id,
+            'metaSyncedAt' => $this->meta_synced_at?->toIso8601String(),
             'description' => $this->description,
             'images' => $this->images ?? [],
             'basePrice' => $this->base_price,

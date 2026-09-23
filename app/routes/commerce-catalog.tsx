@@ -12,9 +12,12 @@ import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
+import Popover from "@mui/material/Popover";
+import Snackbar from "@mui/material/Snackbar";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import SyncRoundedIcon from "@mui/icons-material/SyncRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateProductDialog } from "~/components/commerce/catalog/create-product-dialog";
@@ -23,7 +26,7 @@ import { CategoryListPanel } from "~/components/commerce/catalog/category-list-p
 import { AddonLibraryPanel } from "~/components/commerce/catalog/addon-library-panel";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
-import type { Category, Product } from "~/data/types";
+import type { Category, CommerceSetting, Product } from "~/data/types";
 import type { Route } from "./+types/commerce-catalog";
 
 export function meta({}: Route.MetaArgs) {
@@ -45,6 +48,57 @@ export default function CommerceCatalog() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<CommerceSetting | null>(null);
+  const [metaCatalogAnchor, setMetaCatalogAnchor] = useState<HTMLElement | null>(null);
+  const [metaCatalogIdInput, setMetaCatalogIdInput] = useState("");
+  const [savingCatalogId, setSavingCatalogId] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiClient
+      .getCommerceSettings()
+      .then((data) => {
+        setSettings(data);
+        setMetaCatalogIdInput(data.metaCatalogId ?? "");
+      })
+      .catch(() => {
+        // settings stay null on failure; sync button will just prompt to configure
+      });
+  }, []);
+
+  async function handleSaveMetaCatalogId() {
+    setSavingCatalogId(true);
+    try {
+      const updated = await apiClient.updateCommerceSettings({ metaCatalogId: metaCatalogIdInput || null });
+      setSettings(updated);
+      setMetaCatalogAnchor(null);
+    } catch {
+      setSyncMessage("Could not save the Meta Catalog ID.");
+    } finally {
+      setSavingCatalogId(false);
+    }
+  }
+
+  async function handleSyncMeta() {
+    setSyncing(true);
+    try {
+      const result = await apiClient.syncMetaCatalogProducts();
+      setSyncMessage(`Synced ${result.total} product${result.total === 1 ? "" : "s"} (${result.created} created, ${result.updated} updated).`);
+      if (page === 1) {
+        apiClient.listProducts({ page: 1, search: debouncedSearch || undefined }).then(({ data, meta }) => {
+          setProducts(data);
+          setLastPage(meta.lastPage);
+        });
+      } else {
+        setPage(1);
+      }
+    } catch {
+      setSyncMessage("Meta Catalog sync failed. Check your catalog ID and WhatsApp connection.");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -135,11 +189,70 @@ export default function CommerceCatalog() {
               </Typography>
             </Stack>
             {tab === "products" && (
-              <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
-                New Product
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  startIcon={<SyncRoundedIcon />}
+                  onClick={(e) => {
+                    if (settings?.metaCatalogId) {
+                      handleSyncMeta();
+                    } else {
+                      setMetaCatalogAnchor(e.currentTarget);
+                    }
+                  }}
+                  disabled={syncing}
+                >
+                  {syncing ? "Syncing…" : "Sync from Meta"}
+                </Button>
+                <Button
+                  size="small"
+                  onClick={(e) => setMetaCatalogAnchor(e.currentTarget)}
+                  sx={{ minWidth: 0, px: 1 }}
+                >
+                  Catalog ID
+                </Button>
+                <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
+                  New Product
+                </Button>
+              </Stack>
             )}
           </Stack>
+
+          <Popover
+            open={Boolean(metaCatalogAnchor)}
+            anchorEl={metaCatalogAnchor}
+            onClose={() => setMetaCatalogAnchor(null)}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+          >
+            <Stack spacing={1.5} sx={{ p: 2.5, width: 320 }}>
+              <Typography variant="subtitle2">Meta Catalog ID</Typography>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Enter the Product Catalog ID from Meta Commerce Manager to enable syncing products.
+              </Typography>
+              <TextField
+                size="small"
+                placeholder="e.g. 1234567890123456"
+                value={metaCatalogIdInput}
+                onChange={(e) => setMetaCatalogIdInput(e.target.value)}
+              />
+              <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
+                <Button size="small" onClick={() => setMetaCatalogAnchor(null)}>
+                  Cancel
+                </Button>
+                <Button size="small" variant="contained" onClick={handleSaveMetaCatalogId} disabled={savingCatalogId}>
+                  {savingCatalogId ? "Saving…" : "Save"}
+                </Button>
+              </Stack>
+            </Stack>
+          </Popover>
+
+          <Snackbar
+            open={Boolean(syncMessage)}
+            autoHideDuration={5000}
+            onClose={() => setSyncMessage(null)}
+            message={syncMessage}
+          />
 
           <Tabs
             value={tab}

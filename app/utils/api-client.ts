@@ -23,6 +23,7 @@ import type {
   ChatbotTrainingEntry,
   ChatbotTrainingEntrySource,
   CommerceSalesByBranchRow,
+  CommerceSetting,
   CommerceSalesReportRow,
   CommerceTopProductRow,
   Company,
@@ -1388,6 +1389,37 @@ async function syncProductAddons(productId: string, addonDefinitionIds: string[]
   return data;
 }
 
+async function syncMetaCatalogProducts(): Promise<{ created: number; updated: number; total: number }> {
+  const { data } = await apiRequest<{ data: { created: number; updated: number; total: number } }>(
+    "/api/v1/commerce/products/sync-meta",
+    { method: "POST" },
+  );
+  return data;
+}
+
+// --- Commerce: Settings ---
+
+async function getCommerceSettings(): Promise<CommerceSetting> {
+  const { data } = await apiRequest<{ data: CommerceSetting }>("/api/v1/commerce/settings");
+  return data;
+}
+
+async function updateCommerceSettings(updates: Partial<{
+  businessTypeId: number | null;
+  metaCatalogId: string | null;
+  currency: string;
+  defaultTaxRateBp: number;
+  orderNumberPrefix: string | null;
+  sessionTimeoutMinutes: number;
+  settings: Record<string, unknown>;
+}>): Promise<CommerceSetting> {
+  const { data } = await apiRequest<{ data: CommerceSetting }>("/api/v1/commerce/settings", {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  return data;
+}
+
 // --- Commerce: Addon Definitions (shared addon library) ---
 
 async function listAddonDefinitions(params?: {
@@ -2122,6 +2154,9 @@ export const apiClient = {
   updateProductVariant,
   deleteProductVariant,
   syncProductAddons,
+  syncMetaCatalogProducts,
+  getCommerceSettings,
+  updateCommerceSettings,
   listAddonDefinitions,
   createAddonDefinition,
   getAddonDefinition,

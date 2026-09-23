@@ -21,6 +21,8 @@ class Product extends Model
         'brand',
         'name',
         'sku',
+        'meta_retailer_id',
+        'meta_synced_at',
         'description',
         'images',
         'base_price',
@@ -45,6 +47,7 @@ class Product extends Model
             'pickup_available' => 'boolean',
             'is_service' => 'boolean',
             'is_active' => 'boolean',
+            'meta_synced_at' => 'datetime',
         ];
     }
 

@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\OrderStatusController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhonebookFolderController;
 use App\Http\Controllers\Api\V1\PipelineStageController;
+use App\Http\Controllers\Api\V1\CatalogSyncController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PushSubscriptionController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
@@ -236,6 +237,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/commerce/products', [ProductController::class, 'index']);
         Route::post('/commerce/products', [ProductController::class, 'store']);
+        Route::post('/commerce/products/sync-meta', [CatalogSyncController::class, 'sync']);
         Route::get('/commerce/products/{product}', [ProductController::class, 'show']);
         Route::patch('/commerce/products/{product}', [ProductController::class, 'update']);
         Route::delete('/commerce/products/{product}', [ProductController::class, 'destroy']);
