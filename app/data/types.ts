@@ -148,6 +148,7 @@ export interface WhatsappTemplateComponent {
   type: "HEADER" | "BODY" | "FOOTER" | "BUTTONS";
   format?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT";
   text?: string;
+  example?: { header_handle?: string[] };
   buttons?: { type: string; text: string; url?: string; phone_number?: string }[];
 }
 
@@ -158,6 +159,7 @@ export interface WhatsappTemplate {
   language: string;
   category: string;
   status: WhatsappTemplateStatus;
+  metaTemplateId: string | null;
   body: string;
   variables: string[];
   components: WhatsappTemplateComponent[];

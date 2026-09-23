@@ -4,6 +4,7 @@ namespace App\Services\Templates;
 
 use App\Models\ApiConnection;
 use App\Models\WhatsappTemplate;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 
 class GraphApiTemplateService implements TemplateSyncServiceInterface
@@ -55,6 +56,42 @@ class GraphApiTemplateService implements TemplateSyncServiceInterface
 
         return [
             'meta_template_id' => (string) $response->json('id'),
+            'status' => strtolower($response->json('status', 'pending')),
+        ];
+    }
+
+    public function uploadHeaderMedia(ApiConnection $connection, UploadedFile $file): string
+    {
+        $appId = config('services.meta.app_id');
+
+        $session = Http::withToken($connection->access_token)
+            ->post("https://graph.facebook.com/v20.0/{$appId}/uploads", [
+                'file_length' => $file->getSize(),
+                'file_type' => $file->getMimeType(),
+            ])
+            ->throw();
+
+        $uploadSessionId = $session->json('id');
+
+        $upload = Http::withToken($connection->access_token)
+            ->withHeaders(['file_offset' => '0'])
+            ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+            ->post("https://graph.facebook.com/v20.0/{$uploadSessionId}")
+            ->throw();
+
+        return (string) $upload->json('h');
+    }
+
+    public function pushTemplateEdits(ApiConnection $connection, WhatsappTemplate $template): array
+    {
+        $response = Http::withToken($connection->access_token)
+            ->post("https://graph.facebook.com/v20.0/{$template->meta_template_id}", [
+                'category' => strtoupper($template->category),
+                'components' => $template->components ?? [],
+            ])
+            ->throw();
+
+        return [
             'status' => strtolower($response->json('status', 'pending')),
         ];
     }

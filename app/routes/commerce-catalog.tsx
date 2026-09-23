@@ -84,7 +84,8 @@ export default function CommerceCatalog() {
     setSyncing(true);
     try {
       const result = await apiClient.syncMetaCatalogProducts();
-      setSyncMessage(`Synced ${result.total} product${result.total === 1 ? "" : "s"} (${result.created} created, ${result.updated} updated).`);
+      const skippedNote = result.skipped > 0 ? `, ${result.skipped} skipped (edited locally)` : "";
+      setSyncMessage(`Synced ${result.total} product${result.total === 1 ? "" : "s"} (${result.created} created, ${result.updated} updated${skippedNote}).`);
       if (page === 1) {
         apiClient.listProducts({ page: 1, search: debouncedSearch || undefined }).then(({ data, meta }) => {
           setProducts(data);
@@ -381,6 +382,7 @@ export default function CommerceCatalog() {
           onClose={() => setSelectedProductId(null)}
           onUpdated={handleUpdated}
           onDelete={handleDelete}
+          onPushed={setSyncMessage}
         />
       </RoleGuard>
     </AppLayout>

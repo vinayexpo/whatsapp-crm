@@ -181,3 +181,101 @@ it('syncs successfully via the fake driver even without a whatsapp connection co
         ->assertOk()
         ->assertJsonPath('data.total', 2);
 });
+
+it('skips overwriting a product edited locally after its last meta sync', function () {
+    $admin = actingAsCatalogRole('admin');
+
+    CommerceSetting::factory()->create([
+        'company_id' => $admin->company_id,
+        'meta_catalog_id' => 'catalog-123',
+    ]);
+
+    $existing = Product::factory()->create([
+        'company_id' => $admin->company_id,
+        'sku' => 'fake-sku-001',
+        'name' => 'Locally Edited Name',
+        'meta_synced_at' => now()->subDay(),
+    ]);
+    $existing->touch();
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/commerce/products/sync-meta');
+
+    $response->assertOk()
+        ->assertJsonPath('data.updated', 0)
+        ->assertJsonPath('data.skipped', 1);
+
+    $existing->refresh();
+    expect($existing->name)->toBe('Locally Edited Name');
+});
+
+it('pushes a product to the meta catalog via the fake driver', function () {
+    $admin = actingAsCatalogRole('admin');
+
+    CommerceSetting::factory()->create([
+        'company_id' => $admin->company_id,
+        'meta_catalog_id' => 'catalog-123',
+    ]);
+
+    $product = Product::factory()->create([
+        'company_id' => $admin->company_id,
+        'sku' => 'local-sku-001',
+        'name' => 'My Product',
+    ]);
+
+    $response = $this->actingAs($admin)->postJson("/api/v1/commerce/products/{$product->uuid}/push-meta");
+
+    $response->assertOk()->assertJsonPath('data.pushed', true);
+
+    $product->refresh();
+    expect($product->meta_retailer_id)->toBe('local-sku-001');
+    expect($product->meta_synced_at)->not->toBeNull();
+});
+
+it('rejects push for a user without catalog.manage permission', function () {
+    $agent = actingAsCatalogRole('agent');
+
+    CommerceSetting::factory()->create([
+        'company_id' => $agent->company_id,
+        'meta_catalog_id' => 'catalog-123',
+    ]);
+
+    $product = Product::factory()->create(['company_id' => $agent->company_id]);
+
+    $this->actingAs($agent)->postJson("/api/v1/commerce/products/{$product->uuid}/push-meta")
+        ->assertForbidden();
+});
+
+it('rejects push when no meta catalog id is configured', function () {
+    $admin = actingAsCatalogRole('admin');
+    $product = Product::factory()->create(['company_id' => $admin->company_id]);
+
+    $this->actingAs($admin)->postJson("/api/v1/commerce/products/{$product->uuid}/push-meta")
+        ->assertStatus(422);
+});
+
+it('sends a properly formatted batch request when pushing via the real driver', function () {
+    $connection = ApiConnection::factory()->connected()->create(['channel' => 'whatsapp']);
+
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['handles' => ['abc']], 200),
+    ]);
+
+    $service = new GraphApiCatalogService();
+    $service->pushProduct($connection, 'catalog-abc', [
+        'retailer_id' => 'sku-a',
+        'name' => 'Widget',
+        'description' => 'A widget',
+        'price_minor' => 1299,
+        'availability' => 'in stock',
+        'image_url' => 'https://example.com/w.jpg',
+    ]);
+
+    Http::assertSent(function ($request) {
+        $requests = json_decode($request['requests'], true);
+
+        return str_contains($request->url(), 'items_batch')
+            && $request['item_type'] === 'PRODUCT_ITEM'
+            && $requests[0]['data']['retailer_id'] === 'sku-a'
+            && $requests[0]['data']['price'] === '12.99 USD';
+    });
+});

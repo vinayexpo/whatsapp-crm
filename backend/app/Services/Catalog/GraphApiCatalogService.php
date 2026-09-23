@@ -37,6 +37,28 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
         return $products;
     }
 
+    public function pushProduct(ApiConnection $connection, string $catalogId, array $item): void
+    {
+        $url = "https://graph.facebook.com/v20.0/{$catalogId}/items_batch";
+
+        Http::asForm()->withToken($connection->access_token)->post($url, [
+            'item_type' => 'PRODUCT_ITEM',
+            'requests' => json_encode([
+                [
+                    'method' => 'UPDATE',
+                    'data' => [
+                        'retailer_id' => $item['retailer_id'],
+                        'name' => $item['name'],
+                        'description' => $item['description'] ?? '',
+                        'price' => number_format($item['price_minor'] / 100, 2, '.', '') . ' ' . ($item['currency'] ?? 'USD'),
+                        'availability' => $item['availability'],
+                        'image_url' => $item['image_url'] ?? '',
+                    ],
+                ],
+            ]),
+        ])->throw();
+    }
+
     private function parsePriceMinor(?string $price): int
     {
         if (! $price) {

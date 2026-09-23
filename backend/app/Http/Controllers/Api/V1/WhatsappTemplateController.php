@@ -58,6 +58,10 @@ class WhatsappTemplateController extends Controller
                 ->where('meta_template_id', $template['meta_template_id'])
                 ->first();
 
+            if ($existing && $existing->synced_at && $existing->updated_at->gt($existing->synced_at)) {
+                continue;
+            }
+
             $previousStatus = $existing?->status;
 
             $record = WhatsappTemplate::query()->updateOrCreate(
@@ -172,6 +176,44 @@ class WhatsappTemplateController extends Controller
         $this->notifyStatusTransition($whatsappTemplate, $dispatchService);
 
         return (new WhatsappTemplateResource($whatsappTemplate))->response();
+    }
+
+    public function push(Request $request, WhatsappTemplate $whatsappTemplate, TemplateDriverResolver $resolver, NotificationDispatchService $dispatchService): JsonResponse
+    {
+        Gate::authorize('update', $whatsappTemplate);
+
+        if (! $whatsappTemplate->meta_template_id) {
+            throw ValidationException::withMessages([
+                'status' => 'Submit this template to Meta before pushing edits.',
+            ]);
+        }
+
+        $result = $resolver->forConnection($whatsappTemplate->apiConnection)->pushTemplateEdits(
+            $whatsappTemplate->apiConnection,
+            $whatsappTemplate,
+        );
+
+        $whatsappTemplate->update([
+            'status' => $result['status'],
+            'synced_at' => now(),
+        ]);
+
+        $this->notifyStatusTransition($whatsappTemplate, $dispatchService);
+
+        return (new WhatsappTemplateResource($whatsappTemplate))->response();
+    }
+
+    public function uploadHeaderMedia(Request $request, ApiConnection $apiConnection, TemplateDriverResolver $resolver): JsonResponse
+    {
+        Gate::authorize('create', WhatsappTemplate::class);
+
+        $data = $request->validate([
+            'media' => ['required', 'file', 'mimes:jpg,jpeg,png,mp4,pdf', 'max:16384'],
+        ]);
+
+        $handle = $resolver->forConnection($apiConnection)->uploadHeaderMedia($apiConnection, $data['media']);
+
+        return response()->json(['data' => ['handle' => $handle]]);
     }
 
     public function destroy(WhatsappTemplate $whatsappTemplate): JsonResponse

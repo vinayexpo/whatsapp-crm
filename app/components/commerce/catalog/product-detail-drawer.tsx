@@ -4,11 +4,14 @@ import Drawer from "@mui/material/Drawer";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
+import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import type { Category, Product } from "~/data/types";
+import { apiClient } from "~/utils/api-client";
 import { ProductSettingsPanel } from "./product-settings-panel";
 import { ProductVariantsPanel } from "./product-variants-panel";
 import { ProductAddonsPanel } from "./product-addons-panel";
@@ -19,10 +22,25 @@ interface ProductDetailDrawerProps {
   onClose: () => void;
   onUpdated: (product: Product) => void;
   onDelete: () => Promise<void>;
+  onPushed?: (message: string) => void;
 }
 
-export function ProductDetailDrawer({ product, categories, onClose, onUpdated, onDelete }: ProductDetailDrawerProps) {
+export function ProductDetailDrawer({ product, categories, onClose, onUpdated, onDelete, onPushed }: ProductDetailDrawerProps) {
   const [tab, setTab] = useState<"settings" | "variants" | "addons">("settings");
+  const [pushing, setPushing] = useState(false);
+
+  async function handlePushToMeta() {
+    if (!product) return;
+    setPushing(true);
+    try {
+      await apiClient.pushProductToMeta(product.id);
+      onPushed?.(`Pushed "${product.name}" to Meta.`);
+    } catch {
+      onPushed?.(`Could not push "${product.name}" to Meta.`);
+    } finally {
+      setPushing(false);
+    }
+  }
 
   useEffect(() => {
     setTab("settings");
@@ -51,9 +69,22 @@ export function ProductDetailDrawer({ product, categories, onClose, onUpdated, o
                 {product.name}
               </Typography>
             </Stack>
-            <IconButton onClick={onClose} size="small">
-              <CloseRoundedIcon fontSize="small" />
-            </IconButton>
+            <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+              {product.metaRetailerId && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<CloudUploadRoundedIcon fontSize="small" />}
+                  onClick={handlePushToMeta}
+                  disabled={pushing}
+                >
+                  {pushing ? "Pushing…" : "Push to Meta"}
+                </Button>
+              )}
+              <IconButton onClick={onClose} size="small">
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            </Stack>
           </Stack>
 
           <Tabs

@@ -761,6 +761,24 @@ async function submitTemplate(templateId: string): Promise<WhatsappTemplate> {
   return data;
 }
 
+async function pushTemplateToMeta(templateId: string): Promise<WhatsappTemplate> {
+  const { data } = await apiRequest<{ data: WhatsappTemplate }>(`/api/v1/templates/${templateId}/push-meta`, {
+    method: "POST",
+  });
+  return data;
+}
+
+async function uploadTemplateHeaderMedia(connectionId: string, file: File): Promise<{ handle: string }> {
+  const formData = new FormData();
+  formData.append("media", file);
+
+  const body = await apiUpload<{ data: { handle: string } }>(
+    `/api/v1/api-connections/${connectionId}/templates/media`,
+    formData,
+  );
+  return body.data;
+}
+
 async function deleteTemplate(templateId: string): Promise<void> {
   await apiRequest<void>(`/api/v1/templates/${templateId}`, { method: "DELETE" });
 }
@@ -1389,9 +1407,17 @@ async function syncProductAddons(productId: string, addonDefinitionIds: string[]
   return data;
 }
 
-async function syncMetaCatalogProducts(): Promise<{ created: number; updated: number; total: number }> {
-  const { data } = await apiRequest<{ data: { created: number; updated: number; total: number } }>(
+async function syncMetaCatalogProducts(): Promise<{ created: number; updated: number; skipped: number; total: number }> {
+  const { data } = await apiRequest<{ data: { created: number; updated: number; skipped: number; total: number } }>(
     "/api/v1/commerce/products/sync-meta",
+    { method: "POST" },
+  );
+  return data;
+}
+
+async function pushProductToMeta(productId: string): Promise<{ pushed: boolean }> {
+  const { data } = await apiRequest<{ data: { pushed: boolean } }>(
+    `/api/v1/commerce/products/${productId}/push-meta`,
     { method: "POST" },
   );
   return data;
@@ -2065,6 +2091,8 @@ export const apiClient = {
   createTemplate,
   updateTemplate,
   submitTemplate,
+  pushTemplateToMeta,
+  uploadTemplateHeaderMedia,
   deleteTemplate,
   listFlows,
   syncFlows,
@@ -2155,6 +2183,7 @@ export const apiClient = {
   deleteProductVariant,
   syncProductAddons,
   syncMetaCatalogProducts,
+  pushProductToMeta,
   getCommerceSettings,
   updateCommerceSettings,
   listAddonDefinitions,

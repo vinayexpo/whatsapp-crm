@@ -33,4 +33,13 @@ class FakeMetaCatalogService implements CatalogSyncServiceInterface
             ],
         ];
     }
+
+    public function pushProduct(ApiConnection $connection, string $catalogId, array $item): void
+    {
+        Log::info('FakeMetaCatalogService: simulated push to Meta catalog', [
+            'api_connection_id' => $connection->id,
+            'catalog_id' => $catalogId,
+            'retailer_id' => $item['retailer_id'],
+        ]);
+    }
 }

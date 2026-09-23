@@ -14,6 +14,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import InputAdornment from "@mui/material/InputAdornment";
 import Select from "@mui/material/Select";
@@ -49,6 +50,7 @@ export default function Templates() {
   const [editingTemplate, setEditingTemplate] = useState<WhatsappTemplate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [pushingId, setPushingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<WhatsappTemplateStatus | "all">("all");
@@ -141,6 +143,19 @@ export default function Templates() {
       setError(err instanceof ApiError ? err.message : "Failed to submit template.");
     } finally {
       setSubmittingId(null);
+    }
+  }
+
+  async function handlePush(template: WhatsappTemplate) {
+    setPushingId(template.id);
+    setError(null);
+    try {
+      const updated = await apiClient.pushTemplateToMeta(template.id);
+      setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to push template edits to Meta.");
+    } finally {
+      setPushingId(null);
     }
   }
 
@@ -284,6 +299,18 @@ export default function Templates() {
                             </IconButton>
                           </Tooltip>
                         </>
+                      )}
+                      {template.metaTemplateId && (
+                        <Tooltip title="Push local edits to Meta">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handlePush(template)}
+                            disabled={pushingId === template.id}
+                          >
+                            <CloudUploadRoundedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       )}
                     </Stack>
                   </Stack>

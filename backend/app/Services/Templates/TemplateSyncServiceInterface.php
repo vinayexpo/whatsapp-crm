@@ -4,6 +4,7 @@ namespace App\Services\Templates;
 
 use App\Models\ApiConnection;
 use App\Models\WhatsappTemplate;
+use Illuminate\Http\UploadedFile;
 
 interface TemplateSyncServiceInterface
 {
@@ -24,4 +25,19 @@ interface TemplateSyncServiceInterface
      * @return array{meta_template_id: string, status: string}
      */
     public function submitTemplate(ApiConnection $connection, WhatsappTemplate $template): array;
+
+    /**
+     * Upload a file to Meta as template header media and return the
+     * resulting upload handle to reference in a HEADER component's
+     * example.header_handle.
+     */
+    public function uploadHeaderMedia(ApiConnection $connection, UploadedFile $file): string;
+
+    /**
+     * Push local edits of an already-submitted/synced template to Meta's
+     * edit-template endpoint.
+     *
+     * @return array{status: string}
+     */
+    public function pushTemplateEdits(ApiConnection $connection, WhatsappTemplate $template): array;
 }

@@ -152,8 +152,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/api-connections/{apiConnection}/templates', [WhatsappTemplateController::class, 'index']);
         Route::post('/api-connections/{apiConnection}/templates/sync', [WhatsappTemplateController::class, 'sync']);
         Route::post('/api-connections/{apiConnection}/templates', [WhatsappTemplateController::class, 'store']);
+        Route::post('/api-connections/{apiConnection}/templates/media', [WhatsappTemplateController::class, 'uploadHeaderMedia']);
         Route::patch('/templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'update']);
         Route::post('/templates/{whatsappTemplate}/submit', [WhatsappTemplateController::class, 'submit']);
+        Route::post('/templates/{whatsappTemplate}/push-meta', [WhatsappTemplateController::class, 'push']);
         Route::delete('/templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'destroy']);
         Route::get('/api-connections/{apiConnection}/flows', [WhatsappFlowController::class, 'index']);
         Route::post('/api-connections/{apiConnection}/flows/sync', [WhatsappFlowController::class, 'sync']);
@@ -241,6 +243,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/commerce/products/{product}', [ProductController::class, 'show']);
         Route::patch('/commerce/products/{product}', [ProductController::class, 'update']);
         Route::delete('/commerce/products/{product}', [ProductController::class, 'destroy']);
+        Route::post('/commerce/products/{product}/push-meta', [CatalogSyncController::class, 'push']);
         Route::post('/commerce/products/{product}/variants', [ProductController::class, 'storeVariant']);
         Route::patch('/commerce/products/{product}/variants/{variant}', [ProductController::class, 'updateVariant']);
         Route::delete('/commerce/products/{product}/variants/{variant}', [ProductController::class, 'destroyVariant']);

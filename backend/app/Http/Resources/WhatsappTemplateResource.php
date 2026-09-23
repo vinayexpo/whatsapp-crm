@@ -19,6 +19,7 @@ class WhatsappTemplateResource extends JsonResource
             'language' => $this->language,
             'category' => $this->category,
             'status' => $this->status,
+            'metaTemplateId' => $this->meta_template_id,
             'body' => $this->body,
             'variables' => $this->variables ?? [],
             'components' => $this->components ?? [],

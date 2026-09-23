@@ -4,6 +4,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import Button from "@mui/material/Button";
@@ -11,6 +12,8 @@ import Alert from "@mui/material/Alert";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
 import Divider from "@mui/material/Divider";
+import CircularProgress from "@mui/material/CircularProgress";
+import InsertDriveFileRoundedIcon from "@mui/icons-material/InsertDriveFileRounded";
 import { apiClient, ApiError } from "~/utils/api-client";
 import type { WhatsappTemplate } from "~/data/types";
 
@@ -24,11 +27,27 @@ interface TemplateBuilderDialogProps {
 
 const CATEGORIES = ["utility", "marketing", "authentication"];
 
+type HeaderFormat = "NONE" | "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT";
+
+const HEADER_ACCEPT: Record<HeaderFormat, string | undefined> = {
+  NONE: undefined,
+  TEXT: undefined,
+  IMAGE: "image/jpeg,image/png",
+  VIDEO: "video/mp4",
+  DOCUMENT: "application/pdf",
+};
+
 export function TemplateBuilderDialog({ open, connectionId, template, onClose, onSaved }: TemplateBuilderDialogProps) {
   const [name, setName] = useState("");
   const [language, setLanguage] = useState("en_US");
   const [category, setCategory] = useState("utility");
+  const [headerFormat, setHeaderFormat] = useState<HeaderFormat>("NONE");
   const [headerText, setHeaderText] = useState("");
+  const [headerHandle, setHeaderHandle] = useState<string | null>(null);
+  const [headerPreviewUrl, setHeaderPreviewUrl] = useState<string | null>(null);
+  const [headerFileName, setHeaderFileName] = useState<string | null>(null);
+  const [hasExistingMediaHeader, setHasExistingMediaHeader] = useState(false);
+  const [uploadingHeader, setUploadingHeader] = useState(false);
   const [bodyText, setBodyText] = useState("");
   const [footerText, setFooterText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -41,13 +60,27 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
       setLanguage(template.language);
       setCategory(template.category);
       setBodyText(template.body);
-      setHeaderText(template.components?.find((c) => c.type === "HEADER")?.text ?? "");
+      const headerComponent = template.components?.find((c) => c.type === "HEADER");
+      const format = (headerComponent?.format ?? "NONE") as HeaderFormat;
+      setHeaderFormat(headerComponent ? format : "NONE");
+      setHeaderText(format === "TEXT" ? headerComponent?.text ?? "" : "");
+      setHeaderHandle(null);
+      setHeaderPreviewUrl(null);
+      setHeaderFileName(null);
+      setHasExistingMediaHeader(
+        Boolean(headerComponent && format !== "TEXT" && (headerComponent.example?.header_handle?.length ?? 0) > 0),
+      );
       setFooterText(template.components?.find((c) => c.type === "FOOTER")?.text ?? "");
     } else {
       setName("");
       setLanguage("en_US");
       setCategory("utility");
+      setHeaderFormat("NONE");
       setHeaderText("");
+      setHeaderHandle(null);
+      setHeaderPreviewUrl(null);
+      setHeaderFileName(null);
+      setHasExistingMediaHeader(false);
       setBodyText("");
       setFooterText("");
     }
@@ -56,16 +89,54 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
 
   const variables = Array.from(new Set(Array.from(bodyText.matchAll(/\{\{\s*(\w+)\s*\}\}/g)).map((m) => m[1])));
 
+  function handleHeaderFormatChange(format: HeaderFormat) {
+    setHeaderFormat(format);
+    setHeaderHandle(null);
+    setHeaderPreviewUrl(null);
+    setHeaderFileName(null);
+    if (format !== "TEXT") setHeaderText("");
+    setHasExistingMediaHeader(false);
+  }
+
+  async function handleHeaderFileChange(file: File | null) {
+    if (!file || !connectionId) return;
+    setHeaderFileName(file.name);
+    setHeaderPreviewUrl(URL.createObjectURL(file));
+    setHeaderHandle(null);
+    setUploadingHeader(true);
+    setError(null);
+    try {
+      const { handle } = await apiClient.uploadTemplateHeaderMedia(connectionId, file);
+      setHeaderHandle(handle);
+      setHasExistingMediaHeader(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to upload header media.");
+    } finally {
+      setUploadingHeader(false);
+    }
+  }
+
   function buildComponents() {
     const components = [];
-    if (headerText.trim()) components.push({ type: "HEADER" as const, format: "TEXT" as const, text: headerText.trim() });
+    if (headerFormat === "TEXT" && headerText.trim()) {
+      components.push({ type: "HEADER" as const, format: "TEXT" as const, text: headerText.trim() });
+    } else if (headerFormat !== "NONE" && headerFormat !== "TEXT" && headerHandle) {
+      components.push({
+        type: "HEADER" as const,
+        format: headerFormat,
+        example: { header_handle: [headerHandle] },
+      });
+    }
     components.push({ type: "BODY" as const, text: bodyText.trim() });
     if (footerText.trim()) components.push({ type: "FOOTER" as const, text: footerText.trim() });
     return components;
   }
 
+  const headerNeedsUpload =
+    headerFormat !== "NONE" && headerFormat !== "TEXT" && !headerHandle && !hasExistingMediaHeader;
+
   async function handleSave() {
-    if (!bodyText.trim() || !name.trim()) return;
+    if (!bodyText.trim() || !name.trim() || headerNeedsUpload || uploadingHeader) return;
     setSaving(true);
     setError(null);
     try {
@@ -136,11 +207,56 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
             </Stack>
 
             <TextField
-              label="Header (optional)"
-              value={headerText}
-              onChange={(e) => setHeaderText(e.target.value)}
+              select
+              label="Header type"
+              value={headerFormat}
+              onChange={(e) => handleHeaderFormatChange(e.target.value as HeaderFormat)}
               fullWidth
-            />
+            >
+              <MenuItem value="NONE">None</MenuItem>
+              <MenuItem value="TEXT">Text</MenuItem>
+              <MenuItem value="IMAGE">Image</MenuItem>
+              <MenuItem value="VIDEO">Video</MenuItem>
+              <MenuItem value="DOCUMENT">Document</MenuItem>
+            </TextField>
+
+            {headerFormat === "TEXT" && (
+              <TextField
+                label="Header text"
+                value={headerText}
+                onChange={(e) => setHeaderText(e.target.value)}
+                fullWidth
+              />
+            )}
+
+            {(headerFormat === "IMAGE" || headerFormat === "VIDEO" || headerFormat === "DOCUMENT") && (
+              <Stack spacing={1}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  disabled={uploadingHeader || !connectionId}
+                  startIcon={uploadingHeader ? <CircularProgress size={16} /> : <InsertDriveFileRoundedIcon />}
+                >
+                  {uploadingHeader ? "Uploading…" : headerFileName ? "Replace file" : "Upload file"}
+                  <input
+                    type="file"
+                    hidden
+                    accept={HEADER_ACCEPT[headerFormat]}
+                    onChange={(e) => handleHeaderFileChange(e.target.files?.[0] ?? null)}
+                  />
+                </Button>
+                {hasExistingMediaHeader && !headerFileName && (
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    Media header set (upload a file to replace it).
+                  </Typography>
+                )}
+                {headerFileName && (
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    {headerFileName}
+                  </Typography>
+                )}
+              </Stack>
+            )}
 
             <TextField
               label="Body"
@@ -172,11 +288,40 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
               }}
             >
               <Stack spacing={1}>
-                {headerText.trim() && (
+                {headerFormat === "TEXT" && headerText.trim() && (
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                     {headerText}
                   </Typography>
                 )}
+                {headerFormat === "IMAGE" && headerPreviewUrl && (
+                  <Box
+                    component="img"
+                    src={headerPreviewUrl}
+                    alt="Header preview"
+                    sx={{ width: "100%", borderRadius: 2, maxHeight: 160, objectFit: "cover" }}
+                  />
+                )}
+                {headerFormat === "VIDEO" && headerPreviewUrl && (
+                  <Box
+                    component="video"
+                    src={headerPreviewUrl}
+                    controls
+                    sx={{ width: "100%", borderRadius: 2, maxHeight: 160 }}
+                  />
+                )}
+                {headerFormat === "DOCUMENT" && (headerFileName || hasExistingMediaHeader) && (
+                  <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    <InsertDriveFileRoundedIcon fontSize="small" />
+                    <Typography variant="body2">{headerFileName ?? "Document header"}</Typography>
+                  </Stack>
+                )}
+                {(headerFormat === "IMAGE" || headerFormat === "VIDEO") &&
+                  !headerPreviewUrl &&
+                  hasExistingMediaHeader && (
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Media header set (change file to replace)
+                    </Typography>
+                  )}
                 <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
                   {bodyText || "Message body will appear here…"}
                 </Typography>
@@ -201,7 +346,11 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSave} disabled={saving || !name.trim() || !bodyText.trim()}>
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={saving || uploadingHeader || !name.trim() || !bodyText.trim() || headerNeedsUpload}
+        >
           {template ? "Save changes" : "Save draft"}
         </Button>
       </DialogActions>

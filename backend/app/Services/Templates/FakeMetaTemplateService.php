@@ -4,6 +4,7 @@ namespace App\Services\Templates;
 
 use App\Models\ApiConnection;
 use App\Models\WhatsappTemplate;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
 class FakeMetaTemplateService implements TemplateSyncServiceInterface
@@ -61,5 +62,25 @@ class FakeMetaTemplateService implements TemplateSyncServiceInterface
             'meta_template_id' => 'fake_'.$template->id.'_'.now()->timestamp,
             'status' => $status,
         ];
+    }
+
+    public function uploadHeaderMedia(ApiConnection $connection, UploadedFile $file): string
+    {
+        Log::info('FakeMetaTemplateService: simulated header media upload', [
+            'api_connection_id' => $connection->id,
+            'original_name' => $file->getClientOriginalName(),
+        ]);
+
+        return 'fake-handle-'.uniqid();
+    }
+
+    public function pushTemplateEdits(ApiConnection $connection, WhatsappTemplate $template): array
+    {
+        Log::info('FakeMetaTemplateService: simulated push of template edits', [
+            'api_connection_id' => $connection->id,
+            'template_id' => $template->id,
+        ]);
+
+        return ['status' => 'pending'];
     }
 }

@@ -13,4 +13,10 @@ interface CatalogSyncServiceInterface
      * @return array<int, array{retailer_id: string, name: string, description: ?string, price_minor: int, availability: string, image_url: ?string}>
      */
     public function fetchProducts(ApiConnection $connection, string $catalogId): array;
+
+    /**
+     * Push a single product's current local field values to the Meta catalog,
+     * upserting the item identified by retailer_id (the product's sku).
+     */
+    public function pushProduct(ApiConnection $connection, string $catalogId, array $item): void;
 }
