@@ -310,6 +310,8 @@ it('shows a website conversation created by the widget in the authenticated inbo
 });
 
 it('accepts structured ai replies for widget messages', function () {
+    $this->app->bind(ChatbotReplyServiceInterface::class, \App\Services\Chatbot\OpenAiChatbotReplyService::class);
+
     Http::fake([
         'api.openai.com/*' => Http::response([
             'choices' => [[
@@ -324,12 +326,13 @@ it('accepts structured ai replies for widget messages', function () {
 
     $chatbot = createChatbot();
 
-    AiAssistantSetting::query()->create([
-        'company_id' => $chatbot->company_id,
+    $aiSetting = AiAssistantSetting::query()->create([
         'base_url' => 'https://api.openai.com/v1',
         'api_key' => 'test-key',
         'model' => 'gpt-4o-mini',
     ]);
+    $aiSetting->company_id = $chatbot->company_id;
+    $aiSetting->save();
 
     $response = $this->postJson('/api/widget/messages', ['text' => 'What are your hours?'], [
         'X-Widget-Key' => $chatbot->widget_key,

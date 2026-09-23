@@ -6,9 +6,11 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\WebhookEvent;
 use Database\Seeders\PipelineStagesSeeder;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(PipelineStagesSeeder::class);
 });
 

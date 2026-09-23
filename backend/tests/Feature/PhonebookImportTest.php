@@ -57,7 +57,7 @@ it('imports new contacts into a newly named folder', function () {
     expect($response->json('data.name'))->toBe('Imported Leads');
     expect($response->json('data.contactCount'))->toBe(2);
 
-    $this->assertDatabaseHas('contacts', ['handle' => '+15550001111']);
+    $this->assertDatabaseHas('contacts', ['handle' => '15550001111']);
     $this->assertDatabaseHas('phonebook_folders', ['name' => 'Imported Leads']);
 });
 
@@ -98,7 +98,7 @@ it('imports new contacts from an xlsx file', function () {
 
     $response->assertOk();
     expect($response->json('summary.created'))->toBe(1);
-    $this->assertDatabaseHas('contacts', ['handle' => '+15550001111']);
+    $this->assertDatabaseHas('contacts', ['handle' => '15550001111']);
 });
 
 it('imports contacts into an existing folder', function () {
@@ -123,7 +123,7 @@ it('imports contacts into an existing folder', function () {
 it('skips and attaches when a matching contact already exists', function () {
     $admin = actingAsImportRole('admin');
     $folder = PhonebookFolder::factory()->create();
-    $existing = Contact::factory()->create(['channel' => 'whatsapp', 'handle' => '+15550001111', 'name' => 'Original Name']);
+    $existing = Contact::factory()->create(['channel' => 'whatsapp', 'handle' => '15550001111', 'name' => 'Original Name']);
 
     $file = makeCsvUpload([
         ['name', 'channel', 'handle', 'phone', 'email'],

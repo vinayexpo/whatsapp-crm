@@ -51,11 +51,11 @@ class TriggerKeywordUniquenessValidator
      * Assert that a single ChatMenuFlow trigger keyword does not collide with
      * any commerce trigger keyword configured for the company.
      */
-    public function assertNoCommerceCollision(int $companyId, ?string $keyword): void
+    public function assertNoCommerceCollision(?int $companyId, ?string $keyword): void
     {
         $keyword = trim((string) $keyword);
 
-        if ($keyword === '') {
+        if ($keyword === '' || $companyId === null) {
             return;
         }
 

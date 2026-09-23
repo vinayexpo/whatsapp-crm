@@ -90,6 +90,8 @@ class AuthController extends Controller
         ]);
         $user->assignRole('superadmin');
 
+        Auth::login($user);
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
@@ -100,7 +102,18 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()->currentAccessToken();
+
+        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $token->delete();
+        }
+
+        Auth::guard('web')->logout();
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['message' => 'Logged out.']);
     }
