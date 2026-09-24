@@ -243,9 +243,15 @@ it('blocks selecting a fulfillment type when the cart contains an item unavailab
     expect($session->step)->toBe('delivery_or_pickup');
     expect($session->context['fulfillment'] ?? null)->toBeNull();
 
-    $reply = lastOutbound($this->conversation);
-    expect($reply->text)->toContain("aren't available for delivery");
-    expect($reply->text)->toContain($this->product->name);
+    $outbound = Message::query()
+        ->where('conversation_id', $this->conversation->id)
+        ->where('direction', 'outbound')
+        ->latest('id')
+        ->take(2)
+        ->get();
+    expect($outbound[1]->text)->toContain("aren't available for delivery");
+    expect($outbound[1]->text)->toContain($this->product->name);
+    expect($outbound[0]->text)->toBe('Would you like delivery or pickup?');
 
     // Pickup still works since only delivery_available was disabled.
     commerceHandle($this->conversation, commerceInbound($this->conversation, '', 'fulfillment:pickup'));

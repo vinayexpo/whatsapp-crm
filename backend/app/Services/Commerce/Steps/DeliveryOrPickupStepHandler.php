@@ -38,7 +38,7 @@ class DeliveryOrPickupStepHandler implements StepHandlerInterface
             if ($unavailable->isNotEmpty()) {
                 $this->sender->send($session->conversation, "Sorry, these items aren't available for pickup: {$unavailable->implode(', ')}. Please remove them from your cart or choose delivery.");
 
-                return true;
+                return $this->enter($session);
             }
 
             $cart->setFulfillment('pickup', 0);
@@ -53,7 +53,7 @@ class DeliveryOrPickupStepHandler implements StepHandlerInterface
             if ($unavailable->isNotEmpty()) {
                 $this->sender->send($session->conversation, "Sorry, these items aren't available for delivery: {$unavailable->implode(', ')}. Please remove them from your cart or choose pickup.");
 
-                return true;
+                return $this->enter($session);
             }
 
             $branch = $session->branch;
