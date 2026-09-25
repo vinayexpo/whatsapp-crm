@@ -3,6 +3,7 @@ import base64
 import fractions
 import hashlib
 import hmac
+import logging
 import time
 
 import numpy as np
@@ -11,6 +12,8 @@ from aiortc.mediastreams import AudioStreamTrack
 from av import AudioFrame
 
 from app.config import settings
+
+logger = logging.getLogger("voice_sidecar")
 
 SAMPLE_RATE = 48000
 SAMPLES_PER_FRAME = 960  # 20ms @ 48kHz
@@ -80,12 +83,22 @@ class CallSession:
         self.audio_track = TtsAudioTrack()
         self.pc.addTrack(self.audio_track)
 
+        @self.pc.on("iceconnectionstatechange")
+        def on_ice_state_change() -> None:
+            logger.info("call %s: ICE connection state -> %s", whatsapp_call_id, self.pc.iceConnectionState)
+
+        @self.pc.on("connectionstatechange")
+        def on_connection_state_change() -> None:
+            logger.info("call %s: peer connection state -> %s", whatsapp_call_id, self.pc.connectionState)
+
     async def accept_offer(self, sdp_offer: str) -> str:
         offer = RTCSessionDescription(sdp=sdp_offer, type="offer")
         await self.pc.setRemoteDescription(offer)
 
         answer = await self.pc.createAnswer()
         await self.pc.setLocalDescription(answer)
+
+        logger.info("call %s: SDP answer created, ICE servers=%s", self.whatsapp_call_id, [s.urls for s in self.pc.configuration.iceServers])
 
         return self.pc.localDescription.sdp
 

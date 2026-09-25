@@ -7,6 +7,9 @@ from app.laravel_client import LaravelClient
 from app.tts.piper_tts import PiperTtsProvider
 from app.webrtc import CallSession
 
+logging.basicConfig(level=logging.INFO)
+logging.getLogger("aiortc").setLevel(logging.INFO)
+logging.getLogger("aioice").setLevel(logging.INFO)
 logger = logging.getLogger("voice_sidecar")
 
 app = FastAPI()
@@ -45,12 +48,16 @@ async def create_session(payload: CreateSessionRequest) -> dict:
     session = CallSession(payload.whatsapp_call_id)
     sessions[payload.whatsapp_call_id] = session
 
-    sdp_answer = await session.accept_offer(payload.sdp_offer)
-    await laravel.sdp_answer(payload.whatsapp_call_id, sdp_answer)
-    await laravel.session_event(payload.whatsapp_call_id, payload.whatsapp_call_id)
+    try:
+        sdp_answer = await session.accept_offer(payload.sdp_offer)
+        await laravel.sdp_answer(payload.whatsapp_call_id, sdp_answer)
+        await laravel.session_event(payload.whatsapp_call_id, payload.whatsapp_call_id)
 
-    if payload.greeting:
-        await speak(session, payload.greeting, payload.tts_voice_id)
+        if payload.greeting:
+            await speak(session, payload.greeting, payload.tts_voice_id)
+    except Exception:
+        logger.exception("call %s: failed to set up session", payload.whatsapp_call_id)
+        raise
 
     return {"status": "accepted"}
 
