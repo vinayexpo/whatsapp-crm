@@ -61,7 +61,7 @@ class ProcessInboundWhatsappCall implements ShouldQueue
         $flow = WhatsappCallFlow::query()->where('company_id', $companyId)
             ->where('api_connection_id', $connection->id)->where('status', 'active')->first();
 
-        [$conversation, $whatsappCall] = DB::transaction(function () use ($fromNumber, $companyId, $flow, $metaCallId) {
+        [$conversation, $whatsappCall] = DB::transaction(function () use ($fromNumber, $companyId, $connection, $flow, $metaCallId) {
             $contact = Contact::withoutGlobalScopes()->where('handle', $fromNumber)->where('channel', 'whatsapp')->first();
 
             if (! $contact) {
@@ -88,9 +88,12 @@ class ProcessInboundWhatsappCall implements ShouldQueue
                     'channel' => 'whatsapp_call',
                     'status' => 'open',
                     'unread_count' => 0,
+                    'api_connection_id' => $connection->id,
                 ]);
                 $conversation->company_id = $companyId;
                 $conversation->save();
+            } elseif (! $conversation->api_connection_id) {
+                $conversation->update(['api_connection_id' => $connection->id]);
             }
 
             $whatsappCall = new WhatsappCall([
