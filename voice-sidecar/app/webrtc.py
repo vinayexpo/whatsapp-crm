@@ -28,6 +28,7 @@ class TtsAudioTrack(AudioStreamTrack):
         self._queue: asyncio.Queue[bytes | None] = asyncio.Queue()
         self._buffer = b""
         self._pts = 0
+        self._start_time: float | None = None
 
     def push_pcm(self, chunk: bytes) -> None:
         self._queue.put_nowait(chunk)
@@ -52,6 +53,21 @@ class TtsAudioTrack(AudioStreamTrack):
         frame.sample_rate = SAMPLE_RATE
         frame.pts = self._pts
         frame.time_base = fractions.Fraction(1, SAMPLE_RATE)
+
+        # Pace frames to real time (20ms apart), matching aiortc's own
+        # AudioStreamTrack.recv() base-class pacing, which this override
+        # otherwise bypasses entirely -- without this, an utterance's PCM
+        # is queued near-instantly and every frame is emitted back-to-back,
+        # arriving far faster than realtime and getting dropped by the
+        # receiver's jitter buffer instead of being heard.
+        if self._start_time is None:
+            self._start_time = time.time()
+        else:
+            target = self._start_time + (self._pts / SAMPLE_RATE)
+            wait = target - time.time()
+            if wait > 0:
+                await asyncio.sleep(wait)
+
         self._pts += SAMPLES_PER_FRAME
 
         return frame
@@ -95,10 +111,18 @@ class CallSession:
         offer = RTCSessionDescription(sdp=sdp_offer, type="offer")
         await self.pc.setRemoteDescription(offer)
 
+        for t in self.pc.getTransceivers():
+            logger.info(
+                "call %s: transceiver kind=%s direction=%s currentDirection=%s",
+                self.whatsapp_call_id, t.kind, t.direction, t.currentDirection,
+            )
+
         answer = await self.pc.createAnswer()
         await self.pc.setLocalDescription(answer)
 
         logger.info("call %s: SDP answer created", self.whatsapp_call_id)
+        logger.info("call %s: offer sdp=\n%s", self.whatsapp_call_id, sdp_offer)
+        logger.info("call %s: answer sdp=\n%s", self.whatsapp_call_id, self.pc.localDescription.sdp)
 
         return self.pc.localDescription.sdp
 

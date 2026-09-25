@@ -33,9 +33,12 @@ class SpeakRequest(BaseModel):
 
 
 async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
+    total_bytes = 0
     async for chunk in tts.stream(text, voice_id):
+        total_bytes += len(chunk)
         session.audio_track.push_pcm(chunk)
     session.audio_track.end_utterance()
+    logger.info("call %s: speak() pushed %d bytes of PCM for text=%r", session.whatsapp_call_id, total_bytes, text)
 
 
 @app.get("/healthz")
