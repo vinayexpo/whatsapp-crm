@@ -16,6 +16,10 @@ RUN mkdir -p /app/voices \
     && curl -sL -o /app/voices/en_US-lessac-medium.onnx.json \
         https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
 
+# Pre-download the faster-whisper model into the image so the first real
+# call doesn't pay a cold-start download.
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8', download_root='/app/whisper-models')"
+
 COPY app ./app
 
 EXPOSE 8090

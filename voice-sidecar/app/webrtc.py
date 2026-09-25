@@ -8,8 +8,9 @@ import time
 
 import numpy as np
 from aiortc import RTCConfiguration, RTCIceServer, RTCPeerConnection, RTCSessionDescription
-from aiortc.mediastreams import AudioStreamTrack
+from aiortc.mediastreams import AudioStreamTrack, MediaStreamError
 from av import AudioFrame
+from scipy.signal import resample_poly
 
 from app.config import settings
 
@@ -93,11 +94,13 @@ def build_ice_servers() -> list[RTCIceServer]:
 
 
 class CallSession:
-    def __init__(self, whatsapp_call_id: str) -> None:
+    def __init__(self, whatsapp_call_id: str, on_inbound_frame=None) -> None:
         self.whatsapp_call_id = whatsapp_call_id
         self.pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=build_ice_servers()))
         self.audio_track = TtsAudioTrack()
         self.pc.addTrack(self.audio_track)
+        self._on_inbound_frame = on_inbound_frame
+        self._inbound_task: asyncio.Task | None = None
 
         @self.pc.on("iceconnectionstatechange")
         def on_ice_state_change() -> None:
@@ -106,6 +109,37 @@ class CallSession:
         @self.pc.on("connectionstatechange")
         def on_connection_state_change() -> None:
             logger.info("call %s: peer connection state -> %s", whatsapp_call_id, self.pc.connectionState)
+
+        @self.pc.on("track")
+        def on_track(track) -> None:
+            logger.info("call %s: received inbound track kind=%s", whatsapp_call_id, track.kind)
+            if track.kind == "audio" and self._on_inbound_frame is not None:
+                self._inbound_task = asyncio.ensure_future(self._consume_inbound_audio(track))
+
+    async def _consume_inbound_audio(self, track) -> None:
+        buffer = b""
+        frame_bytes = SAMPLES_PER_FRAME * 2  # 16-bit mono @ 48kHz
+
+        while True:
+            try:
+                frame = await track.recv()
+            except MediaStreamError:
+                break
+
+            samples = frame.to_ndarray()
+            if samples.ndim > 1:
+                samples = samples.mean(axis=0)
+            samples = samples.astype(np.float32)
+
+            if frame.sample_rate != SAMPLE_RATE:
+                samples = resample_poly(samples, SAMPLE_RATE, frame.sample_rate)
+
+            pcm = samples.astype(np.int16).tobytes()
+            buffer += pcm
+
+            while len(buffer) >= frame_bytes:
+                chunk, buffer = buffer[:frame_bytes], buffer[frame_bytes:]
+                self._on_inbound_frame(chunk)
 
     async def accept_offer(self, sdp_offer: str) -> str:
         offer = RTCSessionDescription(sdp=sdp_offer, type="offer")
@@ -127,4 +161,6 @@ class CallSession:
         return self.pc.localDescription.sdp
 
     async def close(self) -> None:
+        if self._inbound_task is not None:
+            self._inbound_task.cancel()
         await self.pc.close()

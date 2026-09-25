@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.laravel_client import LaravelClient
+from app.stt import UtteranceCollector
 from app.tts.piper_tts import PiperTtsProvider
 from app.webrtc import SAMPLE_RATE, CallSession
 
@@ -62,10 +63,39 @@ async def healthz() -> dict:
     return {"status": "ok"}
 
 
+async def handle_caller_utterance(session: CallSession, voice_id: str | None, text: str) -> None:
+    logger.info("call %s: caller said %r", session.whatsapp_call_id, text)
+
+    try:
+        result = await laravel.next_prompt(session.whatsapp_call_id, text)
+    except Exception:
+        logger.exception("call %s: next-prompt request failed", session.whatsapp_call_id)
+        return
+
+    prompt = result.get("prompt")
+    if prompt:
+        await speak(session, prompt, voice_id)
+
+    if result.get("action") == "terminate":
+        session_obj = sessions.pop(session.whatsapp_call_id, None)
+        if session_obj:
+            await session_obj.close()
+
+
 @app.post("/sessions")
 async def create_session(payload: CreateSessionRequest) -> dict:
-    session = CallSession(payload.whatsapp_call_id)
+    collector_holder: dict[str, UtteranceCollector] = {}
+
+    def on_inbound_frame(frame_bytes: bytes) -> None:
+        collector_holder["collector"].push_frame(frame_bytes)
+
+    session = CallSession(payload.whatsapp_call_id, on_inbound_frame=on_inbound_frame)
     sessions[payload.whatsapp_call_id] = session
+
+    async def on_utterance(text: str) -> None:
+        await handle_caller_utterance(session, payload.tts_voice_id, text)
+
+    collector_holder["collector"] = UtteranceCollector(on_utterance)
 
     try:
         sdp_answer = await session.accept_offer(payload.sdp_offer)
