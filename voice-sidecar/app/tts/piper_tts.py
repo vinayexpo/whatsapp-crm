@@ -30,7 +30,10 @@ class PiperTtsProvider:
             pcm = np.frombuffer(audio_bytes, dtype=np.int16)
 
             if source_rate != SAMPLE_RATE:
-                pcm = resample_poly(pcm, SAMPLE_RATE, source_rate).astype(np.int16)
+                # resample_poly silently returns all-zero output for int16 input
+                # (integer-domain FIR filtering underflows to 0) -- must resample
+                # in float before converting back to int16.
+                pcm = resample_poly(pcm.astype(np.float32), SAMPLE_RATE, source_rate).astype(np.int16)
 
             chunks.append(pcm.tobytes())
 
