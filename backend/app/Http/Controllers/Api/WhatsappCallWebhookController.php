@@ -33,13 +33,18 @@ class WhatsappCallWebhookController extends Controller
         $status = data_get($request->all(), 'entry.0.changes.0.value.calls.0.status')
             ?? data_get($request->all(), 'entry.0.changes.0.value.statuses.0.status');
         $status = $status ? strtolower($status) : null;
+        $callEvent = data_get($request->all(), 'entry.0.changes.0.value.calls.0.event');
+        $callEvent = $callEvent ? strtolower($callEvent) : null;
         $metaCallId = data_get($request->all(), 'entry.0.changes.0.value.calls.0.id')
             ?? data_get($request->all(), 'entry.0.changes.0.value.statuses.0.id');
         $session = data_get($request->all(), 'entry.0.changes.0.value.calls.0.session');
 
         $existingCall = $metaCallId ? WhatsappCall::query()->where('meta_call_id', $metaCallId)->first() : null;
 
-        if (! $existingCall && $status === 'ringing') {
+        $isCallInitiation = $status === 'ringing'
+            || ($callEvent === 'connect' && ($session['sdp_type'] ?? null) === 'offer');
+
+        if (! $existingCall && $isCallInitiation) {
             ProcessInboundWhatsappCall::dispatch($event->id);
 
             return response()->noContent();

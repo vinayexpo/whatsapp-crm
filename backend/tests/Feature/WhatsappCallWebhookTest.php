@@ -365,6 +365,29 @@ it('marks a call completed from an uppercase COMPLETED status delivered via the 
     Queue::assertPushed(ProcessWhatsappCallCompletion::class);
 });
 
+it('dispatches ProcessInboundWhatsappCall for a Meta "connect" event carrying an SDP offer with no status field', function () {
+    Queue::fake();
+    config(['services.meta.app_secret' => null]);
+
+    $response = $this->postJson('/api/webhooks/whatsapp-call', [
+        'entry' => [['changes' => [['value' => [
+            'metadata' => ['phone_number_id' => '1234567890'],
+            'calls' => [[
+                'id' => 'wacid.connect1',
+                'to' => '916309866688',
+                'from' => '+15559998888',
+                'event' => 'connect',
+                'session' => ['sdp_type' => 'offer', 'sdp' => 'v=0...fake-meta-offer'],
+                'direction' => 'USER_INITIATED',
+            ]],
+        ]]]]],
+    ]);
+
+    $response->assertNoContent();
+    expect(WebhookEvent::query()->count())->toBe(1);
+    Queue::assertPushed(ProcessInboundWhatsappCall::class);
+});
+
 it('stores the remote SDP answer and dispatches WhatsappCallSdpAnswerReceived', function () {
     Event::fake([WhatsappCallSdpAnswerReceived::class]);
     config(['services.meta.app_secret' => null]);
