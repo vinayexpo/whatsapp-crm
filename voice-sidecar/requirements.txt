@@ -6,4 +6,5 @@ pydantic-settings==2.5.2
 piper-tts==1.2.0
 scipy==1.14.1
 faster-whisper==1.0.3
+requests==2.32.3
 webrtcvad==2.0.10
