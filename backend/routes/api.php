@@ -91,6 +91,7 @@ Route::prefix('internal')->middleware(VerifyInternalServiceSecret::class)->group
     Route::post('/whatsapp-calls/{whatsappCall}/sdp-answer', [SidecarCallController::class, 'sdpAnswer']);
     Route::post('/whatsapp-calls/{whatsappCall}/next-prompt', [SidecarCallController::class, 'nextPrompt']);
     Route::post('/whatsapp-calls/{whatsappCall}/session-event', [SidecarCallController::class, 'sessionEvent']);
+    Route::post('/whatsapp-calls/{whatsappCall}/spoken', [SidecarCallController::class, 'spoken']);
 });
 
 Route::prefix('v1')->group(function () {

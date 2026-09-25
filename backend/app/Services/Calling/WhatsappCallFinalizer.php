@@ -5,7 +5,6 @@ namespace App\Services\Calling;
 use App\Events\ConversationUpdated;
 use App\Events\MessageReceived;
 use App\Events\WhatsappCallStatusUpdated;
-use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\WhatsappCall;
@@ -15,26 +14,14 @@ use Spatie\Permission\Models\Permission;
 
 class WhatsappCallFinalizer
 {
+    public function __construct(private CallTurnRecorder $turnRecorder)
+    {
+    }
+
     public function finalize(WhatsappCall $whatsappCall): void
     {
         [$conversation, $message] = DB::transaction(function () use ($whatsappCall) {
-            $conversation = $whatsappCall->conversation;
-
-            if (! $conversation) {
-                $conversation = Conversation::withoutGlobalScopes()
-                    ->where('contact_id', $whatsappCall->contact_id)->where('channel', 'whatsapp_call')->first();
-            }
-
-            if (! $conversation) {
-                $conversation = new Conversation([
-                    'contact_id' => $whatsappCall->contact_id,
-                    'channel' => 'whatsapp_call',
-                    'status' => 'open',
-                    'unread_count' => 0,
-                ]);
-                $conversation->company_id = $whatsappCall->company_id;
-                $conversation->save();
-            }
+            $conversation = $this->turnRecorder->resolveConversation($whatsappCall);
 
             if (! $whatsappCall->conversation_id) {
                 $whatsappCall->update(['conversation_id' => $conversation->id]);

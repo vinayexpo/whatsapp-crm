@@ -8,6 +8,10 @@ use App\Models\WhatsappCall;
 
 class WhatsappCallFlowStepResolver
 {
+    public function __construct(private CallTurnRecorder $turnRecorder)
+    {
+    }
+
     /**
      * Record the caller's speech turn (if any), advance the flow, and
      * return the next step as an array: {action, prompt, options?}.
@@ -20,6 +24,7 @@ class WhatsappCallFlowStepResolver
             $transcript = $whatsappCall->transcript ?? [];
             $transcript[] = ['role' => 'lead', 'text' => $speech, 'at' => now()->toIso8601String()];
             $whatsappCall->update(['transcript' => $transcript, 'status' => 'in_progress']);
+            $this->turnRecorder->record($whatsappCall, 'caller', $speech);
         }
 
         $flow = $whatsappCall->callFlow;
@@ -54,6 +59,9 @@ class WhatsappCallFlowStepResolver
 
             return ['action' => 'terminate', 'prompt' => $node['prompt'] ?? null];
         }
+
+        // Note: the AI's own spoken prompt is recorded separately, once the
+        // sidecar confirms it actually spoke it (see SidecarCallController::spoken()).
 
         return [
             'action' => 'prompt',

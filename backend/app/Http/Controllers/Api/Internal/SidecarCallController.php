@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Internal;
 use App\Events\WhatsappCallSdpAnswerReceived;
 use App\Http\Controllers\Controller;
 use App\Models\WhatsappCall;
+use App\Services\Calling\CallTurnRecorder;
 use App\Services\Calling\WhatsappCallDriverResolver;
 use App\Services\Calling\WhatsappCallFlowStepResolver;
 use Illuminate\Http\JsonResponse;
@@ -54,6 +55,21 @@ class SidecarCallController extends Controller
         if (isset($validated['sidecar_session_id'])) {
             $whatsappCall->update(['sidecar_session_id' => $validated['sidecar_session_id']]);
         }
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    public function spoken(Request $request, WhatsappCall $whatsappCall, CallTurnRecorder $turnRecorder): JsonResponse
+    {
+        $validated = $request->validate([
+            'text' => ['required', 'string'],
+        ]);
+
+        $transcript = $whatsappCall->transcript ?? [];
+        $transcript[] = ['role' => 'ai', 'text' => $validated['text'], 'at' => now()->toIso8601String()];
+        $whatsappCall->update(['transcript' => $transcript]);
+
+        $turnRecorder->record($whatsappCall, 'ai', $validated['text']);
 
         return response()->json(['status' => 'ok']);
     }

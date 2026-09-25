@@ -41,6 +41,11 @@ async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
     session.audio_track.end_utterance()
     logger.info("call %s: speak() pushed %d bytes of PCM for text=%r", session.whatsapp_call_id, total_bytes, text)
 
+    try:
+        await laravel.spoken(session.whatsapp_call_id, text)
+    except Exception:
+        logger.exception("call %s: failed to report spoken text to Laravel", session.whatsapp_call_id)
+
     # Give the paced track time to drain, then log actual outbound RTP stats
     # to confirm whether aiortc/DTLS-SRTP is really putting packets on the wire.
     await asyncio.sleep((total_bytes / 2 / SAMPLE_RATE) + 1)

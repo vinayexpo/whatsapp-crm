@@ -41,3 +41,13 @@ class LaravelClient:
                 timeout=15,
             )
             response.raise_for_status()
+
+    async def spoken(self, whatsapp_call_id: str, text: str) -> None:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self._base_url}/whatsapp-calls/{whatsapp_call_id}/spoken",
+                json={"text": text},
+                headers=self._headers,
+                timeout=15,
+            )
+            response.raise_for_status()
