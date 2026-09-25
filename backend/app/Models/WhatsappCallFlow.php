@@ -22,6 +22,8 @@ class WhatsappCallFlow extends Model
         'nodes',
         'fallback_message',
         'max_retries',
+        'voice_mode',
+        'tts_voice_id',
     ];
 
     protected function casts(): array

@@ -9,6 +9,7 @@ use App\Jobs\ProcessInboundWhatsappCall;
 use App\Jobs\ProcessWhatsappCallCompletion;
 use App\Models\WebhookEvent;
 use App\Models\WhatsappCall;
+use App\Services\Calling\WhatsappCallFlowStepResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -60,7 +61,7 @@ class WhatsappCallWebhookController extends Controller
         return response()->noContent();
     }
 
-    public function action(Request $request): Response|JsonResponse
+    public function action(Request $request, WhatsappCallFlowStepResolver $resolver): Response|JsonResponse
     {
         $metaCallId = $request->input('call_id');
         $whatsappCall = WhatsappCall::query()->where('meta_call_id', $metaCallId)->first();
@@ -71,50 +72,7 @@ class WhatsappCallWebhookController extends Controller
 
         $speech = $request->input('speech', '');
 
-        if ($speech !== '') {
-            $transcript = $whatsappCall->transcript ?? [];
-            $transcript[] = ['role' => 'lead', 'text' => $speech, 'at' => now()->toIso8601String()];
-            $whatsappCall->update(['transcript' => $transcript, 'status' => 'in_progress']);
-        }
-
-        $flow = $whatsappCall->callFlow;
-        $nodes = $flow?->nodes ?? [];
-        $currentIndex = count($whatsappCall->collected_variables ?? []);
-
-        if (! $flow || $currentIndex >= count($nodes)) {
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
-
-            return response()->json(['action' => 'terminate']);
-        }
-
-        $node = $nodes[$currentIndex];
-
-        if (isset($node['variable_key']) && $speech !== '') {
-            $variables = $whatsappCall->collected_variables ?? [];
-            $variables[$node['variable_key']] = $speech;
-            $whatsappCall->update(['collected_variables' => $variables]);
-        }
-
-        WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
-
-        if ($node['type'] === 'end_call') {
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
-
-            return response()->json(['action' => 'terminate', 'prompt' => $node['prompt'] ?? null]);
-        }
-
-        if ($node['type'] === 'transfer_human') {
-            $whatsappCall->update(['needs_human_followup' => true]);
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
-
-            return response()->json(['action' => 'terminate', 'prompt' => $node['prompt'] ?? null]);
-        }
-
-        return response()->json([
-            'action' => 'prompt',
-            'prompt' => $node['prompt'] ?? null,
-            'options' => $node['options'] ?? null,
-        ]);
+        return response()->json($resolver->resolve($whatsappCall, $speech));
     }
 
     private function applyStatus(WhatsappCall $whatsappCall, ?string $status): void

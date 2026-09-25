@@ -20,7 +20,7 @@ jobs:
             cd /home/ubuntu/whatsapp-crm
             git fetch origin
             git reset --hard origin/master
-            sudo docker compose build backend reverb frontend
+            sudo docker compose build backend reverb frontend voice-sidecar
             sudo docker compose up -d
             sudo docker compose exec -T backend php artisan config:cache
             sudo docker compose exec -T backend php artisan queue:restart

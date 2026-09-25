@@ -3,6 +3,7 @@
 use App\Events\WhatsappCallSdpAnswerReceived;
 use App\Jobs\ProcessInboundWhatsappCall;
 use App\Jobs\ProcessWhatsappCallCompletion;
+use App\Jobs\RouteInboundCallToSidecar;
 use App\Models\ApiConnection;
 use App\Models\Company;
 use App\Models\Contact;
@@ -159,6 +160,82 @@ it('does nothing when the matching connection has calling disabled', function ()
     (new ProcessInboundWhatsappCall($event->id))->handle();
 
     expect(WhatsappCall::query()->count())->toBe(0);
+});
+
+it('routes to the sidecar instead of notifying agents when the flow is ai_voice', function () {
+    Queue::fake();
+
+    $company = Company::factory()->create();
+    $connection = ApiConnection::factory()->create([
+        'company_id' => $company->id,
+        'channel' => 'whatsapp',
+        'phone_number_id' => '1234567890',
+        'calling_enabled' => true,
+    ]);
+    WhatsappCallFlow::factory()->create([
+        'company_id' => $company->id,
+        'api_connection_id' => $connection->id,
+        'status' => 'active',
+        'voice_mode' => 'ai_voice',
+    ]);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp_call',
+        'payload' => whatsappCallPayload([
+            'entry' => [['changes' => [['value' => ['calls' => [[
+                'id' => 'wacid.999',
+                'from' => '+15559998888',
+                'status' => 'ringing',
+                'session' => ['sdp_type' => 'offer', 'sdp' => 'v=0...fake-meta-offer'],
+            ]]]]]]],
+        ]),
+    ]);
+
+    (new ProcessInboundWhatsappCall($event->id))->handle();
+
+    $whatsappCall = WhatsappCall::query()->where('meta_call_id', 'wacid.999')->first();
+    expect($whatsappCall->answered_by)->toBe('ai_sidecar');
+
+    Queue::assertPushed(RouteInboundCallToSidecar::class, fn ($job) => $job->whatsappCallId === $whatsappCall->id
+        && $job->metaSdpOffer === 'v=0...fake-meta-offer');
+});
+
+it('marks the call human_agent and notifies managers when the flow is text_only', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+    Queue::fake();
+
+    $company = Company::factory()->create();
+    $manager = User::factory()->create(['company_id' => $company->id]);
+    $manager->assignRole('manager');
+
+    $connection = ApiConnection::factory()->create([
+        'company_id' => $company->id,
+        'channel' => 'whatsapp',
+        'phone_number_id' => '1234567890',
+        'calling_enabled' => true,
+    ]);
+    WhatsappCallFlow::factory()->create([
+        'company_id' => $company->id,
+        'api_connection_id' => $connection->id,
+        'status' => 'active',
+        'voice_mode' => 'text_only',
+    ]);
+
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp_call',
+        'payload' => whatsappCallPayload(),
+    ]);
+
+    (new ProcessInboundWhatsappCall($event->id))->handle();
+
+    $whatsappCall = WhatsappCall::query()->where('meta_call_id', 'wacid.999')->first();
+    expect($whatsappCall->answered_by)->toBe('human_agent');
+
+    Queue::assertNotPushed(RouteInboundCallToSidecar::class);
+    $this->assertDatabaseHas('notifications', [
+        'user_id' => $manager->id,
+        'type' => 'whatsapp_call_ringing',
+    ]);
 });
 
 it('updates whatsapp call status from a status callback and flags followup on missed', function () {

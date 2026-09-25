@@ -45,8 +45,10 @@ use App\Http\Controllers\Api\V1\WhatsappCallController;
 use App\Http\Controllers\Api\V1\WhatsappCallFlowController;
 use App\Http\Controllers\Api\WhatsAppWebhookController;
 use App\Http\Controllers\Api\WhatsappCallWebhookController;
+use App\Http\Controllers\Api\Internal\SidecarCallController;
 use App\Http\Controllers\Api\Widget\WidgetController;
 use App\Http\Middleware\EnsureValidWidgetKey;
+use App\Http\Middleware\VerifyInternalServiceSecret;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('webhooks')->group(function () {
@@ -80,6 +82,15 @@ Route::prefix('widget')->middleware(['throttle:widget', EnsureValidWidgetKey::cl
     Route::post('/messages', [WidgetController::class, 'sendMessage']);
     Route::get('/messages', [WidgetController::class, 'messages']);
     Route::options('/{any}', fn () => response()->noContent())->where('any', '.*');
+});
+
+// Internal service-to-service API used only by the voice-sidecar (see
+// backend/config/services.php `voice_sidecar` block). Gated by a shared
+// secret, not Sanctum -- the sidecar has no user session.
+Route::prefix('internal')->middleware(VerifyInternalServiceSecret::class)->group(function () {
+    Route::post('/whatsapp-calls/{whatsappCall}/sdp-answer', [SidecarCallController::class, 'sdpAnswer']);
+    Route::post('/whatsapp-calls/{whatsappCall}/next-prompt', [SidecarCallController::class, 'nextPrompt']);
+    Route::post('/whatsapp-calls/{whatsappCall}/session-event', [SidecarCallController::class, 'sessionEvent']);
 });
 
 Route::prefix('v1')->group(function () {

@@ -35,6 +35,8 @@ class WhatsappCall extends Model
         'permission_request_message_id',
         'permission_request_status',
         'permission_request_failure_reason',
+        'sidecar_session_id',
+        'answered_by',
     ];
 
     protected function casts(): array

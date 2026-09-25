@@ -66,6 +66,21 @@ services:
       - --no-tls
       - --no-dtls
 
+  voice-sidecar:
+    build:
+      context: ./voice-sidecar
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      LARAVEL_BASE_URL: http://localhost:8080/api/internal
+      LARAVEL_SHARED_SECRET: ${VOICE_SIDECAR_SHARED_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      COTURN_HOST: ${COTURN_HOST}
+      COTURN_SECRET: ${COTURN_SECRET}
+      PORT: 8090
+    depends_on:
+      - backend
+
   frontend:
     build:
       context: .

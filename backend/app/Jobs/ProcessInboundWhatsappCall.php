@@ -40,6 +40,8 @@ class ProcessInboundWhatsappCall implements ShouldQueue
         $fromNumber = data_get($call, 'from');
         $phoneNumberId = data_get($entry, 'metadata.phone_number_id');
         $metaCallId = data_get($call, 'id');
+        $session = data_get($call, 'session');
+        $metaSdpOffer = ($session['sdp_type'] ?? null) === 'offer' ? ($session['sdp'] ?? null) : null;
 
         if (! $fromNumber || ! $phoneNumberId || ! $metaCallId) {
             return;
@@ -99,6 +101,7 @@ class ProcessInboundWhatsappCall implements ShouldQueue
                 'status' => 'ringing',
                 'meta_call_id' => $metaCallId,
                 'started_at' => now(),
+                'answered_by' => $flow?->voice_mode === 'ai_voice' ? 'ai_sidecar' : 'human_agent',
             ]);
             $whatsappCall->company_id = $companyId;
             $whatsappCall->save();
@@ -111,7 +114,11 @@ class ProcessInboundWhatsappCall implements ShouldQueue
         ConversationUpdated::dispatch($conversation);
         WhatsappCallStatusUpdated::dispatch($whatsappCall);
 
-        $this->notifyRinging($whatsappCall);
+        if ($whatsappCall->answered_by === 'ai_sidecar' && $metaSdpOffer) {
+            RouteInboundCallToSidecar::dispatch($whatsappCall->id, $metaSdpOffer);
+        } else {
+            $this->notifyRinging($whatsappCall);
+        }
     }
 
     private function notifyRinging(WhatsappCall $whatsappCall): void

@@ -75,6 +75,11 @@ return [
         'secret' => env('COTURN_SECRET'),
     ],
 
+    'voice_sidecar' => [
+        'base_url' => env('VOICE_SIDECAR_BASE_URL'),
+        'shared_secret' => env('VOICE_SIDECAR_SHARED_SECRET'),
+    ],
+
     'web_push' => [
         'vapid_public_key' => env('VAPID_PUBLIC_KEY'),
         'vapid_private_key' => env('VAPID_PRIVATE_KEY'),
