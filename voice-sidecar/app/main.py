@@ -4,14 +4,14 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.laravel_client import LaravelClient
-from app.tts.openai_tts import OpenAiTtsProvider
+from app.tts.piper_tts import PiperTtsProvider
 from app.webrtc import CallSession
 
 logger = logging.getLogger("voice_sidecar")
 
 app = FastAPI()
 laravel = LaravelClient()
-tts = OpenAiTtsProvider()
+tts = PiperTtsProvider()
 
 sessions: dict[str, CallSession] = {}
 

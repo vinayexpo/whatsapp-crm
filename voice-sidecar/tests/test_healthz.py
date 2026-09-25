@@ -1,12 +1,13 @@
 import os
+from unittest.mock import patch
 
 os.environ.setdefault("LARAVEL_BASE_URL", "http://backend/api/internal")
 os.environ.setdefault("LARAVEL_SHARED_SECRET", "test-secret")
-os.environ.setdefault("OPENAI_API_KEY", "test-key")
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+with patch("app.tts.piper_tts.PiperVoice.load"):
+    from app.main import app
 
 client = TestClient(app)
 
