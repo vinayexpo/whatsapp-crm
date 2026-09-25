@@ -32,6 +32,7 @@ class WhatsappCallFlowStepResolver
         $currentIndex = count($whatsappCall->collected_variables ?? []);
 
         if (! $flow || $currentIndex >= count($nodes)) {
+            $this->markCompleted($whatsappCall);
             ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
 
             return ['action' => 'terminate'];
@@ -48,6 +49,7 @@ class WhatsappCallFlowStepResolver
         WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
 
         if ($node['type'] === 'end_call') {
+            $this->markCompleted($whatsappCall);
             ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
 
             return ['action' => 'terminate', 'prompt' => $node['prompt'] ?? null];
@@ -55,6 +57,7 @@ class WhatsappCallFlowStepResolver
 
         if ($node['type'] === 'transfer_human') {
             $whatsappCall->update(['needs_human_followup' => true]);
+            $this->markCompleted($whatsappCall);
             ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
 
             return ['action' => 'terminate', 'prompt' => $node['prompt'] ?? null];
@@ -68,5 +71,19 @@ class WhatsappCallFlowStepResolver
             'prompt' => $node['prompt'] ?? null,
             'options' => $node['options'] ?? null,
         ];
+    }
+
+    // Meta's own status webhook may or may not deliver a terminal status for
+    // sidecar-driven calls (it fires independently of the flow reaching its
+    // last node), so the resolver marks the call completed itself the moment
+    // it decides the conversation is over — otherwise the call sits stuck at
+    // status=in_progress forever.
+    private function markCompleted(WhatsappCall $whatsappCall): void
+    {
+        if (in_array($whatsappCall->status, ['completed', 'failed', 'missed'], true)) {
+            return;
+        }
+
+        $whatsappCall->update(['status' => 'completed', 'ended_at' => now()]);
     }
 }
