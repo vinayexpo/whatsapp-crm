@@ -23,7 +23,17 @@ class WhatsappCallFlowStepResolver
         if ($speech !== '') {
             $transcript = $whatsappCall->transcript ?? [];
             $transcript[] = ['role' => 'lead', 'text' => $speech, 'at' => now()->toIso8601String()];
-            $whatsappCall->update(['transcript' => $transcript, 'status' => 'in_progress']);
+            $attributes = ['transcript' => $transcript];
+
+            // A duplicate/out-of-order turn (e.g. a retried sidecar request)
+            // can reach this point after the call has already been marked
+            // terminal elsewhere — never downgrade a finished call back to
+            // in_progress.
+            if (! in_array($whatsappCall->status, ['completed', 'failed', 'missed'], true)) {
+                $attributes['status'] = 'in_progress';
+            }
+
+            $whatsappCall->update($attributes);
             $this->turnRecorder->record($whatsappCall, 'caller', $speech);
         }
 

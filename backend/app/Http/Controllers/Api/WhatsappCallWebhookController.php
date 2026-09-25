@@ -93,7 +93,16 @@ class WhatsappCallWebhookController extends Controller
         ];
 
         $newStatus = $statusMap[$status] ?? $whatsappCall->status;
-        $attributes = ['status' => $newStatus];
+        $alreadyTerminal = in_array($whatsappCall->status, ['completed', 'failed', 'missed'], true);
+        $attributes = [];
+
+        // Meta's status webhook can be delivered out of order relative to the
+        // flow resolver's own completion write (e.g. a late "accepted" event
+        // arriving after the call already ended) — never downgrade a call
+        // that's already terminal back to a non-terminal status.
+        if (! $alreadyTerminal || in_array($newStatus, ['completed', 'failed', 'missed'], true)) {
+            $attributes['status'] = $newStatus;
+        }
 
         if ($status === 'accepted' && ! $whatsappCall->started_at) {
             $attributes['started_at'] = now();
@@ -102,7 +111,7 @@ class WhatsappCallWebhookController extends Controller
 
         $terminal = in_array($status, ['terminated', 'completed', 'failed', 'missed', 'rejected'], true);
 
-        if ($terminal) {
+        if ($terminal && ! $alreadyTerminal) {
             $attributes['ended_at'] = now();
 
             if (in_array($status, ['failed', 'missed', 'rejected'], true)) {
@@ -111,7 +120,9 @@ class WhatsappCallWebhookController extends Controller
             }
         }
 
-        $whatsappCall->update($attributes);
+        if ($attributes !== []) {
+            $whatsappCall->update($attributes);
+        }
 
         WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
 
