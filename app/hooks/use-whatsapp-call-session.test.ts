@@ -30,10 +30,13 @@ function baseCall(overrides: Partial<WhatsappCall> = {}): WhatsappCall {
   return {
     id: "call-1",
     callFlowId: null,
+    callFlowName: null,
     contactId: "contact-1",
+    contactName: null,
     conversationId: null,
     direction: "outbound",
     status: "ringing",
+    answeredBy: null,
     metaCallId: null,
     sdpExchangeStatus: "pending_offer",
     permissionRequestStatus: null,

@@ -20,6 +20,7 @@ import { RoleGuard } from "~/components/role-guard/role-guard";
 import { CreateCallFlowDialog } from "~/components/whatsapp-calling/create-call-flow-dialog";
 import { CallFlowDetailDrawer } from "~/components/whatsapp-calling/call-flow-detail-drawer";
 import { WhatsappCallFollowupQueue } from "~/components/whatsapp-calling/whatsapp-call-followup-queue";
+import { WhatsappCallHistoryPanel } from "~/components/whatsapp-calling/whatsapp-call-history-panel";
 import { CallSetupPanel } from "~/components/whatsapp-calling/call-setup-panel";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient } from "~/utils/api-client";
@@ -34,7 +35,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function WhatsappCalling() {
-  const [tab, setTab] = useState<"flows" | "followups" | "setup">("flows");
+  const [tab, setTab] = useState<"flows" | "history" | "followups" | "setup">("flows");
   const [callFlows, setCallFlows] = useState<WhatsappCallFlow[]>([]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -127,6 +128,7 @@ export default function WhatsappCalling() {
             sx={{ mb: 3, minHeight: 36 }}
           >
             <Tab value="flows" label="Call Flows" sx={{ minHeight: 36, py: 0.5 }} />
+            <Tab value="history" label="All Calls" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="followups" label="Needs Follow-up" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="setup" label="Setup" sx={{ minHeight: 36, py: 0.5 }} />
           </Tabs>
@@ -220,6 +222,8 @@ export default function WhatsappCalling() {
           )}
 
           {tab === "flows" && <PaginatedListFooter page={page} lastPage={lastPage} onPageChange={setPage} />}
+
+          {tab === "history" && <WhatsappCallHistoryPanel />}
 
           {tab === "followups" && <WhatsappCallFollowupQueue />}
 

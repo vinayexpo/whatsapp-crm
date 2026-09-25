@@ -15,10 +15,13 @@ class WhatsappCallResource extends JsonResource
         return [
             'id' => $this->uuid,
             'callFlowId' => $this->callFlow?->uuid,
+            'callFlowName' => $this->callFlow?->name,
             'contactId' => $this->contact?->uuid,
+            'contactName' => $this->contact?->name,
             'conversationId' => $this->conversation?->uuid,
             'direction' => $this->direction,
             'status' => $this->status,
+            'answeredBy' => $this->answered_by,
             'metaCallId' => $this->meta_call_id,
             'sdpExchangeStatus' => $this->sdp_exchange_status,
             'permissionRequestStatus' => $this->permission_request_status,

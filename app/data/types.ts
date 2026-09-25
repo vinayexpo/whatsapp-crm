@@ -396,10 +396,13 @@ export interface WhatsappCallFollowupAssignee {
 export interface WhatsappCall {
   id: string;
   callFlowId: string | null;
+  callFlowName: string | null;
   contactId: string | null;
+  contactName: string | null;
   conversationId: string | null;
   direction: WhatsappCallDirection;
   status: WhatsappCallStatus;
+  answeredBy: "human_agent" | "ai_sidecar" | null;
   metaCallId: string | null;
   sdpExchangeStatus: "pending_offer" | "offer_sent" | "answer_received" | "connected" | "failed";
   permissionRequestStatus: "sent" | "delivered" | "read" | "failed" | null;
