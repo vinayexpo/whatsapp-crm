@@ -98,7 +98,7 @@ class CallSession:
         answer = await self.pc.createAnswer()
         await self.pc.setLocalDescription(answer)
 
-        logger.info("call %s: SDP answer created, ICE servers=%s", self.whatsapp_call_id, [s.urls for s in self.pc.configuration.iceServers])
+        logger.info("call %s: SDP answer created", self.whatsapp_call_id)
 
         return self.pc.localDescription.sdp
 
