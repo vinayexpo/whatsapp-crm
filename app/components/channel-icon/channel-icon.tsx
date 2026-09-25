@@ -10,6 +10,7 @@ const CHANNEL_CONFIG: Record<ChannelType, { color: string; Icon: typeof WhatsApp
   instagram: { color: "#E1306C", Icon: InstagramIcon },
   website: { color: "#5B6EF5", Icon: LanguageRoundedIcon },
   voice: { color: "#8E5BF5", Icon: PhoneInTalkRoundedIcon },
+  whatsapp_call: { color: "#25D366", Icon: PhoneInTalkRoundedIcon },
 };
 
 export function ChannelIcon({ channel, size = 20 }: { channel: ChannelType; size?: number }) {

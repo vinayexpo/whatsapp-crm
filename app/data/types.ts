@@ -10,7 +10,7 @@ export interface PaginatedResponse<T> {
   meta: PaginationMeta;
 }
 
-export type ChannelType = "whatsapp" | "instagram" | "website" | "voice";
+export type ChannelType = "whatsapp" | "instagram" | "website" | "voice" | "whatsapp_call";
 
 export type PipelineStageId = "new-lead" | "contacted" | "qualified" | "negotiation" | "won" | "lost";
 
