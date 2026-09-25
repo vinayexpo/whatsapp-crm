@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import FastAPI, HTTPException
@@ -5,7 +6,7 @@ from pydantic import BaseModel
 
 from app.laravel_client import LaravelClient
 from app.tts.piper_tts import PiperTtsProvider
-from app.webrtc import CallSession
+from app.webrtc import SAMPLE_RATE, CallSession
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("aiortc").setLevel(logging.INFO)
@@ -39,6 +40,16 @@ async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
         session.audio_track.push_pcm(chunk)
     session.audio_track.end_utterance()
     logger.info("call %s: speak() pushed %d bytes of PCM for text=%r", session.whatsapp_call_id, total_bytes, text)
+
+    # Give the paced track time to drain, then log actual outbound RTP stats
+    # to confirm whether aiortc/DTLS-SRTP is really putting packets on the wire.
+    await asyncio.sleep((total_bytes / 2 / SAMPLE_RATE) + 1)
+    for stat in (await session.pc.getStats()).values():
+        if stat.type == "outbound-rtp":
+            logger.info(
+                "call %s: outbound-rtp packetsSent=%s bytesSent=%s",
+                session.whatsapp_call_id, getattr(stat, "packetsSent", None), getattr(stat, "bytesSent", None),
+            )
 
 
 @app.get("/healthz")
