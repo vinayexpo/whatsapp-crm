@@ -20,6 +20,19 @@ class WhatsappCallFinalizer
 
     public function finalize(WhatsappCall $whatsappCall): void
     {
+        // Multiple concurrent turns (e.g. a burst of spurious STT results)
+        // can each independently decide the call is over and dispatch this
+        // job. Atomically claim finalization so only the first one runs —
+        // otherwise every caller duplicates the "call ended" summary message.
+        $claimed = WhatsappCall::query()
+            ->whereKey($whatsappCall->id)
+            ->whereNull('finalized_at')
+            ->update(['finalized_at' => now()]);
+
+        if (! $claimed) {
+            return;
+        }
+
         [$conversation, $message] = DB::transaction(function () use ($whatsappCall) {
             $conversation = $this->turnRecorder->resolveConversation($whatsappCall);
 

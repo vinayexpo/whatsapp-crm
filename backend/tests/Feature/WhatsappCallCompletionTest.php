@@ -84,6 +84,23 @@ it('notifies users with whatsapp-calling.manage on a missed call', function () {
     expect(\App\Models\Notification::query()->where('user_id', $manager->id)->where('type', 'whatsapp_call_missed')->exists())->toBeTrue();
 });
 
+it('only creates one summary message when finalize is called twice for the same call', function () {
+    $contact = Contact::factory()->create();
+    $conversation = Conversation::factory()->create(['contact_id' => $contact->id, 'channel' => 'whatsapp_call', 'unread_count' => 0]);
+    $whatsappCall = WhatsappCall::factory()->completed()->create([
+        'contact_id' => $contact->id,
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'status' => 'completed',
+    ]);
+
+    app(WhatsappCallFinalizer::class)->finalize($whatsappCall);
+    app(WhatsappCallFinalizer::class)->finalize($whatsappCall->fresh());
+
+    expect(Message::query()->where('conversation_id', $conversation->id)->count())->toBe(1);
+    expect($whatsappCall->fresh()->finalized_at)->not->toBeNull();
+});
+
 it('does not notify for an in-progress call outcome', function () {
     app(\Database\Seeders\RolesAndPermissionsSeeder::class)->run();
     $company = \App\Models\Company::factory()->create();

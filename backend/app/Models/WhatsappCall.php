@@ -48,6 +48,7 @@ class WhatsappCall extends Model
             'human_followup_completed_at' => 'datetime',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'finalized_at' => 'datetime',
             'remote_ice_candidates' => 'array',
         ];
     }
