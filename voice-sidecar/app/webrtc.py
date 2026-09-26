@@ -135,8 +135,19 @@ class CallSession:
                 logger.info("call %s: received first inbound audio frame", self.whatsapp_call_id)
 
             samples = frame.to_ndarray()
-            if samples.ndim > 1:
-                samples = samples.mean(axis=0)
+
+            # PyAV returns packed multi-channel s16 as a single interleaved
+            # row -- shape (1, N*channels), e.g. (1, 1920) for a 960-sample
+            # stereo frame -- NOT one row per channel. samples.mean(axis=0)
+            # is a no-op on that shape and silently leaves L/R interleaved
+            # into what downstream code treats as a mono PCM stream, which
+            # is garbage audio (and explains VAD misfiring as "speech"
+            # nonstop). Deinterleave by channel count before downmixing.
+            channels = len(frame.layout.channels)
+            if channels > 1:
+                samples = samples.reshape(-1, channels).T.mean(axis=0)
+            else:
+                samples = samples.reshape(-1)
 
             # aiortc's OpusDecoder emits s16 frames today, but to_ndarray()'s
             # dtype depends on frame.format -- guard against a float-format
