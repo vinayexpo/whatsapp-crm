@@ -119,23 +119,46 @@ class CallSession:
     async def _consume_inbound_audio(self, track) -> None:
         buffer = b""
         frame_bytes = SAMPLES_PER_FRAME * 2  # 16-bit mono @ 48kHz
+        frames_received = 0
+
+        logger.info("call %s: waiting for first inbound audio frame", self.whatsapp_call_id)
 
         while True:
             try:
                 frame = await track.recv()
             except MediaStreamError:
+                logger.info("call %s: inbound track ended after %d frames", self.whatsapp_call_id, frames_received)
                 break
+
+            frames_received += 1
+            if frames_received == 1:
+                logger.info("call %s: received first inbound audio frame", self.whatsapp_call_id)
 
             samples = frame.to_ndarray()
             if samples.ndim > 1:
                 samples = samples.mean(axis=0)
+
+            # aiortc's OpusDecoder emits s16 frames today, but to_ndarray()'s
+            # dtype depends on frame.format -- guard against a float-format
+            # frame (range [-1, 1]) being truncated straight to int16
+            # (which would collapse to near-silence) instead of assuming s16.
+            was_float = np.issubdtype(samples.dtype, np.floating)
             samples = samples.astype(np.float32)
+            if was_float:
+                samples = samples * 32768.0
 
             if frame.sample_rate != SAMPLE_RATE:
                 samples = resample_poly(samples, SAMPLE_RATE, frame.sample_rate)
 
             pcm = samples.astype(np.int16).tobytes()
             buffer += pcm
+
+            if frames_received % 250 == 0:
+                logger.info(
+                    "call %s: inbound audio frames=%d format=%s sample_rate=%d min=%d max=%d",
+                    self.whatsapp_call_id, frames_received, frame.format.name, frame.sample_rate,
+                    int(samples.min()) if samples.size else 0, int(samples.max()) if samples.size else 0,
+                )
 
             while len(buffer) >= frame_bytes:
                 chunk, buffer = buffer[:frame_bytes], buffer[frame_bytes:]

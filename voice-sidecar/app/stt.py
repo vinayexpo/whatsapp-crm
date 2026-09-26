@@ -73,14 +73,26 @@ class UtteranceCollector:
         self._speech_frames: list[bytes] = []
         self._silence_run = 0
         self._in_speech = False
+        self._frames_seen = 0
+        self._frames_wrong_size = 0
+        self._speech_frames_seen = 0
 
     def push_frame(self, frame_bytes: bytes) -> None:
+        self._frames_seen += 1
+        if self._frames_seen % 250 == 0:
+            logger.info(
+                "utterance collector: frames_seen=%d wrong_size=%d speech_frames=%d in_speech=%s",
+                self._frames_seen, self._frames_wrong_size, self._speech_frames_seen, self._in_speech,
+            )
+
         if len(frame_bytes) != VAD_FRAME_SAMPLES * 2:
+            self._frames_wrong_size += 1
             return
 
         is_speech = self._vad.is_speech(frame_bytes, SAMPLE_RATE)
 
         if is_speech:
+            self._speech_frames_seen += 1
             self._speech_frames.append(frame_bytes)
             self._silence_run = 0
             self._in_speech = True
@@ -101,8 +113,10 @@ class UtteranceCollector:
         self._silence_run = 0
 
         if len(frames) < MIN_UTTERANCE_FRAMES:
+            logger.info("utterance collector: discarding short utterance of %d frames", len(frames))
             return
 
+        logger.info("utterance collector: flushing utterance of %d frames for transcription", len(frames))
         pcm = b"".join(frames)
         asyncio.get_event_loop().create_task(self._transcribe_and_emit(pcm))
 
