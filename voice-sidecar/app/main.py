@@ -54,6 +54,13 @@ class SpeakRequest(BaseModel):
 
 
 async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
+    if session.pc.connectionState in ("failed", "closed"):
+        logger.warning(
+            "call %s: skipping speak(), peer connection state is %s (nothing would be heard)",
+            session.whatsapp_call_id, session.pc.connectionState,
+        )
+        return
+
     total_bytes = 0
     async for chunk in tts.stream(text, voice_id):
         total_bytes += len(chunk)

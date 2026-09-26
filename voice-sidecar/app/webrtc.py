@@ -113,8 +113,18 @@ class CallSession:
         @self.pc.on("track")
         def on_track(track) -> None:
             logger.info("call %s: received inbound track kind=%s", whatsapp_call_id, track.kind)
-            if track.kind == "audio" and self._on_inbound_frame is not None:
-                self._inbound_task = asyncio.ensure_future(self._consume_inbound_audio(track))
+            if track.kind != "audio" or self._on_inbound_frame is None:
+                return
+
+            # aiortc fires "track" again on renegotiation (e.g. an ICE
+            # restart mid-call) even though it's logically the same call.
+            # Without canceling the previous consumer, two coroutines both
+            # call track.recv() concurrently and steal frames from each
+            # other, corrupting the utterance stream right when the
+            # renegotiated connection is also the one likely to fail.
+            if self._inbound_task is not None:
+                self._inbound_task.cancel()
+            self._inbound_task = asyncio.ensure_future(self._consume_inbound_audio(track))
 
     async def _consume_inbound_audio(self, track) -> None:
         buffer = b""
