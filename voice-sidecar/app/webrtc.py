@@ -135,6 +135,12 @@ class CallSession:
                 logger.info("call %s: received first inbound audio frame", self.whatsapp_call_id)
 
             samples = frame.to_ndarray()
+            if frames_received <= 3:
+                logger.info(
+                    "call %s: raw frame #%d shape=%s dtype=%s layout=%s channels=%d format=%s samples_attr=%s",
+                    self.whatsapp_call_id, frames_received, samples.shape, samples.dtype,
+                    frame.layout.name, len(frame.layout.channels), frame.format.name, frame.samples,
+                )
 
             # PyAV returns packed multi-channel s16 as a single interleaved
             # row -- shape (1, N*channels), e.g. (1, 1920) for a 960-sample
