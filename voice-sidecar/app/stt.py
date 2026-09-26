@@ -46,7 +46,13 @@ def transcribe_pcm48k(pcm: bytes) -> str:
     samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
     resampled = resample_poly(samples, WHISPER_SAMPLE_RATE, SAMPLE_RATE).astype(np.float32)
 
-    segments, _info = _get_model().transcribe(resampled, language="en", vad_filter=True)
+    # The WebRTC VAD in UtteranceCollector has already segmented this PCM
+    # down to a single spoken utterance, so Whisper's own VAD pass is
+    # redundant here -- and it was aggressively misclassifying genuine
+    # speech as silence (observed dropping >90% of real caller audio),
+    # leaving nothing for the confidence filters below to keep. The
+    # no_speech_prob/avg_logprob checks below are the hallucination guard.
+    segments, _info = _get_model().transcribe(resampled, language="en", vad_filter=False)
 
     kept = [
         segment.text.strip()
