@@ -114,13 +114,6 @@ class CallSession:
             if self.pc.connectionState == "connected":
                 self._connected_event.set()
 
-    async def wait_until_connected(self, timeout: float) -> bool:
-        try:
-            await asyncio.wait_for(self._connected_event.wait(), timeout)
-            return True
-        except asyncio.TimeoutError:
-            return False
-
         @self.pc.on("track")
         def on_track(track) -> None:
             logger.info("call %s: received inbound track kind=%s", whatsapp_call_id, track.kind)
@@ -136,6 +129,13 @@ class CallSession:
             if self._inbound_task is not None:
                 self._inbound_task.cancel()
             self._inbound_task = asyncio.ensure_future(self._consume_inbound_audio(track))
+
+    async def wait_until_connected(self, timeout: float) -> bool:
+        try:
+            await asyncio.wait_for(self._connected_event.wait(), timeout)
+            return True
+        except asyncio.TimeoutError:
+            return False
 
     async def _consume_inbound_audio(self, track) -> None:
         buffer = b""
