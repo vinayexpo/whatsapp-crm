@@ -142,24 +142,30 @@ class CallSession:
                     frame.layout.name, len(frame.layout.channels), frame.format.name, frame.samples,
                 )
 
+            # aiortc's OpusDecoder emits s16 frames today, but to_ndarray()'s
+            # dtype depends on frame.format -- detect float-format frames
+            # (range [-1, 1]) from frame.format.name itself, not from the
+            # numpy dtype after processing. samples.mean(axis=0) on int16
+            # input always upcasts to float64, so checking the dtype AFTER
+            # downmixing misidentified every stereo int16 frame as "float"
+            # and multiplied its already-correctly-scaled samples by another
+            # 32768x, producing wildly out-of-range values that made VAD
+            # classify the corrupted audio as continuous nonstop "speech".
+            was_float = frame.format.name.startswith(("flt", "dbl"))
+
             # PyAV returns packed multi-channel s16 as a single interleaved
             # row -- shape (1, N*channels), e.g. (1, 1920) for a 960-sample
             # stereo frame -- NOT one row per channel. samples.mean(axis=0)
             # is a no-op on that shape and silently leaves L/R interleaved
             # into what downstream code treats as a mono PCM stream, which
-            # is garbage audio (and explains VAD misfiring as "speech"
-            # nonstop). Deinterleave by channel count before downmixing.
+            # is garbage audio. Deinterleave by channel count before
+            # downmixing.
             channels = len(frame.layout.channels)
             if channels > 1:
                 samples = samples.reshape(-1, channels).T.mean(axis=0)
             else:
                 samples = samples.reshape(-1)
 
-            # aiortc's OpusDecoder emits s16 frames today, but to_ndarray()'s
-            # dtype depends on frame.format -- guard against a float-format
-            # frame (range [-1, 1]) being truncated straight to int16
-            # (which would collapse to near-silence) instead of assuming s16.
-            was_float = np.issubdtype(samples.dtype, np.floating)
             samples = samples.astype(np.float32)
             if was_float:
                 samples = samples * 32768.0
