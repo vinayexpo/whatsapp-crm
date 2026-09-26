@@ -101,6 +101,7 @@ class CallSession:
         self.pc.addTrack(self.audio_track)
         self._on_inbound_frame = on_inbound_frame
         self._inbound_task: asyncio.Task | None = None
+        self.is_speaking = False
 
         @self.pc.on("iceconnectionstatechange")
         def on_ice_state_change() -> None:
@@ -195,7 +196,15 @@ class CallSession:
 
             while len(buffer) >= frame_bytes:
                 chunk, buffer = buffer[:frame_bytes], buffer[frame_bytes:]
-                self._on_inbound_frame(chunk)
+                # No acoustic/network echo cancellation exists between our
+                # outbound TTS and this inbound track. Without gating, the
+                # AI's own greeting/prompt audio (looped back by the
+                # caller's device or network) is picked up as continuous
+                # "caller speech" by the VAD and the utterance collector
+                # never sees silence, so it never flushes. Drop inbound
+                # frames while we're actively speaking.
+                if not self.is_speaking:
+                    self._on_inbound_frame(chunk)
 
     async def accept_offer(self, sdp_offer: str) -> str:
         offer = RTCSessionDescription(sdp=sdp_offer, type="offer")

@@ -73,9 +73,20 @@ async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
     except Exception:
         logger.exception("call %s: failed to report spoken text to Laravel", session.whatsapp_call_id)
 
-    # Give the paced track time to drain, then log actual outbound RTP stats
-    # to confirm whether aiortc/DTLS-SRTP is really putting packets on the wire.
-    await asyncio.sleep((total_bytes / 2 / SAMPLE_RATE) + 1)
+    # There's no acoustic/network echo cancellation between our outbound TTS
+    # and the inbound track, so while this audio is actually playing out
+    # (and briefly after, for echo tail) the caller's device can loop it
+    # right back to us and the VAD reads it as continuous "caller speech"
+    # that never ends. Mute inbound frame delivery for the drain duration.
+    session.is_speaking = True
+    try:
+        # Give the paced track time to drain, then log actual outbound RTP
+        # stats to confirm whether aiortc/DTLS-SRTP is really putting
+        # packets on the wire.
+        await asyncio.sleep((total_bytes / 2 / SAMPLE_RATE) + 1)
+    finally:
+        session.is_speaking = False
+
     for stat in (await session.pc.getStats()).values():
         if stat.type == "outbound-rtp":
             logger.info(
