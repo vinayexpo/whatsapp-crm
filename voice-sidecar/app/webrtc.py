@@ -102,6 +102,7 @@ class CallSession:
         self._on_inbound_frame = on_inbound_frame
         self._inbound_task: asyncio.Task | None = None
         self.is_speaking = False
+        self._connected_event = asyncio.Event()
 
         @self.pc.on("iceconnectionstatechange")
         def on_ice_state_change() -> None:
@@ -110,6 +111,15 @@ class CallSession:
         @self.pc.on("connectionstatechange")
         def on_connection_state_change() -> None:
             logger.info("call %s: peer connection state -> %s", whatsapp_call_id, self.pc.connectionState)
+            if self.pc.connectionState == "connected":
+                self._connected_event.set()
+
+    async def wait_until_connected(self, timeout: float) -> bool:
+        try:
+            await asyncio.wait_for(self._connected_event.wait(), timeout)
+            return True
+        except asyncio.TimeoutError:
+            return False
 
         @self.pc.on("track")
         def on_track(track) -> None:

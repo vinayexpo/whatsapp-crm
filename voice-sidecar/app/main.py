@@ -140,6 +140,22 @@ async def create_session(payload: CreateSessionRequest) -> dict:
         await laravel.session_event(payload.whatsapp_call_id, payload.whatsapp_call_id)
 
         if payload.greeting:
+            # speak() paces outbound frames from wall-clock time starting at
+            # the first recv() call, which aiortc can invoke while ICE/DTLS
+            # is still negotiating. Pushing the greeting before the peer
+            # connection is actually "connected" burns the pacing schedule
+            # on frames sent into a connection that isn't up yet, so the
+            # callee only hears the tail end of the greeting -- cut off /
+            # very short, exactly as reported. Wait for the real connected
+            # state first (bounded, so a stuck negotiation doesn't hang the
+            # request forever).
+            connected = await session.wait_until_connected(timeout=10.0)
+            if not connected:
+                logger.warning(
+                    "call %s: peer connection did not reach 'connected' within timeout, "
+                    "speaking anyway (may be cut off)",
+                    payload.whatsapp_call_id,
+                )
             await speak(session, payload.greeting, payload.tts_voice_id)
     except Exception:
         logger.exception("call %s: failed to set up session", payload.whatsapp_call_id)
