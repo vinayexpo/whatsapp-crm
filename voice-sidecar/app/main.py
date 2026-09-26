@@ -156,6 +156,18 @@ async def create_session(payload: CreateSessionRequest) -> dict:
                     "speaking anyway (may be cut off)",
                     payload.whatsapp_call_id,
                 )
+
+            # TtsAudioTrack.recv() blocks on an empty queue, so no RTP packets
+            # go out at all until speak() pushes the first chunk -- the
+            # callee's client has never seen a single audio packet for this
+            # call and its jitter buffer/renderer needs a moment to spin up
+            # once packets start arriving. Priming with a short burst of
+            # silence gets real RTP flowing before the greeting's actual
+            # speech is queued, so the cold-start clipping lands on silence
+            # instead of on "welcome to ...".
+            session.audio_track.push_pcm(b"\x00" * (SAMPLE_RATE // 2 * 2))
+            await asyncio.sleep(0.5)
+
             await speak(session, payload.greeting, payload.tts_voice_id)
     except Exception:
         logger.exception("call %s: failed to set up session", payload.whatsapp_call_id)
