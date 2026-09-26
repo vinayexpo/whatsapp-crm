@@ -18,6 +18,17 @@ app = FastAPI()
 laravel = LaravelClient()
 tts = PiperTtsProvider()
 
+# The production host has only 2 CPU cores. Piper synthesis and Whisper
+# transcription both run in the default thread executor, and both are CPU-
+# bound enough to starve the event loop's real-time RTP pacing (asyncio.sleep
+# calls in TtsAudioTrack.recv()) when they overlap -- observed live as a
+# flushed transcription task starting 380ms before a greeting's speak() call,
+# right when that greeting's audio was clipped on the receiving end even
+# though our own packetsSent/bytesSent accounting looked complete. Serializing
+# TTS and STT work through one lock keeps them from ever competing for the
+# same two cores mid-call.
+cpu_lock = asyncio.Lock()
+
 
 def _handle_asyncio_exception(loop: asyncio.AbstractEventLoop, context: dict) -> None:
     exc = context.get("exception")
@@ -62,9 +73,10 @@ async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
         return
 
     total_bytes = 0
-    async for chunk in tts.stream(text, voice_id):
-        total_bytes += len(chunk)
-        session.audio_track.push_pcm(chunk)
+    async with cpu_lock:
+        async for chunk in tts.stream(text, voice_id):
+            total_bytes += len(chunk)
+            session.audio_track.push_pcm(chunk)
     session.audio_track.end_utterance()
     logger.info("call %s: speak() pushed %d bytes of PCM for text=%r", session.whatsapp_call_id, total_bytes, text)
 
@@ -132,7 +144,7 @@ async def create_session(payload: CreateSessionRequest) -> dict:
     async def on_utterance(text: str) -> None:
         await handle_caller_utterance(session, payload.tts_voice_id, text)
 
-    collector_holder["collector"] = UtteranceCollector(on_utterance)
+    collector_holder["collector"] = UtteranceCollector(on_utterance, cpu_lock=cpu_lock)
 
     try:
         sdp_answer = await session.accept_offer(payload.sdp_offer)

@@ -54,11 +54,16 @@ def transcribe_pcm48k(pcm: bytes) -> str:
     # no_speech_prob/avg_logprob checks below are the hallucination guard.
     segments, _info = _get_model().transcribe(resampled, language="en", vad_filter=False)
 
-    kept = [
-        segment.text.strip()
-        for segment in segments
-        if segment.no_speech_prob <= MAX_NO_SPEECH_PROB and segment.avg_logprob >= MIN_AVG_LOGPROB
-    ]
+    kept = []
+    for segment in segments:
+        accepted = segment.no_speech_prob <= MAX_NO_SPEECH_PROB and segment.avg_logprob >= MIN_AVG_LOGPROB
+        logger.info(
+            "transcribe: segment text=%r no_speech_prob=%.3f avg_logprob=%.3f accepted=%s",
+            segment.text, segment.no_speech_prob, segment.avg_logprob, accepted,
+        )
+        if accepted:
+            kept.append(segment.text.strip())
+
     return " ".join(kept).strip()
 
 
@@ -67,9 +72,10 @@ class UtteranceCollector:
     audio track, uses WebRTC VAD to detect speech vs silence, and calls
     on_utterance(text) once a trailing silence closes out a spoken segment."""
 
-    def __init__(self, on_utterance) -> None:
+    def __init__(self, on_utterance, cpu_lock: asyncio.Lock | None = None) -> None:
         self._vad = webrtcvad.Vad(2)
         self._on_utterance = on_utterance
+        self._cpu_lock = cpu_lock or asyncio.Lock()
         self._speech_frames: list[bytes] = []
         self._silence_run = 0
         self._in_speech = False
@@ -122,8 +128,9 @@ class UtteranceCollector:
 
     async def _transcribe_and_emit(self, pcm: bytes) -> None:
         try:
-            loop = asyncio.get_running_loop()
-            text = await loop.run_in_executor(None, transcribe_pcm48k, pcm)
+            async with self._cpu_lock:
+                loop = asyncio.get_running_loop()
+                text = await loop.run_in_executor(None, transcribe_pcm48k, pcm)
         except Exception:
             logger.exception("failed to transcribe caller utterance")
             return
