@@ -103,6 +103,13 @@ class CallSession:
         self._inbound_task: asyncio.Task | None = None
         self.is_speaking = False
         self._connected_event = asyncio.Event()
+        # aiortc's connectionState often stays "connected" even after Meta
+        # has stopped sending RTP and the call is effectively over -- the
+        # inbound track ending is the more reliable signal that nothing is
+        # listening on the other end anymore. speak() checks this before
+        # doing any TTS work so a stale queued reply doesn't get synthesized
+        # and pushed into a call the caller has already hung up.
+        self.call_ended = False
 
         @self.pc.on("iceconnectionstatechange")
         def on_ice_state_change() -> None:
@@ -149,6 +156,7 @@ class CallSession:
                 frame = await track.recv()
             except MediaStreamError:
                 logger.info("call %s: inbound track ended after %d frames", self.whatsapp_call_id, frames_received)
+                self.call_ended = True
                 break
 
             frames_received += 1

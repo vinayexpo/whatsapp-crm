@@ -72,6 +72,18 @@ async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
         )
         return
 
+    if session.call_ended:
+        # aiortc's connectionState can still read "connected" here -- Meta
+        # ending the inbound track is what actually indicates the call is
+        # over. Without this check, a reply that was queued behind a slow
+        # transcription gets synthesized and pushed into a call nobody is
+        # on anymore, wasting CPU time other real calls need.
+        logger.warning(
+            "call %s: skipping speak(), inbound track already ended (call is over)",
+            session.whatsapp_call_id,
+        )
+        return
+
     total_bytes = 0
     async with cpu_lock:
         async for chunk in tts.stream(text, voice_id):

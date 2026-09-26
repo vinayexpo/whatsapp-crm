@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 
 import numpy as np
 import webrtcvad
@@ -12,11 +13,24 @@ logger = logging.getLogger("voice_sidecar")
 
 VAD_FRAME_MS = 20
 VAD_FRAME_SAMPLES = SAMPLE_RATE * VAD_FRAME_MS // 1000  # 960 @ 48kHz
-SILENCE_MS_TO_END_UTTERANCE = 700
+# 700ms was short enough that a single breath mid-sentence ("Hello... Hello.")
+# split into separate utterances, each paying Whisper's full per-call
+# inference overhead on this slow 2-core host instead of being transcribed
+# together once. Widening the gap trades a little end-of-utterance latency
+# for far fewer, larger transcription calls.
+SILENCE_MS_TO_END_UTTERANCE = 1200
 SILENCE_FRAMES_TO_END_UTTERANCE = SILENCE_MS_TO_END_UTTERANCE // VAD_FRAME_MS
 MIN_UTTERANCE_MS = 600
 MIN_UTTERANCE_FRAMES = MIN_UTTERANCE_MS // VAD_FRAME_MS
 WHISPER_SAMPLE_RATE = 16000
+
+# On this host, transcribing a single short utterance can take 5-30+ seconds
+# (observed live: a 5s utterance took ~12s, and four utterances queued back
+# to back left the caller answered ~34s after they first spoke). By the time
+# a stale queued utterance would reach the front of the line, the caller has
+# often already hung up. Drop anything that's been waiting longer than this
+# instead of speaking a reply into a call that's likely already over.
+MAX_UTTERANCE_AGE_SECONDS = 8.0
 
 # faster-whisper hallucinates stock phrases ("thank you", "thanks for
 # watching") when fed silence/background noise that WebRTC VAD misclassified
@@ -32,7 +46,7 @@ def _get_model() -> WhisperModel:
     global _model
     if _model is None:
         _model = WhisperModel(
-            "small.en",
+            "base.en",
             device="cpu",
             compute_type="int8",
             download_root="/app/whisper-models",
@@ -124,11 +138,22 @@ class UtteranceCollector:
 
         logger.info("utterance collector: flushing utterance of %d frames for transcription", len(frames))
         pcm = b"".join(frames)
-        asyncio.get_event_loop().create_task(self._transcribe_and_emit(pcm))
+        asyncio.get_event_loop().create_task(self._transcribe_and_emit(pcm, time.monotonic()))
 
-    async def _transcribe_and_emit(self, pcm: bytes) -> None:
+    async def _transcribe_and_emit(self, pcm: bytes, flushed_at: float) -> None:
         try:
             async with self._cpu_lock:
+                # This utterance may have been waiting behind other queued
+                # STT/TTS work for many seconds on this slow host -- if the
+                # caller has plausibly already hung up by now, transcribing
+                # and replying is pure waste (and risks pushing audio into a
+                # dead peer connection). Skip stale work instead of always
+                # running it.
+                age = time.monotonic() - flushed_at
+                if age > MAX_UTTERANCE_AGE_SECONDS:
+                    logger.info("utterance collector: dropping stale utterance, age=%.1fs", age)
+                    return
+
                 loop = asyncio.get_running_loop()
                 text = await loop.run_in_executor(None, transcribe_pcm48k, pcm)
         except Exception:
