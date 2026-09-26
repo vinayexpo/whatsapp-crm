@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.laravel_client import LaravelClient
-from app.stt import UtteranceCollector
+from app.stt import UtteranceCollector, warm_up_model
 from app.tts.piper_tts import PiperTtsProvider
 from app.webrtc import SAMPLE_RATE, CallSession
 
@@ -47,6 +47,19 @@ def _handle_asyncio_exception(loop: asyncio.AbstractEventLoop, context: dict) ->
 @app.on_event("startup")
 async def _install_exception_handler() -> None:
     asyncio.get_event_loop().set_exception_handler(_handle_asyncio_exception)
+
+
+@app.on_event("startup")
+async def _warm_up_whisper() -> None:
+    # faster-whisper lazy-loads its model weights from disk on the first
+    # transcribe() call. Left lazy, that load cost lands inside a live
+    # caller's first utterance instead of at deploy time -- observed live as
+    # a 6.4s stall between "utterance flushed" and "processing audio" on the
+    # very first call after a redeploy. Loading it once here, off the
+    # request path, means every real call only ever pays actual inference
+    # time.
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, warm_up_model)
 
 sessions: dict[str, CallSession] = {}
 

@@ -55,6 +55,12 @@ def _get_model() -> WhisperModel:
     return _model
 
 
+def warm_up_model() -> None:
+    """Blocking; call once at process startup (in an executor) so the model
+    weight load happens before any real call, not during one."""
+    _get_model()
+
+
 def transcribe_pcm48k(pcm: bytes) -> str:
     """Blocking; run in an executor. pcm is 16-bit mono @ 48kHz."""
     samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
