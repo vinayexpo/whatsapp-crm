@@ -282,6 +282,111 @@ it('returns Twilio TURN credentials as ICE servers when configured', function ()
     $response->assertJsonPath('data.iceServers.1.username', 'user1');
 });
 
+it('accepts a ringing inbound call and forwards the sdp answer to Meta', function () {
+    Http::fake(['graph.facebook.com/*' => Http::response(['success' => true], 200)]);
+
+    $manager = actingAsInitiateCallRole('manager');
+    ApiConnection::factory()->connected()->create([
+        'company_id' => $manager->company_id,
+        'channel' => 'whatsapp',
+        'calling_enabled' => true,
+    ]);
+    $contact = Contact::factory()->create(['company_id' => $manager->company_id]);
+    $call = WhatsappCall::factory()->create([
+        'company_id' => $manager->company_id,
+        'contact_id' => $contact->id,
+        'direction' => 'inbound',
+        'status' => 'ringing',
+        'meta_call_id' => 'wacid.inbound-1',
+        'local_sdp_offer' => 'v=0...fake-offer-from-meta',
+    ]);
+
+    $response = $this->actingAs($manager)->postJson("/api/v1/whatsapp-calls/{$call->uuid}/accept", [
+        'sdpAnswer' => 'v=0...fake-answer-sdp',
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('data.status', 'in_progress');
+    $response->assertJsonPath('data.answeredBy', 'human_agent');
+
+    $call->refresh();
+    expect($call->status)->toBe('in_progress');
+    expect($call->remote_sdp_answer)->toBe('v=0...fake-answer-sdp');
+    expect($call->started_at)->not->toBeNull();
+
+    Http::assertSent(function ($request) {
+        return $request['action'] === 'accept'
+            && $request['call_id'] === 'wacid.inbound-1'
+            && $request['session']['sdp_type'] === 'answer'
+            && $request['session']['sdp'] === 'v=0...fake-answer-sdp';
+    });
+});
+
+it('rejects a ringing inbound call and flags it for followup', function () {
+    Http::fake(['graph.facebook.com/*' => Http::response(['success' => true], 200)]);
+
+    $manager = actingAsInitiateCallRole('manager');
+    ApiConnection::factory()->connected()->create([
+        'company_id' => $manager->company_id,
+        'channel' => 'whatsapp',
+        'calling_enabled' => true,
+    ]);
+    $contact = Contact::factory()->create(['company_id' => $manager->company_id]);
+    $call = WhatsappCall::factory()->create([
+        'company_id' => $manager->company_id,
+        'contact_id' => $contact->id,
+        'direction' => 'inbound',
+        'status' => 'ringing',
+        'meta_call_id' => 'wacid.inbound-2',
+    ]);
+
+    $response = $this->actingAs($manager)->postJson("/api/v1/whatsapp-calls/{$call->uuid}/reject");
+
+    $response->assertOk();
+    $response->assertJsonPath('data.status', 'missed');
+
+    $call->refresh();
+    expect($call->status)->toBe('missed');
+    expect($call->ended_at)->not->toBeNull();
+    expect($call->needs_human_followup)->toBeTrue();
+
+    Http::assertSent(fn ($request) => $request['action'] === 'reject' && $request['call_id'] === 'wacid.inbound-2');
+});
+
+it('rejects accepting a call that is no longer ringing', function () {
+    $manager = actingAsInitiateCallRole('manager');
+    $contact = Contact::factory()->create(['company_id' => $manager->company_id]);
+    $call = WhatsappCall::factory()->create([
+        'company_id' => $manager->company_id,
+        'contact_id' => $contact->id,
+        'direction' => 'inbound',
+        'status' => 'completed',
+    ]);
+
+    $response = $this->actingAs($manager)->postJson("/api/v1/whatsapp-calls/{$call->uuid}/accept", [
+        'sdpAnswer' => 'v=0...fake-answer-sdp',
+    ]);
+
+    $response->assertUnprocessable();
+    $call->refresh();
+    expect($call->status)->toBe('completed');
+});
+
+it('forbids an agent without calling permission from accepting an inbound call', function () {
+    $agent = actingAsInitiateCallRole('agent');
+    $contact = Contact::factory()->create(['company_id' => $agent->company_id]);
+    $call = WhatsappCall::factory()->create([
+        'company_id' => $agent->company_id,
+        'contact_id' => $contact->id,
+        'direction' => 'inbound',
+        'status' => 'ringing',
+    ]);
+
+    $this->actingAs($agent)->postJson("/api/v1/whatsapp-calls/{$call->uuid}/accept", [
+        'sdpAnswer' => 'v=0...fake-answer-sdp',
+    ])->assertForbidden();
+});
+
 it('falls back to STUN-only when the Twilio TURN request fails', function () {
     config(['services.twilio.account_sid' => 'ACtest', 'services.twilio.auth_token' => 'secret']);
     $manager = actingAsInitiateCallRole('manager');

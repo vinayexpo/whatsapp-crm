@@ -404,7 +404,8 @@ export interface WhatsappCall {
   status: WhatsappCallStatus;
   answeredBy: "human_agent" | "ai_sidecar" | null;
   metaCallId: string | null;
-  sdpExchangeStatus: "pending_offer" | "offer_sent" | "answer_received" | "connected" | "failed";
+  sdpExchangeStatus: "pending_offer" | "offer_sent" | "offer_received" | "answer_received" | "connected" | "failed";
+  remoteSdpOffer: string | null;
   permissionRequestStatus: "sent" | "delivered" | "read" | "failed" | null;
   permissionRequestFailureReason: string | null;
   transcript: unknown[];

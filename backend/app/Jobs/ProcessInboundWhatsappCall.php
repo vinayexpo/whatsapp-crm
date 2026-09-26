@@ -61,7 +61,7 @@ class ProcessInboundWhatsappCall implements ShouldQueue
         $flow = WhatsappCallFlow::query()->where('company_id', $companyId)
             ->where('api_connection_id', $connection->id)->where('status', 'active')->first();
 
-        [$conversation, $whatsappCall] = DB::transaction(function () use ($fromNumber, $companyId, $connection, $flow, $metaCallId) {
+        [$conversation, $whatsappCall] = DB::transaction(function () use ($fromNumber, $companyId, $connection, $flow, $metaCallId, $metaSdpOffer) {
             $contact = Contact::withoutGlobalScopes()->where('handle', $fromNumber)->where('channel', 'whatsapp')->first();
 
             if (! $contact) {
@@ -96,7 +96,7 @@ class ProcessInboundWhatsappCall implements ShouldQueue
                 $conversation->update(['api_connection_id' => $connection->id]);
             }
 
-            $whatsappCall = new WhatsappCall([
+            $attributes = [
                 'whatsapp_call_flow_id' => $flow?->id,
                 'contact_id' => $contact->id,
                 'conversation_id' => $conversation->id,
@@ -105,7 +105,14 @@ class ProcessInboundWhatsappCall implements ShouldQueue
                 'meta_call_id' => $metaCallId,
                 'started_at' => now(),
                 'answered_by' => $flow?->voice_mode === 'ai_voice' ? 'ai_sidecar' : 'human_agent',
-            ]);
+            ];
+
+            if ($metaSdpOffer) {
+                $attributes['local_sdp_offer'] = $metaSdpOffer;
+                $attributes['sdp_exchange_status'] = 'offer_received';
+            }
+
+            $whatsappCall = new WhatsappCall($attributes);
             $whatsappCall->company_id = $companyId;
             $whatsappCall->save();
 

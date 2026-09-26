@@ -187,6 +187,94 @@ class WhatsappCallController extends Controller
         ]);
     }
 
+    public function accept(Request $request, WhatsappCall $whatsappCall): JsonResponse
+    {
+        $this->authorize('create', WhatsappCall::class);
+
+        if ($whatsappCall->direction !== 'inbound' || $whatsappCall->status !== 'ringing') {
+            throw ValidationException::withMessages([
+                'sdpAnswer' => 'This call is no longer ringing.',
+            ]);
+        }
+
+        $data = $request->validate([
+            'sdpAnswer' => ['required', 'string'],
+        ]);
+
+        $connection = ApiConnection::query()
+            ->where('channel', 'whatsapp')
+            ->where('status', 'connected')
+            ->where('calling_enabled', true)
+            ->first();
+
+        if (! $connection || ! $whatsappCall->meta_call_id) {
+            throw ValidationException::withMessages([
+                'sdpAnswer' => 'No WhatsApp connection has calling enabled, or the call is missing its Meta call ID.',
+            ]);
+        }
+
+        try {
+            app(WhatsappCallDriverResolver::class)->forConnection($connection)->sendCallAction(
+                $whatsappCall,
+                $connection,
+                ['action' => 'accept', 'session' => ['sdp_type' => 'answer', 'sdp' => $data['sdpAnswer']]],
+            );
+        } catch (RequestException $e) {
+            throw ValidationException::withMessages([
+                'sdpAnswer' => $this->describeMetaError($e),
+            ]);
+        }
+
+        $whatsappCall->update([
+            'status' => 'in_progress',
+            'answered_by' => 'human_agent',
+            'remote_sdp_answer' => $data['sdpAnswer'],
+            'sdp_exchange_status' => 'connected',
+            'started_at' => $whatsappCall->started_at ?? now(),
+        ]);
+
+        WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
+
+        return response()->json([
+            'data' => new WhatsappCallResource($whatsappCall->fresh(['callFlow', 'contact', 'conversation', 'humanFollowupAssignee'])),
+        ]);
+    }
+
+    public function reject(WhatsappCall $whatsappCall): JsonResponse
+    {
+        $this->authorize('create', WhatsappCall::class);
+
+        if ($whatsappCall->direction !== 'inbound' || $whatsappCall->status !== 'ringing') {
+            throw ValidationException::withMessages([
+                'whatsappCall' => 'This call is no longer ringing.',
+            ]);
+        }
+
+        $connection = ApiConnection::query()
+            ->where('channel', 'whatsapp')
+            ->where('status', 'connected')
+            ->where('calling_enabled', true)
+            ->first();
+
+        if ($connection && $whatsappCall->meta_call_id) {
+            app(WhatsappCallDriverResolver::class)
+                ->forConnection($connection)
+                ->sendCallAction($whatsappCall, $connection, ['action' => 'reject']);
+        }
+
+        $whatsappCall->update([
+            'status' => 'missed',
+            'ended_at' => now(),
+            'needs_human_followup' => true,
+        ]);
+
+        WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
+
+        return response()->json([
+            'data' => new WhatsappCallResource($whatsappCall->fresh(['callFlow', 'contact', 'conversation', 'humanFollowupAssignee'])),
+        ]);
+    }
+
     public function requestCallPermission(WhatsappCall $whatsappCall): JsonResponse
     {
         $this->authorize('create', WhatsappCall::class);

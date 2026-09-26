@@ -73,6 +73,11 @@ class WhatsappCall extends Model
         return $this->belongsTo(CampaignRecipient::class);
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function humanFollowupAssignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'human_followup_assigned_to');

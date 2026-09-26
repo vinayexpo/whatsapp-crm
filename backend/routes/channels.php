@@ -30,3 +30,7 @@ Broadcast::channel('whatsapp-call.{uuid}', function ($user, string $uuid) {
 
     return $whatsappCall && $whatsappCall->conversation && $user->can('view', $whatsappCall->conversation);
 });
+
+Broadcast::channel('company.{companyUuid}.whatsapp-calls', function ($user, string $companyUuid) {
+    return $user->company && $user->company->uuid === $companyUuid && $user->can('viewAny', WhatsappCall::class);
+});

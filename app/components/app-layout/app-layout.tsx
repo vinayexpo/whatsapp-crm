@@ -44,6 +44,8 @@ import { apiClient } from "~/utils/api-client";
 import { AuthGuard } from "~/components/auth-guard/auth-guard";
 import { NotificationMenu } from "~/components/app-layout/notification-menu";
 import { GlobalSearch } from "~/components/app-layout/global-search";
+import { IncomingCallDialog } from "~/components/app-layout/incoming-call-dialog";
+import { useIncomingCallListener } from "~/hooks/use-incoming-call-listener";
 
 const DRAWER_WIDTH = 248;
 
@@ -74,6 +76,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { currentUser, automationFlows } = useCrmStore();
   const { setUser, setStatus } = useAuth();
+  const { ringingCall, dismiss } = useIncomingCallListener();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<HTMLElement | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -265,5 +268,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </Box>
   );
 
-  return <AuthGuard>{layout}</AuthGuard>;
+  return (
+    <AuthGuard>
+      {layout}
+      {ringingCall && <IncomingCallDialog call={ringingCall} onDismiss={dismiss} />}
+    </AuthGuard>
+  );
 }

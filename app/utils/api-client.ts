@@ -1971,6 +1971,21 @@ async function hangupWhatsappCall(whatsappCallId: string): Promise<WhatsappCall>
   return data;
 }
 
+async function acceptWhatsappCall(whatsappCallId: string, sdpAnswer: string): Promise<WhatsappCall> {
+  const { data } = await apiRequest<{ data: WhatsappCall }>(`/api/v1/whatsapp-calls/${whatsappCallId}/accept`, {
+    method: "POST",
+    body: JSON.stringify({ sdpAnswer }),
+  });
+  return data;
+}
+
+async function rejectWhatsappCall(whatsappCallId: string): Promise<WhatsappCall> {
+  const { data } = await apiRequest<{ data: WhatsappCall }>(`/api/v1/whatsapp-calls/${whatsappCallId}/reject`, {
+    method: "POST",
+  });
+  return data;
+}
+
 async function requestWhatsappCallPermission(whatsappCallId: string): Promise<void> {
   await apiRequest<{ data: { sent: boolean } }>(`/api/v1/whatsapp-calls/${whatsappCallId}/permission-request`, {
     method: "POST",
@@ -2149,6 +2164,8 @@ export const apiClient = {
   placeWhatsappCall,
   submitWhatsappCallOffer,
   hangupWhatsappCall,
+  acceptWhatsappCall,
+  rejectWhatsappCall,
   requestWhatsappCallPermission,
   getWhatsappCallIceServers,
   assignWhatsappCallFollowup,

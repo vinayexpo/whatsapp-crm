@@ -24,6 +24,10 @@ class WhatsappCallStatusUpdated implements ShouldBroadcast
             $channels[] = new PrivateChannel('conversation.'.$this->whatsappCall->conversation->uuid);
         }
 
+        if ($this->whatsappCall->company) {
+            $channels[] = new PrivateChannel('company.'.$this->whatsappCall->company->uuid.'.whatsapp-calls');
+        }
+
         return $channels;
     }
 

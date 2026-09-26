@@ -24,6 +24,7 @@ class WhatsappCallResource extends JsonResource
             'answeredBy' => $this->answered_by,
             'metaCallId' => $this->meta_call_id,
             'sdpExchangeStatus' => $this->sdp_exchange_status,
+            'remoteSdpOffer' => $this->direction === 'inbound' ? $this->local_sdp_offer : null,
             'permissionRequestStatus' => $this->permission_request_status,
             'permissionRequestFailureReason' => $this->permission_request_failure_reason,
             'transcript' => $this->transcript ?? [],
