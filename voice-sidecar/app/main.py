@@ -18,6 +18,25 @@ app = FastAPI()
 laravel = LaravelClient()
 tts = PiperTtsProvider()
 
+
+def _handle_asyncio_exception(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+    exc = context.get("exception")
+    # aioice's STUN retry timer can fire after a transaction's future is
+    # already resolved (response arrived just as the retry timeout expired),
+    # which raises InvalidStateError from inside a call_later callback with
+    # no task/future to propagate to. It's a benign race in RFC 7675 consent
+    # freshness checks, not a call-affecting failure -- log it quietly
+    # instead of letting the default handler report it as an error.
+    if isinstance(exc, asyncio.InvalidStateError) and "Transaction.__retry" in context.get("message", ""):
+        logger.debug("benign aioice STUN transaction race: %s", context["message"])
+        return
+    loop.default_exception_handler(context)
+
+
+@app.on_event("startup")
+async def _install_exception_handler() -> None:
+    asyncio.get_event_loop().set_exception_handler(_handle_asyncio_exception)
+
 sessions: dict[str, CallSession] = {}
 
 
