@@ -53,7 +53,7 @@ def _get_model() -> WhisperModel:
     global _model
     if _model is None:
         _model = WhisperModel(
-            "Systran/faster-distil-whisper-large-v3",
+            "base.en",
             device="cpu",
             compute_type="int8",
             download_root="/app/whisper-models",
