@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 import webrtcvad
-from faster_whisper import WhisperModel
+from moonshine_onnx import MoonshineOnnxModel, load_tokenizer
 from scipy.signal import resample_poly
 
 from app.webrtc import SAMPLE_RATE
@@ -22,7 +22,7 @@ SILENCE_MS_TO_END_UTTERANCE = 1200
 SILENCE_FRAMES_TO_END_UTTERANCE = SILENCE_MS_TO_END_UTTERANCE // VAD_FRAME_MS
 MIN_UTTERANCE_MS = 600
 MIN_UTTERANCE_FRAMES = MIN_UTTERANCE_MS // VAD_FRAME_MS
-WHISPER_SAMPLE_RATE = 16000
+MOONSHINE_SAMPLE_RATE = 16000
 
 # On this host, transcribing a single short utterance can take 5-30+ seconds
 # (observed live: a 5s utterance took ~12s, and four utterances queued back
@@ -32,34 +32,27 @@ WHISPER_SAMPLE_RATE = 16000
 # instead of speaking a reply into a call that's likely already over.
 MAX_UTTERANCE_AGE_SECONDS = 8.0
 
-# faster-whisper hallucinates stock phrases ("thank you", "thanks for
-# watching") when fed silence/background noise that WebRTC VAD misclassified
-# as speech. Reject segments with a high no-speech probability or low average
-# confidence instead of trusting whatever text comes back.
-#
-# -1.0 was too strict: real live-call speech (short utterances, phone-codec
-# audio) routinely scored around -2.2 avg_logprob and got rejected outright,
-# silently dropping every caller utterance and leaving the call to die after
-# the greeting with no next-prompt ever requested. no_speech_prob stayed low
-# (~0.45) on that same genuine speech, so it remains the primary hallucination
-# guard; avg_logprob is now just a backstop against truly garbled output.
-MAX_NO_SPEECH_PROB = 0.6
-MIN_AVG_LOGPROB = -2.5
+# Moonshine doesn't pad/force audio into a fixed 30s window the way Whisper
+# does, so it rarely hallucinates stock phrases on short silence/noise clips
+# the way faster-whisper did -- but it also exposes no per-segment
+# no_speech_prob/avg_logprob to gate on. The cheap remaining guard is text
+# length: a hallucinated/garbage decode on a very short utterance tends to
+# produce a handful of characters (or nothing); real speech this short still
+# reliably produces at least one word.
+MIN_TEXT_CHARS = 2
 
-_model: WhisperModel | None = None
+MOONSHINE_MODEL_NAME = "moonshine/base"
+
+_model: MoonshineOnnxModel | None = None
+_tokenizer = None
 
 
-def _get_model() -> WhisperModel:
-    global _model
+def _get_model() -> tuple[MoonshineOnnxModel, object]:
+    global _model, _tokenizer
     if _model is None:
-        _model = WhisperModel(
-            "base.en",
-            device="cpu",
-            compute_type="int8",
-            download_root="/app/whisper-models",
-            local_files_only=True,
-        )
-    return _model
+        _model = MoonshineOnnxModel(model_name=MOONSHINE_MODEL_NAME)
+        _tokenizer = load_tokenizer()
+    return _model, _tokenizer
 
 
 def warm_up_model() -> None:
@@ -71,27 +64,16 @@ def warm_up_model() -> None:
 def transcribe_pcm48k(pcm: bytes) -> str:
     """Blocking; run in an executor. pcm is 16-bit mono @ 48kHz."""
     samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
-    resampled = resample_poly(samples, WHISPER_SAMPLE_RATE, SAMPLE_RATE).astype(np.float32)
+    resampled = resample_poly(samples, MOONSHINE_SAMPLE_RATE, SAMPLE_RATE).astype(np.float32)
 
-    # The WebRTC VAD in UtteranceCollector has already segmented this PCM
-    # down to a single spoken utterance, so Whisper's own VAD pass is
-    # redundant here -- and it was aggressively misclassifying genuine
-    # speech as silence (observed dropping >90% of real caller audio),
-    # leaving nothing for the confidence filters below to keep. The
-    # no_speech_prob/avg_logprob checks below are the hallucination guard.
-    segments, _info = _get_model().transcribe(resampled, language="en", vad_filter=False)
+    model, tokenizer = _get_model()
+    tokens = model.generate(resampled[np.newaxis, :].astype(np.float32))
+    text = tokenizer.decode_batch(tokens)[0].strip()
 
-    kept = []
-    for segment in segments:
-        accepted = segment.no_speech_prob <= MAX_NO_SPEECH_PROB and segment.avg_logprob >= MIN_AVG_LOGPROB
-        logger.info(
-            "transcribe: segment text=%r no_speech_prob=%.3f avg_logprob=%.3f accepted=%s",
-            segment.text, segment.no_speech_prob, segment.avg_logprob, accepted,
-        )
-        if accepted:
-            kept.append(segment.text.strip())
+    accepted = len(text) >= MIN_TEXT_CHARS
+    logger.info("transcribe: text=%r accepted=%s", text, accepted)
 
-    return " ".join(kept).strip()
+    return text if accepted else ""
 
 
 class UtteranceCollector:

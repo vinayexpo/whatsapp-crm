@@ -18,7 +18,7 @@ app = FastAPI()
 laravel = LaravelClient()
 tts = PiperTtsProvider()
 
-# The production host has only 2 CPU cores. Piper synthesis and Whisper
+# The production host has only 2 CPU cores. Piper synthesis and STT
 # transcription both run in the default thread executor, and both are CPU-
 # bound enough to starve the event loop's real-time RTP pacing (asyncio.sleep
 # calls in TtsAudioTrack.recv()) when they overlap -- observed live as a
@@ -50,14 +50,14 @@ async def _install_exception_handler() -> None:
 
 
 @app.on_event("startup")
-async def _warm_up_whisper() -> None:
-    # faster-whisper lazy-loads its model weights from disk on the first
-    # transcribe() call. Left lazy, that load cost lands inside a live
-    # caller's first utterance instead of at deploy time -- observed live as
-    # a 6.4s stall between "utterance flushed" and "processing audio" on the
-    # very first call after a redeploy. Loading it once here, off the
-    # request path, means every real call only ever pays actual inference
-    # time.
+async def _warm_up_stt_model() -> None:
+    # The STT model lazy-loads its weights from disk on first use. Left
+    # lazy, that load cost lands inside a live caller's first utterance
+    # instead of at deploy time -- observed live (with the prior
+    # faster-whisper model) as a 6.4s stall between "utterance flushed" and
+    # "processing audio" on the very first call after a redeploy. Loading it
+    # once here, off the request path, means every real call only ever pays
+    # actual inference time.
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, warm_up_model)
 
