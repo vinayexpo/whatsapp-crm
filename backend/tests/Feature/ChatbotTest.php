@@ -271,7 +271,7 @@ it('branches the system prompt wording based on general_fallback_enabled', funct
     $permissiveChatbot = Chatbot::factory()->create(['general_fallback_enabled' => true]);
     $conversation = \App\Models\Conversation::factory()->create(['chatbot_id' => $strictChatbot->id]);
 
-    $service = new \App\Services\Chatbot\OpenAiChatbotReplyService;
+    $service = app(\App\Services\Chatbot\OpenAiChatbotReplyService::class);
     $buildMessages = new ReflectionMethod($service, 'buildMessages');
     $buildMessages->setAccessible(true);
 

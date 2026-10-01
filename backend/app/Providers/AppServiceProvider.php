@@ -40,7 +40,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ChatbotReplyServiceInterface::class, function () {
             return $this->app->environment('testing')
                 ? new FakeChatbotReplyService
-                : new OpenAiChatbotReplyService;
+                : $this->app->make(OpenAiChatbotReplyService::class);
         });
 
         $this->app->bind(TrainingEntryGeneratorServiceInterface::class, function () {

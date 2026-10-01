@@ -7,9 +7,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\WhatsappCallFlowResource;
 use App\Models\ApiConnection;
 use App\Models\WhatsappCallFlow;
+use App\Services\Calling\CallFlowAiGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Throwable;
 
 class WhatsappCallFlowController extends Controller
 {
@@ -90,6 +92,8 @@ class WhatsappCallFlowController extends Controller
             'nodes.*.input_type' => ['sometimes', 'nullable', 'string'],
             'fallbackMessage' => ['sometimes', 'nullable', 'string'],
             'maxRetries' => ['sometimes', 'integer', 'min:0', 'max:10'],
+            'conversationMode' => ['sometimes', 'in:scripted,ai_conversation'],
+            'aiConversationGoal' => ['sometimes', 'nullable', 'string'],
         ]);
 
         $update = [];
@@ -100,6 +104,8 @@ class WhatsappCallFlowController extends Controller
             'nodes' => 'nodes',
             'fallbackMessage' => 'fallback_message',
             'maxRetries' => 'max_retries',
+            'conversationMode' => 'conversation_mode',
+            'aiConversationGoal' => 'ai_conversation_goal',
         ];
 
         foreach ($map as $requestKey => $column) {
@@ -120,5 +126,29 @@ class WhatsappCallFlowController extends Controller
         $whatsappCallFlow->delete();
 
         return response()->json(['message' => 'Call flow deleted.']);
+    }
+
+    public function aiGenerate(Request $request, WhatsappCallFlow $whatsappCallFlow, CallFlowAiGenerator $generator): JsonResponse
+    {
+        $this->authorize('update', $whatsappCallFlow);
+
+        $data = $request->validate([
+            'instruction' => ['required', 'string', 'max:2000'],
+            'applyDirectly' => ['sometimes', 'boolean'],
+        ]);
+
+        try {
+            $nodes = $generator->generate($whatsappCallFlow, $data['instruction'], $whatsappCallFlow->nodes ?? []);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($data['applyDirectly'] ?? false) {
+            $whatsappCallFlow->update(['nodes' => $nodes]);
+
+            return response()->json(['data' => new WhatsappCallFlowResource($whatsappCallFlow->load('apiConnection'))]);
+        }
+
+        return response()->json(['data' => ['nodes' => $nodes]]);
     }
 }

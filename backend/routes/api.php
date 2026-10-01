@@ -217,6 +217,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/whatsapp-call-flows/{whatsappCallFlow}', [WhatsappCallFlowController::class, 'show']);
         Route::patch('/whatsapp-call-flows/{whatsappCallFlow}', [WhatsappCallFlowController::class, 'update']);
         Route::delete('/whatsapp-call-flows/{whatsappCallFlow}', [WhatsappCallFlowController::class, 'destroy']);
+        Route::post('/whatsapp-call-flows/{whatsappCallFlow}/ai-generate', [WhatsappCallFlowController::class, 'aiGenerate']);
 
         Route::get('/chat-menu-flows', [ChatMenuFlowController::class, 'index']);
         Route::post('/chat-menu-flows', [ChatMenuFlowController::class, 'store']);

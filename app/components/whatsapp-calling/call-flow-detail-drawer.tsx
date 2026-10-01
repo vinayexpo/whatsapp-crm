@@ -12,6 +12,7 @@ import type { WhatsappCallFlow } from "~/data/types";
 import { CallFlowSettingsPanel } from "./call-flow-settings-panel";
 import { CallFlowBuilder } from "./call-flow-builder";
 import { WhatsappCallLogPanel } from "./whatsapp-call-log-panel";
+import { CallFlowAiChatPanel } from "./call-flow-ai-chat-panel";
 
 interface CallFlowDetailDrawerProps {
   callFlow: WhatsappCallFlow | null;
@@ -21,7 +22,7 @@ interface CallFlowDetailDrawerProps {
 }
 
 export function CallFlowDetailDrawer({ callFlow, onClose, onUpdated, onDelete }: CallFlowDetailDrawerProps) {
-  const [tab, setTab] = useState<"settings" | "flow" | "calls">("settings");
+  const [tab, setTab] = useState<"settings" | "flow" | "ai" | "calls">("settings");
 
   useEffect(() => {
     setTab("settings");
@@ -65,6 +66,7 @@ export function CallFlowDetailDrawer({ callFlow, onClose, onUpdated, onDelete }:
           >
             <Tab value="settings" label="Settings" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="flow" label="Call Flow" sx={{ minHeight: 36, py: 0.5 }} />
+            <Tab value="ai" label="AI Assistant" sx={{ minHeight: 36, py: 0.5 }} />
             <Tab value="calls" label="Call Log" sx={{ minHeight: 36, py: 0.5 }} />
           </Tabs>
 
@@ -73,6 +75,7 @@ export function CallFlowDetailDrawer({ callFlow, onClose, onUpdated, onDelete }:
               <CallFlowSettingsPanel callFlow={callFlow} onUpdated={onUpdated} onDelete={onDelete} />
             )}
             {tab === "flow" && <CallFlowBuilder callFlow={callFlow} onUpdated={onUpdated} />}
+            {tab === "ai" && <CallFlowAiChatPanel callFlow={callFlow} onUpdated={onUpdated} />}
             {tab === "calls" && <WhatsappCallLogPanel callFlow={callFlow} />}
           </Box>
         </Box>

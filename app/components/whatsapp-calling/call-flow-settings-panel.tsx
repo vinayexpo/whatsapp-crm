@@ -4,11 +4,13 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Alert from "@mui/material/Alert";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import { apiClient, ApiError } from "~/utils/api-client";
-import type { WhatsappCallFlow } from "~/data/types";
+import type { WhatsappCallFlow, WhatsappCallFlowConversationMode } from "~/data/types";
 
 interface CallFlowSettingsPanelProps {
   callFlow: WhatsappCallFlow;
@@ -22,6 +24,10 @@ export function CallFlowSettingsPanel({ callFlow, onUpdated, onDelete }: CallFlo
   const [greetingMessage, setGreetingMessage] = useState(callFlow.greetingMessage);
   const [fallbackMessage, setFallbackMessage] = useState(callFlow.fallbackMessage ?? "");
   const [maxRetries, setMaxRetries] = useState(String(callFlow.maxRetries));
+  const [conversationMode, setConversationMode] = useState<WhatsappCallFlowConversationMode>(
+    callFlow.conversationMode ?? "scripted",
+  );
+  const [aiConversationGoal, setAiConversationGoal] = useState(callFlow.aiConversationGoal ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +42,8 @@ export function CallFlowSettingsPanel({ callFlow, onUpdated, onDelete }: CallFlo
         greetingMessage: greetingMessage.trim(),
         fallbackMessage: fallbackMessage.trim() || null,
         maxRetries: Math.min(10, Math.max(0, Number(maxRetries) || 0)),
+        conversationMode,
+        aiConversationGoal: conversationMode === "ai_conversation" ? aiConversationGoal.trim() || null : null,
       });
       onUpdated(updated);
     } catch (err) {
@@ -86,6 +94,31 @@ export function CallFlowSettingsPanel({ callFlow, onUpdated, onDelete }: CallFlo
         onChange={(e) => setFallbackMessage(e.target.value)}
         helperText="Shown when the caller's response isn't understood."
       />
+
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">Conversation mode</Typography>
+        <ToggleButtonGroup
+          exclusive
+          value={conversationMode}
+          onChange={(_, v) => v && setConversationMode(v)}
+          size="small"
+        >
+          <ToggleButton value="scripted">Scripted steps</ToggleButton>
+          <ToggleButton value="ai_conversation">AI free-form conversation</ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
+
+      {conversationMode === "ai_conversation" && (
+        <TextField
+          fullWidth
+          multiline
+          minRows={3}
+          label="What should the AI accomplish on this call?"
+          value={aiConversationGoal}
+          onChange={(e) => setAiConversationGoal(e.target.value)}
+          helperText="The AI drives the whole conversation towards this goal instead of following fixed steps."
+        />
+      )}
 
       <TextField
         fullWidth

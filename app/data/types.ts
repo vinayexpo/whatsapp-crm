@@ -335,6 +335,8 @@ export interface WhatsappCallFlowNode {
   input_type?: string | null;
 }
 
+export type WhatsappCallFlowConversationMode = "scripted" | "ai_conversation";
+
 export interface WhatsappCallFlow {
   id: string;
   apiConnectionId: string | null;
@@ -344,6 +346,8 @@ export interface WhatsappCallFlow {
   nodes: WhatsappCallFlowNode[];
   fallbackMessage: string | null;
   maxRetries: number;
+  conversationMode: WhatsappCallFlowConversationMode;
+  aiConversationGoal: string | null;
   createdAt: string;
 }
 

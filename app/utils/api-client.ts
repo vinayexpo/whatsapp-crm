@@ -62,6 +62,7 @@ import type {
   WhatsappCallFlow,
   WhatsappCallFlowNode,
   WhatsappCallFlowStatus,
+  WhatsappCallFlowConversationMode,
   ChatMenuFlow,
   ChatMenuFlowNode,
   ChatMenuFlowChannel,
@@ -1832,6 +1833,8 @@ async function updateWhatsappCallFlow(
     nodes: WhatsappCallFlowNode[];
     fallbackMessage: string | null;
     maxRetries: number;
+    conversationMode: WhatsappCallFlowConversationMode;
+    aiConversationGoal: string | null;
   }>,
 ): Promise<WhatsappCallFlow> {
   const { data } = await apiRequest<{ data: WhatsappCallFlow }>(`/api/v1/whatsapp-call-flows/${callFlowId}`, {
@@ -1843,6 +1846,20 @@ async function updateWhatsappCallFlow(
 
 async function deleteWhatsappCallFlow(callFlowId: string): Promise<void> {
   await apiRequest(`/api/v1/whatsapp-call-flows/${callFlowId}`, { method: "DELETE" });
+}
+
+async function generateWhatsappCallFlowNodes(
+  callFlowId: string,
+  payload: { instruction: string; applyDirectly?: boolean },
+): Promise<{ nodes: WhatsappCallFlowNode[] } | WhatsappCallFlow> {
+  const { data } = await apiRequest<{ data: { nodes: WhatsappCallFlowNode[] } | WhatsappCallFlow }>(
+    `/api/v1/whatsapp-call-flows/${callFlowId}/ai-generate`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+  return data;
 }
 
 async function listChatMenuFlows(params?: {
@@ -2153,6 +2170,7 @@ export const apiClient = {
   getWhatsappCallFlow,
   updateWhatsappCallFlow,
   deleteWhatsappCallFlow,
+  generateWhatsappCallFlowNodes,
   listChatMenuFlows,
   createChatMenuFlow,
   getChatMenuFlow,

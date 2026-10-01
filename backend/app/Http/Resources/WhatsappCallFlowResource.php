@@ -21,6 +21,8 @@ class WhatsappCallFlowResource extends JsonResource
             'nodes' => $this->nodes ?? [],
             'fallbackMessage' => $this->fallback_message,
             'maxRetries' => $this->max_retries,
+            'conversationMode' => $this->conversation_mode,
+            'aiConversationGoal' => $this->ai_conversation_goal,
             'createdAt' => $this->created_at?->toIso8601String(),
         ];
     }

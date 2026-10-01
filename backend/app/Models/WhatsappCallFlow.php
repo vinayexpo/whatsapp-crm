@@ -24,6 +24,8 @@ class WhatsappCallFlow extends Model
         'max_retries',
         'voice_mode',
         'tts_voice_id',
+        'conversation_mode',
+        'ai_conversation_goal',
     ];
 
     protected function casts(): array

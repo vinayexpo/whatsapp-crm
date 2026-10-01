@@ -27,6 +27,7 @@ export function CallFlowBuilder({ callFlow, onUpdated }: CallFlowBuilderProps) {
   const [nodes, setNodes] = useState<WhatsappCallFlowNode[]>(callFlow.nodes.length > 0 ? callFlow.nodes : []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isAiConversation = callFlow.conversationMode === "ai_conversation";
 
   function updateNode(index: number, patch: Partial<WhatsappCallFlowNode>) {
     setNodes((prev) => prev.map((node, i) => (i === index ? { ...node, ...patch } : node)));
@@ -70,6 +71,13 @@ export function CallFlowBuilder({ callFlow, onUpdated }: CallFlowBuilderProps) {
   return (
     <Stack spacing={2.5}>
       {error && <Alert severity="error">{error}</Alert>}
+
+      {isAiConversation && (
+        <Alert severity="info">
+          This call flow is set to AI free-form conversation mode in Settings. These steps are not used
+          during live calls — the AI drives the conversation from the goal you set there instead.
+        </Alert>
+      )}
 
       <Typography variant="caption" sx={{ color: "text.secondary" }}>
         Build the ordered sequence of steps the caller is guided through during a WhatsApp call.
