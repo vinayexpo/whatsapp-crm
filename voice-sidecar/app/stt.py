@@ -36,8 +36,15 @@ MAX_UTTERANCE_AGE_SECONDS = 8.0
 # watching") when fed silence/background noise that WebRTC VAD misclassified
 # as speech. Reject segments with a high no-speech probability or low average
 # confidence instead of trusting whatever text comes back.
+#
+# -1.0 was too strict: real live-call speech (short utterances, phone-codec
+# audio) routinely scored around -2.2 avg_logprob and got rejected outright,
+# silently dropping every caller utterance and leaving the call to die after
+# the greeting with no next-prompt ever requested. no_speech_prob stayed low
+# (~0.45) on that same genuine speech, so it remains the primary hallucination
+# guard; avg_logprob is now just a backstop against truly garbled output.
 MAX_NO_SPEECH_PROB = 0.6
-MIN_AVG_LOGPROB = -1.0
+MIN_AVG_LOGPROB = -2.5
 
 _model: WhisperModel | None = None
 
