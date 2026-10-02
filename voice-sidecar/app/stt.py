@@ -3,8 +3,8 @@ import logging
 import time
 
 import numpy as np
+import sherpa_onnx
 import webrtcvad
-from faster_whisper import WhisperModel
 from scipy.signal import resample_poly
 
 from app.webrtc import SAMPLE_RATE
@@ -14,7 +14,7 @@ logger = logging.getLogger("voice_sidecar")
 VAD_FRAME_MS = 20
 VAD_FRAME_SAMPLES = SAMPLE_RATE * VAD_FRAME_MS // 1000  # 960 @ 48kHz
 # 700ms was short enough that a single breath mid-sentence ("Hello... Hello.")
-# split into separate utterances, each paying Whisper's full per-call
+# split into separate utterances, each paying the STT engine's full per-call
 # inference overhead on this slow 2-core host instead of being transcribed
 # together once. Widening the gap trades a little end-of-utterance latency
 # for far fewer, larger transcription calls.
@@ -22,76 +22,66 @@ SILENCE_MS_TO_END_UTTERANCE = 1200
 SILENCE_FRAMES_TO_END_UTTERANCE = SILENCE_MS_TO_END_UTTERANCE // VAD_FRAME_MS
 MIN_UTTERANCE_MS = 600
 MIN_UTTERANCE_FRAMES = MIN_UTTERANCE_MS // VAD_FRAME_MS
-WHISPER_SAMPLE_RATE = 16000
+STT_SAMPLE_RATE = 16000
 
-# On this host, transcribing a single short utterance can take 5-30+ seconds
-# (observed live: a 5s utterance took ~12s, and four utterances queued back
-# to back left the caller answered ~34s after they first spoke). By the time
-# a stale queued utterance would reach the front of the line, the caller has
-# often already hung up. Drop anything that's been waiting longer than this
-# instead of speaking a reply into a call that's likely already over.
+# On this host, transcribing a single short utterance with the previous
+# engine (faster-whisper) could take 5-30+ seconds under load, so a stale
+# queued utterance could reach the front of the line long after the caller
+# hung up. sherpa-onnx's SenseVoice model is much lighter, but keep the same
+# staleness guard as a safety net rather than assuming the new engine is
+# always fast enough under contention.
 MAX_UTTERANCE_AGE_SECONDS = 8.0
 
-# faster-whisper hallucinates stock phrases ("thank you", "thanks for
-# watching") when fed silence/background noise that WebRTC VAD misclassified
-# as speech. Reject segments with a high no-speech probability or low average
-# confidence instead of trusting whatever text comes back.
-#
-# -1.0 was too strict: real live-call speech (short utterances, phone-codec
-# audio) routinely scored around -2.2 avg_logprob and got rejected outright,
-# silently dropping every caller utterance and leaving the call to die after
-# the greeting with no next-prompt ever requested. no_speech_prob stayed low
-# (~0.45) on that same genuine speech, so it remains the primary hallucination
-# guard; avg_logprob is now just a backstop against truly garbled output.
-MAX_NO_SPEECH_PROB = 0.6
-MIN_AVG_LOGPROB = -2.5
+SENSE_VOICE_MODEL_DIR = "/app/stt-models/sense-voice"
 
-_model: WhisperModel | None = None
+# SenseVoice doesn't pad/force audio into a fixed 30s window the way Whisper
+# does, so it's far less prone to hallucinating stock phrases on short
+# silence/noise clips -- but it also exposes no per-segment confidence score
+# to gate on. The cheap remaining guard is text length: a hallucinated/
+# garbage decode on a very short utterance tends to produce a handful of
+# characters (or nothing); real speech this short still reliably produces at
+# least one word.
+MIN_TEXT_CHARS = 2
+
+_recognizer: sherpa_onnx.OfflineRecognizer | None = None
 
 
-def _get_model() -> WhisperModel:
-    global _model
-    if _model is None:
-        _model = WhisperModel(
-            "base.en",
-            device="cpu",
-            compute_type="int8",
-            download_root="/app/whisper-models",
-            local_files_only=True,
+def _get_recognizer() -> sherpa_onnx.OfflineRecognizer:
+    global _recognizer
+    if _recognizer is None:
+        _recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+            model=f"{SENSE_VOICE_MODEL_DIR}/model.onnx",
+            tokens=f"{SENSE_VOICE_MODEL_DIR}/tokens.txt",
+            num_threads=2,
+            sample_rate=STT_SAMPLE_RATE,
+            language="en",
+            use_itn=True,
+            provider="cpu",
         )
-    return _model
+    return _recognizer
 
 
 def warm_up_model() -> None:
     """Blocking; call once at process startup (in an executor) so the model
     weight load happens before any real call, not during one."""
-    _get_model()
+    _get_recognizer()
 
 
 def transcribe_pcm48k(pcm: bytes) -> str:
     """Blocking; run in an executor. pcm is 16-bit mono @ 48kHz."""
     samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
-    resampled = resample_poly(samples, WHISPER_SAMPLE_RATE, SAMPLE_RATE).astype(np.float32)
+    resampled = resample_poly(samples, STT_SAMPLE_RATE, SAMPLE_RATE).astype(np.float32)
 
-    # The WebRTC VAD in UtteranceCollector has already segmented this PCM
-    # down to a single spoken utterance, so Whisper's own VAD pass is
-    # redundant here -- and it was aggressively misclassifying genuine
-    # speech as silence (observed dropping >90% of real caller audio),
-    # leaving nothing for the confidence filters below to keep. The
-    # no_speech_prob/avg_logprob checks below are the hallucination guard.
-    segments, _info = _get_model().transcribe(resampled, language="en", vad_filter=False)
+    recognizer = _get_recognizer()
+    stream = recognizer.create_stream()
+    stream.accept_waveform(STT_SAMPLE_RATE, resampled)
+    recognizer.decode_stream(stream)
+    text = stream.result.text.strip()
 
-    kept = []
-    for segment in segments:
-        accepted = segment.no_speech_prob <= MAX_NO_SPEECH_PROB and segment.avg_logprob >= MIN_AVG_LOGPROB
-        logger.info(
-            "transcribe: segment text=%r no_speech_prob=%.3f avg_logprob=%.3f accepted=%s",
-            segment.text, segment.no_speech_prob, segment.avg_logprob, accepted,
-        )
-        if accepted:
-            kept.append(segment.text.strip())
+    accepted = len(text) >= MIN_TEXT_CHARS
+    logger.info("transcribe: text=%r accepted=%s", text, accepted)
 
-    return " ".join(kept).strip()
+    return text if accepted else ""
 
 
 class UtteranceCollector:
