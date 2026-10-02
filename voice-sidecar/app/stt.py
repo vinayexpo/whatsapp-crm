@@ -35,78 +35,64 @@ STT_SAMPLE_RATE = 16000
 # masquerade as an unbroken utterance that never flushes.
 MIN_SPEECH_RMS = 300
 
-# On this host, transcribing a single short utterance with the previous
-# engine (faster-whisper) could take 5-30+ seconds under load, so a stale
-# queued utterance could reach the front of the line long after the caller
-# hung up. Keep the same staleness guard as a safety net rather than
-# assuming the current engine is always fast enough under contention.
+# Whisper's multilingual model (tried for en/hi/te support) pads/forces
+# audio into a fixed 30s window, which on this 2-core host made even a
+# short utterance take 5-30+ seconds to transcribe -- long enough that
+# callers hung up before ever hearing a reply. SenseVoice scales compute to
+# actual audio length instead, which is why it's back as the only engine,
+# at the cost of only supporting zh/en/ja/ko/yue (no Hindi/Telugu STT).
 MAX_UTTERANCE_AGE_SECONDS = 8.0
 
-WHISPER_MODEL_DIR = "/app/stt-models/whisper-small"
+SENSE_VOICE_MODEL_DIR = "/app/stt-models/sense-voice"
 
-# SenseVoice (the previous engine) only supports zh/en/ja/ko/yue and has no
-# Hindi/Telugu coverage at all, so it can't serve this flow's language
-# requirement. Whisper's multilingual checkpoints support en/hi/te (and many
-# more) in one model file, at the cost of the fixed-30s-window padding that
-# makes every call pay close to the same per-utterance inference time
-# regardless of how short the utterance actually was.
-SUPPORTED_LANGUAGES = {"en", "hi", "te"}
-DEFAULT_LANGUAGE = "en"
-
-# Whisper pads/forces audio into a fixed 30s window, so (unlike SenseVoice)
-# it's prone to hallucinating stock phrases on short silence/noise clips.
-# There's no per-segment confidence score to gate on, so text length is the
-# cheap remaining guard: a hallucinated/garbage decode on a very short
-# utterance tends to produce a long stock phrase or nothing; require a
-# plausible minimum to filter the common "thank you."/"." hallucinations
-# without rejecting genuinely short real replies ("yes", "no").
+# SenseVoice doesn't pad/force audio into a fixed 30s window the way Whisper
+# does, so it's far less prone to hallucinating stock phrases on short
+# silence/noise clips -- but it also exposes no per-segment confidence score
+# to gate on. The cheap remaining guard is text length: a hallucinated/
+# garbage decode on a very short utterance tends to produce a handful of
+# characters (or nothing); real speech this short still reliably produces at
+# least one word.
 MIN_TEXT_CHARS = 2
 
-_recognizers: dict[str, sherpa_onnx.OfflineRecognizer] = {}
+_recognizer: sherpa_onnx.OfflineRecognizer | None = None
 
 
-def _normalize_language(language: str | None) -> str:
-    return language if language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
-
-
-def _get_recognizer(language: str | None) -> sherpa_onnx.OfflineRecognizer:
-    lang = _normalize_language(language)
-
-    if lang not in _recognizers:
-        _recognizers[lang] = sherpa_onnx.OfflineRecognizer.from_whisper(
-            encoder=f"{WHISPER_MODEL_DIR}/small-encoder.int8.onnx",
-            decoder=f"{WHISPER_MODEL_DIR}/small-decoder.int8.onnx",
-            tokens=f"{WHISPER_MODEL_DIR}/small-tokens.txt",
+def _get_recognizer() -> sherpa_onnx.OfflineRecognizer:
+    global _recognizer
+    if _recognizer is None:
+        _recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+            model=f"{SENSE_VOICE_MODEL_DIR}/model.onnx",
+            tokens=f"{SENSE_VOICE_MODEL_DIR}/tokens.txt",
             num_threads=2,
-            language=lang,
-            task="transcribe",
+            sample_rate=STT_SAMPLE_RATE,
+            language="en",
+            use_itn=True,
             provider="cpu",
         )
-
-    return _recognizers[lang]
+    return _recognizer
 
 
 def warm_up_model() -> None:
-    """Blocking; call once at process startup (in an executor) so every
-    configured language's model weights load before any real call, not
-    during one."""
-    for lang in SUPPORTED_LANGUAGES:
-        _get_recognizer(lang)
+    """Blocking; call once at process startup (in an executor) so the model
+    weight load happens before any real call, not during one."""
+    _get_recognizer()
 
 
 def transcribe_pcm48k(pcm: bytes, language: str | None = None) -> str:
-    """Blocking; run in an executor. pcm is 16-bit mono @ 48kHz."""
+    """Blocking; run in an executor. pcm is 16-bit mono @ 48kHz. language is
+    accepted for call-site compatibility with the multilingual call-flow API
+    but ignored -- SenseVoice only transcribes English here."""
     samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
     resampled = resample_poly(samples, STT_SAMPLE_RATE, SAMPLE_RATE).astype(np.float32)
 
-    recognizer = _get_recognizer(language)
+    recognizer = _get_recognizer()
     stream = recognizer.create_stream()
     stream.accept_waveform(STT_SAMPLE_RATE, resampled)
     recognizer.decode_stream(stream)
     text = stream.result.text.strip()
 
     accepted = len(text) >= MIN_TEXT_CHARS
-    logger.info("transcribe: language=%s text=%r accepted=%s", _normalize_language(language), text, accepted)
+    logger.info("transcribe: text=%r accepted=%s", text, accepted)
 
     return text if accepted else ""
 

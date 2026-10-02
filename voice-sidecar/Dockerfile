@@ -24,18 +24,19 @@ RUN mkdir -p /app/voices \
     && curl -sL -o /app/voices/te_IN-maya-medium.onnx.json \
         https://huggingface.co/rhasspy/piper-voices/resolve/main/te/te_IN/maya/medium/te_IN-maya-medium.onnx.json
 
-# Pre-download the sherpa-onnx multilingual Whisper model into the image so
-# the first real call doesn't pay a cold-start download. SenseVoice (the
-# previous engine) only covers zh/en/ja/ko/yue and has no Hindi/Telugu
-# support at all, so it can't serve this flow's language requirement --
-# Whisper's multilingual "small" checkpoint trades some of SenseVoice's speed
-# for actual en/hi/te coverage in one model file.
+# Pre-download the sherpa-onnx SenseVoice model into the image so the first
+# real call doesn't pay a cold-start download. Whisper's multilingual model
+# was tried for Hindi/Telugu STT support, but its fixed 30s padded window
+# made even short utterances take 5-30+ seconds to transcribe on this
+# 2-core host -- long enough that callers hung up before hearing a reply.
+# SenseVoice scales compute to actual audio length instead, at the cost of
+# only covering zh/en/ja/ko/yue (no Hindi/Telugu STT).
 RUN mkdir -p /app/stt-models \
-    && curl -sL -o /tmp/whisper-small.tar.bz2 \
-        https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.tar.bz2 \
-    && tar -xjf /tmp/whisper-small.tar.bz2 -C /tmp \
-    && mv /tmp/sherpa-onnx-whisper-small /app/stt-models/whisper-small \
-    && rm /tmp/whisper-small.tar.bz2
+    && curl -sL -o /tmp/sense-voice.tar.bz2 \
+        https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2 \
+    && tar -xjf /tmp/sense-voice.tar.bz2 -C /tmp \
+    && mv /tmp/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17 /app/stt-models/sense-voice \
+    && rm /tmp/sense-voice.tar.bz2
 
 COPY app ./app
 
