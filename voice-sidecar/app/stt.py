@@ -24,6 +24,17 @@ MIN_UTTERANCE_MS = 600
 MIN_UTTERANCE_FRAMES = MIN_UTTERANCE_MS // VAD_FRAME_MS
 STT_SAMPLE_RATE = 16000
 
+# webrtcvad is purely energy-based and, on real WhatsApp calls, line/mic
+# noise floor sometimes sits just high enough that even its most aggressive
+# mode (3) classifies it as continuous "speech" forever -- observed live as
+# speech_frames tracking ~85-90% of all frames for the full duration of a
+# call where the caller's actual voice should have produced clear gaps, with
+# RMS amplitude never exceeding ~200 (real speech picked up by a phone mic
+# typically peaks in the thousands). Gate frames below this RMS floor as
+# silence before they ever reach the VAD, so quiet background noise can't
+# masquerade as an unbroken utterance that never flushes.
+MIN_SPEECH_RMS = 300
+
 # On this host, transcribing a single short utterance with the previous
 # engine (faster-whisper) could take 5-30+ seconds under load, so a stale
 # queued utterance could reach the front of the line long after the caller
@@ -111,7 +122,7 @@ class UtteranceCollector:
         cpu_lock: asyncio.Lock | None = None,
         language: str | None = None,
     ) -> None:
-        self._vad = webrtcvad.Vad(2)
+        self._vad = webrtcvad.Vad(3)
         self._on_utterance = on_utterance
         self._cpu_lock = cpu_lock or asyncio.Lock()
         self._language = language
@@ -134,7 +145,10 @@ class UtteranceCollector:
             self._frames_wrong_size += 1
             return
 
-        is_speech = self._vad.is_speech(frame_bytes, SAMPLE_RATE)
+        samples = np.frombuffer(frame_bytes, dtype=np.int16).astype(np.float32)
+        rms = float(np.sqrt(np.mean(samples * samples))) if samples.size else 0.0
+
+        is_speech = rms >= MIN_SPEECH_RMS and self._vad.is_speech(frame_bytes, SAMPLE_RATE)
 
         if is_speech:
             self._speech_frames_seen += 1
