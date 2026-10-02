@@ -51,15 +51,16 @@ async def _install_exception_handler() -> None:
 
 @app.on_event("startup")
 async def _warm_up_whisper() -> None:
-    # faster-whisper lazy-loads its model weights from disk on the first
-    # transcribe() call. Left lazy, that load cost lands inside a live
-    # caller's first utterance instead of at deploy time -- observed live as
-    # a 6.4s stall between "utterance flushed" and "processing audio" on the
-    # very first call after a redeploy. Loading it once here, off the
-    # request path, means every real call only ever pays actual inference
-    # time.
+    # The STT/TTS models lazy-load their weights from disk on first use.
+    # Left lazy, that load cost lands inside a live caller's first utterance
+    # instead of at deploy time -- observed live as a 6.4s stall between
+    # "utterance flushed" and "processing audio" on the very first call
+    # after a redeploy. Loading every configured language's models once
+    # here, off the request path, means every real call only ever pays
+    # actual inference time.
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, warm_up_model)
+    await loop.run_in_executor(None, tts.warm_up)
 
 sessions: dict[str, CallSession] = {}
 
@@ -70,6 +71,7 @@ class CreateSessionRequest(BaseModel):
     sdp_offer: str
     greeting: str | None = None
     tts_voice_id: str | None = None
+    language: str | None = None
     callback_base_url: str | None = None
 
 
@@ -78,6 +80,7 @@ class SpeakRequest(BaseModel):
 
 
 async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
+    language = session.language
     if session.pc.connectionState in ("failed", "closed"):
         logger.warning(
             "call %s: skipping speak(), peer connection state is %s (nothing would be heard)",
@@ -99,7 +102,7 @@ async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
 
     total_bytes = 0
     async with cpu_lock:
-        async for chunk in tts.stream(text, voice_id):
+        async for chunk in tts.stream(text, voice_id, language):
             total_bytes += len(chunk)
             session.audio_track.push_pcm(chunk)
     session.audio_track.end_utterance()
@@ -163,13 +166,13 @@ async def create_session(payload: CreateSessionRequest) -> dict:
     def on_inbound_frame(frame_bytes: bytes) -> None:
         collector_holder["collector"].push_frame(frame_bytes)
 
-    session = CallSession(payload.whatsapp_call_id, on_inbound_frame=on_inbound_frame)
+    session = CallSession(payload.whatsapp_call_id, on_inbound_frame=on_inbound_frame, language=payload.language)
     sessions[payload.whatsapp_call_id] = session
 
     async def on_utterance(text: str) -> None:
         await handle_caller_utterance(session, payload.tts_voice_id, text)
 
-    collector_holder["collector"] = UtteranceCollector(on_utterance, cpu_lock=cpu_lock)
+    collector_holder["collector"] = UtteranceCollector(on_utterance, cpu_lock=cpu_lock, language=payload.language)
 
     try:
         sdp_answer = await session.accept_offer(payload.sdp_offer)

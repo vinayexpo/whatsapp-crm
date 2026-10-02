@@ -26,6 +26,7 @@ class WhatsappCallFlow extends Model
         'tts_voice_id',
         'conversation_mode',
         'ai_conversation_goal',
+        'language',
     ];
 
     protected function casts(): array

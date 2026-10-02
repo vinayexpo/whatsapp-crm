@@ -23,6 +23,8 @@ class WhatsappCallFlowResource extends JsonResource
             'maxRetries' => $this->max_retries,
             'conversationMode' => $this->conversation_mode,
             'aiConversationGoal' => $this->ai_conversation_goal,
+            'voiceMode' => $this->voice_mode,
+            'language' => $this->language,
             'createdAt' => $this->created_at?->toIso8601String(),
         ];
     }

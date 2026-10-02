@@ -63,6 +63,8 @@ import type {
   WhatsappCallFlowNode,
   WhatsappCallFlowStatus,
   WhatsappCallFlowConversationMode,
+  WhatsappCallFlowVoiceMode,
+  WhatsappCallFlowLanguage,
   ChatMenuFlow,
   ChatMenuFlowNode,
   ChatMenuFlowChannel,
@@ -1811,6 +1813,8 @@ async function createWhatsappCallFlow(callFlow: {
   nodes: WhatsappCallFlowNode[];
   fallbackMessage?: string | null;
   maxRetries?: number;
+  voiceMode?: WhatsappCallFlowVoiceMode;
+  language?: WhatsappCallFlowLanguage;
 }): Promise<WhatsappCallFlow> {
   const { data } = await apiRequest<{ data: WhatsappCallFlow }>("/api/v1/whatsapp-call-flows", {
     method: "POST",
@@ -1835,6 +1839,8 @@ async function updateWhatsappCallFlow(
     maxRetries: number;
     conversationMode: WhatsappCallFlowConversationMode;
     aiConversationGoal: string | null;
+    voiceMode: WhatsappCallFlowVoiceMode;
+    language: WhatsappCallFlowLanguage;
   }>,
 ): Promise<WhatsappCallFlow> {
   const { data } = await apiRequest<{ data: WhatsappCallFlow }>(`/api/v1/whatsapp-call-flows/${callFlowId}`, {

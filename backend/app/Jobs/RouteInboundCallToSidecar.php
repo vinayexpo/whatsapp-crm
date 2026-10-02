@@ -44,6 +44,7 @@ class RouteInboundCallToSidecar implements ShouldQueue
                 'sdp_offer' => $this->metaSdpOffer,
                 'greeting' => $flow?->greeting_message,
                 'tts_voice_id' => $flow?->tts_voice_id,
+                'language' => $flow?->language ?? 'en',
                 'callback_base_url' => rtrim(config('app.url'), '/').'/api/internal',
             ])
             ->throw();

@@ -336,6 +336,8 @@ export interface WhatsappCallFlowNode {
 }
 
 export type WhatsappCallFlowConversationMode = "scripted" | "ai_conversation";
+export type WhatsappCallFlowVoiceMode = "text_only" | "ai_voice";
+export type WhatsappCallFlowLanguage = "en" | "hi" | "te";
 
 export interface WhatsappCallFlow {
   id: string;
@@ -348,6 +350,8 @@ export interface WhatsappCallFlow {
   maxRetries: number;
   conversationMode: WhatsappCallFlowConversationMode;
   aiConversationGoal: string | null;
+  voiceMode: WhatsappCallFlowVoiceMode;
+  language: WhatsappCallFlowLanguage;
   createdAt: string;
 }
 

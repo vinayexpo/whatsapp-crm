@@ -14,19 +14,28 @@ RUN mkdir -p /app/voices \
     && curl -sL -o /app/voices/en_US-lessac-medium.onnx \
         https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx \
     && curl -sL -o /app/voices/en_US-lessac-medium.onnx.json \
-        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json \
+    && curl -sL -o /app/voices/hi_IN-pratham-medium.onnx \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/pratham/medium/hi_IN-pratham-medium.onnx \
+    && curl -sL -o /app/voices/hi_IN-pratham-medium.onnx.json \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/pratham/medium/hi_IN-pratham-medium.onnx.json \
+    && curl -sL -o /app/voices/te_IN-maya-medium.onnx \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/te/te_IN/maya/medium/te_IN-maya-medium.onnx \
+    && curl -sL -o /app/voices/te_IN-maya-medium.onnx.json \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/te/te_IN/maya/medium/te_IN-maya-medium.onnx.json
 
-# Pre-download the sherpa-onnx SenseVoice model into the image so the first
-# real call doesn't pay a cold-start download. SenseVoice scales compute to
-# the audio's actual length rather than always processing a padded 30s
-# window like Whisper, which is what caused 5-30+ second per-utterance
-# transcription times on this host's 2 CPU cores with faster-whisper.
+# Pre-download the sherpa-onnx multilingual Whisper model into the image so
+# the first real call doesn't pay a cold-start download. SenseVoice (the
+# previous engine) only covers zh/en/ja/ko/yue and has no Hindi/Telugu
+# support at all, so it can't serve this flow's language requirement --
+# Whisper's multilingual "small" checkpoint trades some of SenseVoice's speed
+# for actual en/hi/te coverage in one model file.
 RUN mkdir -p /app/stt-models \
-    && curl -sL -o /tmp/sense-voice.tar.bz2 \
-        https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2 \
-    && tar -xjf /tmp/sense-voice.tar.bz2 -C /tmp \
-    && mv /tmp/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17 /app/stt-models/sense-voice \
-    && rm /tmp/sense-voice.tar.bz2
+    && curl -sL -o /tmp/whisper-small.tar.bz2 \
+        https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.tar.bz2 \
+    && tar -xjf /tmp/whisper-small.tar.bz2 -C /tmp \
+    && mv /tmp/sherpa-onnx-whisper-small /app/stt-models/whisper-small \
+    && rm /tmp/whisper-small.tar.bz2
 
 COPY app ./app
 

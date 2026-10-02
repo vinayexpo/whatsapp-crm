@@ -85,6 +85,87 @@ it('allows an admin to create a call flow', function () {
     $this->assertDatabaseHas('whatsapp_call_flows', ['name' => 'Sales Qualifier']);
 });
 
+it('creates a call flow with ai voice mode and a non-default language', function () {
+    $admin = actingAsWhatsappCallFlowRole('admin');
+    $connection = ApiConnection::factory()->create(['company_id' => $admin->company_id, 'channel' => 'whatsapp']);
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/whatsapp-call-flows', [
+        'apiConnectionId' => $connection->uuid,
+        'name' => 'Hindi Voice Flow',
+        'greetingMessage' => 'Namaste!',
+        'nodes' => [
+            ['id' => 'end', 'type' => 'end_call', 'prompt' => 'Dhanyavaad!'],
+        ],
+        'voiceMode' => 'ai_voice',
+        'language' => 'hi',
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.voiceMode', 'ai_voice')
+        ->assertJsonPath('data.language', 'hi');
+
+    $this->assertDatabaseHas('whatsapp_call_flows', [
+        'name' => 'Hindi Voice Flow',
+        'voice_mode' => 'ai_voice',
+        'language' => 'hi',
+    ]);
+});
+
+it('defaults voice mode and language when not provided', function () {
+    $admin = actingAsWhatsappCallFlowRole('admin');
+    $connection = ApiConnection::factory()->create(['company_id' => $admin->company_id, 'channel' => 'whatsapp']);
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/whatsapp-call-flows', [
+        'apiConnectionId' => $connection->uuid,
+        'name' => 'Default Flow',
+        'greetingMessage' => 'Hi!',
+        'nodes' => [
+            ['id' => 'end', 'type' => 'end_call', 'prompt' => 'Bye!'],
+        ],
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.voiceMode', 'text_only')
+        ->assertJsonPath('data.language', 'en');
+});
+
+it('updates voice mode and language on an existing call flow', function () {
+    $admin = actingAsWhatsappCallFlowRole('admin');
+    $flow = WhatsappCallFlow::factory()->create(['company_id' => $admin->company_id]);
+
+    $response = $this->actingAs($admin)->patchJson("/api/v1/whatsapp-call-flows/{$flow->uuid}", [
+        'voiceMode' => 'ai_voice',
+        'language' => 'te',
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('data.voiceMode', 'ai_voice')
+        ->assertJsonPath('data.language', 'te');
+
+    $this->assertDatabaseHas('whatsapp_call_flows', [
+        'id' => $flow->id,
+        'voice_mode' => 'ai_voice',
+        'language' => 'te',
+    ]);
+});
+
+it('rejects an invalid language on a call flow', function () {
+    $admin = actingAsWhatsappCallFlowRole('admin');
+    $connection = ApiConnection::factory()->create(['company_id' => $admin->company_id, 'channel' => 'whatsapp']);
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/whatsapp-call-flows', [
+        'apiConnectionId' => $connection->uuid,
+        'name' => 'Bad Language Flow',
+        'greetingMessage' => 'Hi!',
+        'nodes' => [
+            ['id' => 'end', 'type' => 'end_call', 'prompt' => 'Bye!'],
+        ],
+        'language' => 'fr',
+    ]);
+
+    $response->assertStatus(422);
+});
+
 it('rejects creating a call flow with an empty node list', function () {
     $admin = actingAsWhatsappCallFlowRole('admin');
     $connection = ApiConnection::factory()->create(['company_id' => $admin->company_id, 'channel' => 'whatsapp']);

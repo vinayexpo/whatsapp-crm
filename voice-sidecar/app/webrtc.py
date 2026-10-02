@@ -94,8 +94,9 @@ def build_ice_servers() -> list[RTCIceServer]:
 
 
 class CallSession:
-    def __init__(self, whatsapp_call_id: str, on_inbound_frame=None) -> None:
+    def __init__(self, whatsapp_call_id: str, on_inbound_frame=None, language: str | None = None) -> None:
         self.whatsapp_call_id = whatsapp_call_id
+        self.language = language
         self.pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=build_ice_servers()))
         self.audio_track = TtsAudioTrack()
         self.pc.addTrack(self.audio_track)

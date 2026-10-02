@@ -9,8 +9,14 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Alert from "@mui/material/Alert";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
+import MenuItem from "@mui/material/MenuItem";
 import { apiClient, ApiError } from "~/utils/api-client";
-import type { WhatsappCallFlow, WhatsappCallFlowConversationMode } from "~/data/types";
+import type {
+  WhatsappCallFlow,
+  WhatsappCallFlowConversationMode,
+  WhatsappCallFlowVoiceMode,
+  WhatsappCallFlowLanguage,
+} from "~/data/types";
 
 interface CallFlowSettingsPanelProps {
   callFlow: WhatsappCallFlow;
@@ -28,6 +34,8 @@ export function CallFlowSettingsPanel({ callFlow, onUpdated, onDelete }: CallFlo
     callFlow.conversationMode ?? "scripted",
   );
   const [aiConversationGoal, setAiConversationGoal] = useState(callFlow.aiConversationGoal ?? "");
+  const [voiceMode, setVoiceMode] = useState<WhatsappCallFlowVoiceMode>(callFlow.voiceMode ?? "text_only");
+  const [language, setLanguage] = useState<WhatsappCallFlowLanguage>(callFlow.language ?? "en");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +52,8 @@ export function CallFlowSettingsPanel({ callFlow, onUpdated, onDelete }: CallFlo
         maxRetries: Math.min(10, Math.max(0, Number(maxRetries) || 0)),
         conversationMode,
         aiConversationGoal: conversationMode === "ai_conversation" ? aiConversationGoal.trim() || null : null,
+        voiceMode,
+        language,
       });
       onUpdated(updated);
     } catch (err) {
@@ -118,6 +128,34 @@ export function CallFlowSettingsPanel({ callFlow, onUpdated, onDelete }: CallFlo
           onChange={(e) => setAiConversationGoal(e.target.value)}
           helperText="The AI drives the whole conversation towards this goal instead of following fixed steps."
         />
+      )}
+
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">Voice</Typography>
+        <ToggleButtonGroup
+          exclusive
+          value={voiceMode}
+          onChange={(_, v) => v && setVoiceMode(v)}
+          size="small"
+        >
+          <ToggleButton value="text_only">Text only (Meta speech-to-text)</ToggleButton>
+          <ToggleButton value="ai_voice">AI voice (speaks replies aloud)</ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
+
+      {voiceMode === "ai_voice" && (
+        <TextField
+          select
+          fullWidth
+          label="Call language"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as WhatsappCallFlowLanguage)}
+          helperText="Language used for both speech recognition and the AI's spoken replies."
+        >
+          <MenuItem value="en">English</MenuItem>
+          <MenuItem value="hi">Hindi</MenuItem>
+          <MenuItem value="te">Telugu</MenuItem>
+        </TextField>
       )}
 
       <TextField

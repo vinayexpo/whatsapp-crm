@@ -51,6 +51,8 @@ class WhatsappCallFlowController extends Controller
             'nodes.*.input_type' => ['sometimes', 'nullable', 'string'],
             'fallbackMessage' => ['sometimes', 'nullable', 'string'],
             'maxRetries' => ['sometimes', 'integer', 'min:0', 'max:10'],
+            'voiceMode' => ['sometimes', 'in:text_only,ai_voice'],
+            'language' => ['sometimes', 'in:en,hi,te'],
         ]);
 
         $apiConnection = ApiConnection::query()->where('uuid', $data['apiConnectionId'])->where('channel', 'whatsapp')->firstOrFail();
@@ -63,6 +65,8 @@ class WhatsappCallFlowController extends Controller
             'nodes' => $data['nodes'],
             'fallback_message' => $data['fallbackMessage'] ?? null,
             'max_retries' => $data['maxRetries'] ?? 2,
+            'voice_mode' => $data['voiceMode'] ?? 'text_only',
+            'language' => $data['language'] ?? 'en',
         ]);
 
         return response()->json(['data' => new WhatsappCallFlowResource($callFlow->load('apiConnection'))], 201);
@@ -94,6 +98,8 @@ class WhatsappCallFlowController extends Controller
             'maxRetries' => ['sometimes', 'integer', 'min:0', 'max:10'],
             'conversationMode' => ['sometimes', 'in:scripted,ai_conversation'],
             'aiConversationGoal' => ['sometimes', 'nullable', 'string'],
+            'voiceMode' => ['sometimes', 'in:text_only,ai_voice'],
+            'language' => ['sometimes', 'in:en,hi,te'],
         ]);
 
         $update = [];
@@ -106,6 +112,8 @@ class WhatsappCallFlowController extends Controller
             'maxRetries' => 'max_retries',
             'conversationMode' => 'conversation_mode',
             'aiConversationGoal' => 'ai_conversation_goal',
+            'voiceMode' => 'voice_mode',
+            'language' => 'language',
         ];
 
         foreach ($map as $requestKey => $column) {
