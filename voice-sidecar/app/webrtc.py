@@ -102,7 +102,14 @@ class CallSession:
         self.pc.addTrack(self.audio_track)
         self._on_inbound_frame = on_inbound_frame
         self._inbound_task: asyncio.Task | None = None
-        self.is_speaking = False
+        # Starts gated "on" (not "off") because ICE/DTLS negotiation and the
+        # greeting's priming silence happen before speak() ever runs for this
+        # call -- without this, inbound frames during that window (echo, line
+        # noise, a caller saying "hello?") reach the VAD as real caller speech
+        # and get queued for transcription before the greeting has even
+        # played. create_session() flips this off once the greeting (or lack
+        # of one) has been fully handled.
+        self.is_speaking = True
         self._connected_event = asyncio.Event()
         # aiortc's connectionState often stays "connected" even after Meta
         # has stopped sending RTP and the call is effectively over -- the

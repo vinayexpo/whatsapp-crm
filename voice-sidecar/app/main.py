@@ -212,6 +212,13 @@ async def create_session(payload: CreateSessionRequest) -> dict:
     except Exception:
         logger.exception("call %s: failed to set up session", payload.whatsapp_call_id)
         raise
+    finally:
+        # session.is_speaking starts True (see CallSession.__init__) to gate
+        # out inbound audio during ICE/DTLS negotiation and the greeting's
+        # priming silence, before speak() has run even once. speak() itself
+        # already clears it after a real greeting; this covers the no-
+        # greeting case and guarantees it's cleared even if setup raised.
+        session.is_speaking = False
 
     return {"status": "accepted"}
 
