@@ -61,7 +61,7 @@ def _get_recognizer() -> sherpa_onnx.OfflineRecognizer:
     global _recognizer
     if _recognizer is None:
         _recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
-            model=f"{SENSE_VOICE_MODEL_DIR}/model.onnx",
+            model=f"{SENSE_VOICE_MODEL_DIR}/model.int8.onnx",
             tokens=f"{SENSE_VOICE_MODEL_DIR}/tokens.txt",
             num_threads=2,
             sample_rate=STT_SAMPLE_RATE,
