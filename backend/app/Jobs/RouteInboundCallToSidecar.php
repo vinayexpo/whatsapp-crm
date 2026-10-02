@@ -14,6 +14,16 @@ class RouteInboundCallToSidecar implements ShouldQueue
 {
     use Queueable, NotifiesOnFailure;
 
+    public int $tries = 5;
+
+    // A deploy restarts the voice-sidecar container, which takes ~20s to
+    // reload its STT model and start accepting connections. Laravel's
+    // default retry has no delay, so an inbound call landing in that
+    // window burned through all 3 attempts in under a second and was lost
+    // -- the call rang but never connected. Backoff gives the container
+    // time to finish starting before the next attempt.
+    public array $backoff = [2, 5, 10, 15];
+
     public function __construct(public int $whatsappCallId, public string $metaSdpOffer) {}
 
     public function handle(): void
