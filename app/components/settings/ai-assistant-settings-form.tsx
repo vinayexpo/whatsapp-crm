@@ -21,6 +21,9 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
   const [baseUrl, setBaseUrl] = useState(settings.baseUrl);
   const [apiKey, setApiKey] = useState(settings.apiKey ?? "");
   const [model, setModel] = useState(settings.model);
+  const [sttModel, setSttModel] = useState(settings.sttModel);
+  const [ttsModel, setTtsModel] = useState(settings.ttsModel);
+  const [ttsVoice, setTtsVoice] = useState(settings.ttsVoice);
   const [showApiKey, setShowApiKey] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -28,13 +31,35 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
     setBaseUrl(settings.baseUrl);
     setApiKey(settings.apiKey ?? "");
     setModel(settings.model);
-  }, [settings.baseUrl, settings.apiKey, settings.model]);
+    setSttModel(settings.sttModel);
+    setTtsModel(settings.ttsModel);
+    setTtsVoice(settings.ttsVoice);
+  }, [settings.baseUrl, settings.apiKey, settings.model, settings.sttModel, settings.ttsModel, settings.ttsVoice]);
 
-  const isDirty = baseUrl !== settings.baseUrl || apiKey !== (settings.apiKey ?? "") || model !== settings.model;
-  const canSave = baseUrl.trim().length > 0 && apiKey.trim().length > 0 && model.trim().length > 0;
+  const isDirty =
+    baseUrl !== settings.baseUrl ||
+    apiKey !== (settings.apiKey ?? "") ||
+    model !== settings.model ||
+    sttModel !== settings.sttModel ||
+    ttsModel !== settings.ttsModel ||
+    ttsVoice !== settings.ttsVoice;
+  const canSave =
+    baseUrl.trim().length > 0 &&
+    apiKey.trim().length > 0 &&
+    model.trim().length > 0 &&
+    sttModel.trim().length > 0 &&
+    ttsModel.trim().length > 0 &&
+    ttsVoice.trim().length > 0;
 
   function handleSave() {
-    onChange({ baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), model: model.trim() });
+    onChange({
+      baseUrl: baseUrl.trim(),
+      apiKey: apiKey.trim(),
+      model: model.trim(),
+      sttModel: sttModel.trim(),
+      ttsModel: ttsModel.trim(),
+      ttsVoice: ttsVoice.trim(),
+    });
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2500);
   }
@@ -78,6 +103,32 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
         value={model}
         onChange={(e) => setModel(e.target.value)}
         placeholder="gpt-4o-mini"
+        fullWidth
+        disabled={readOnly}
+      />
+      <TextField
+        label="Speech-to-Text Model"
+        value={sttModel}
+        onChange={(e) => setSttModel(e.target.value)}
+        placeholder="whisper-1"
+        helperText="Used to transcribe caller speech during AI voice calls."
+        fullWidth
+        disabled={readOnly}
+      />
+      <TextField
+        label="Text-to-Speech Model"
+        value={ttsModel}
+        onChange={(e) => setTtsModel(e.target.value)}
+        placeholder="tts-1"
+        helperText="Used to synthesize the AI's spoken replies during voice calls."
+        fullWidth
+        disabled={readOnly}
+      />
+      <TextField
+        label="Text-to-Speech Voice"
+        value={ttsVoice}
+        onChange={(e) => setTtsVoice(e.target.value)}
+        placeholder="alloy"
         fullWidth
         disabled={readOnly}
       />

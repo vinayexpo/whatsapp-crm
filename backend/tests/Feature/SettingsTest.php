@@ -371,14 +371,28 @@ it('allows an admin to view and update the global ai assistant settings', functi
     $show = $this->actingAs($admin)->getJson('/api/v1/ai-assistant-settings');
     $show->assertOk();
     $show->assertJsonPath('data.model', 'gpt-4o-mini');
+    $show->assertJsonPath('data.sttModel', 'whisper-1');
+    $show->assertJsonPath('data.ttsModel', 'tts-1');
+    $show->assertJsonPath('data.ttsVoice', 'alloy');
 
     $update = $this->actingAs($admin)->patchJson('/api/v1/ai-assistant-settings', [
         'model' => 'gpt-4.1-mini',
+        'sttModel' => 'whisper-2',
+        'ttsModel' => 'tts-1-hd',
+        'ttsVoice' => 'nova',
     ]);
 
     $update->assertOk();
     $update->assertJsonPath('data.model', 'gpt-4.1-mini');
-    expect(AiAssistantSetting::current()->model)->toBe('gpt-4.1-mini');
+    $update->assertJsonPath('data.sttModel', 'whisper-2');
+    $update->assertJsonPath('data.ttsModel', 'tts-1-hd');
+    $update->assertJsonPath('data.ttsVoice', 'nova');
+
+    $setting = AiAssistantSetting::current();
+    expect($setting->model)->toBe('gpt-4.1-mini');
+    expect($setting->stt_model)->toBe('whisper-2');
+    expect($setting->tts_model)->toBe('tts-1-hd');
+    expect($setting->tts_voice)->toBe('nova');
 });
 
 it('accepts ai assistant chat responses that return structured content parts', function () {

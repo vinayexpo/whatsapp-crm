@@ -1,9 +1,11 @@
 import asyncio
+import io
 import logging
 import time
+import wave
 
+import httpx
 import numpy as np
-import sherpa_onnx
 import webrtcvad
 from scipy.signal import resample_poly
 
@@ -35,61 +37,66 @@ STT_SAMPLE_RATE = 16000
 # masquerade as an unbroken utterance that never flushes.
 MIN_SPEECH_RMS = 300
 
-# Whisper's multilingual model (tried for en/hi/te support) pads/forces
-# audio into a fixed 30s window, which on this 2-core host made even a
-# short utterance take 5-30+ seconds to transcribe -- long enough that
-# callers hung up before ever hearing a reply. SenseVoice scales compute to
-# actual audio length instead, which is why it's back as the only engine,
-# at the cost of only supporting zh/en/ja/ko/yue (no Hindi/Telugu STT).
+# A caller may have hung up long before a slow-to-process utterance reaches
+# the front of the shared cpu/HTTP queue -- transcribing and replying to it
+# at that point is pure waste and risks pushing a reply into a dead call.
 MAX_UTTERANCE_AGE_SECONDS = 8.0
 
-SENSE_VOICE_MODEL_DIR = "/app/stt-models/sense-voice"
-
-# SenseVoice doesn't pad/force audio into a fixed 30s window the way Whisper
-# does, so it's far less prone to hallucinating stock phrases on short
-# silence/noise clips -- but it also exposes no per-segment confidence score
-# to gate on. The cheap remaining guard is text length: a hallucinated/
-# garbage decode on a very short utterance tends to produce a handful of
-# characters (or nothing); real speech this short still reliably produces at
-# least one word.
+# A hallucinated/garbage decode on a very short noise clip tends to produce a
+# handful of characters (or nothing); real speech this short still reliably
+# produces at least one word. Cheap guard independent of provider confidence
+# scores, which OpenAI-compatible transcription APIs don't expose per call.
 MIN_TEXT_CHARS = 2
 
-_recognizer: sherpa_onnx.OfflineRecognizer | None = None
+REQUEST_TIMEOUT_SECONDS = 20.0
 
 
-def _get_recognizer() -> sherpa_onnx.OfflineRecognizer:
-    global _recognizer
-    if _recognizer is None:
-        _recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
-            model=f"{SENSE_VOICE_MODEL_DIR}/model.int8.onnx",
-            tokens=f"{SENSE_VOICE_MODEL_DIR}/tokens.txt",
-            num_threads=2,
-            sample_rate=STT_SAMPLE_RATE,
-            language="en",
-            use_itn=True,
-            provider="cpu",
-        )
-    return _recognizer
-
-
-def warm_up_model() -> None:
-    """Blocking; call once at process startup (in an executor) so the model
-    weight load happens before any real call, not during one."""
-    _get_recognizer()
-
-
-def transcribe_pcm48k(pcm: bytes, language: str | None = None) -> str:
-    """Blocking; run in an executor. pcm is 16-bit mono @ 48kHz. language is
-    accepted for call-site compatibility with the multilingual call-flow API
-    but ignored -- SenseVoice only transcribes English here."""
+def _pcm48k_to_wav16k(pcm: bytes) -> bytes:
     samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
-    resampled = resample_poly(samples, STT_SAMPLE_RATE, SAMPLE_RATE).astype(np.float32)
+    resampled = resample_poly(samples, STT_SAMPLE_RATE, SAMPLE_RATE)
+    pcm16 = np.clip(resampled * 32768.0, -32768, 32767).astype(np.int16)
 
-    recognizer = _get_recognizer()
-    stream = recognizer.create_stream()
-    stream.accept_waveform(STT_SAMPLE_RATE, resampled)
-    recognizer.decode_stream(stream)
-    text = stream.result.text.strip()
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(STT_SAMPLE_RATE)
+        wav_file.writeframes(pcm16.tobytes())
+
+    return buffer.getvalue()
+
+
+async def transcribe_pcm48k(
+    pcm: bytes,
+    base_url: str,
+    api_key: str | None,
+    model: str,
+    language: str | None = None,
+) -> str:
+    """pcm is 16-bit mono @ 48kHz. Posts to an OpenAI-compatible
+    /audio/transcriptions endpoint and returns the transcript, or "" if the
+    provider errored or returned a too-short/empty result."""
+    wav_bytes = _pcm48k_to_wav16k(pcm)
+
+    data = {"model": model}
+    if language:
+        data["language"] = language
+
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
+    try:
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
+            response = await client.post(
+                f"{base_url.rstrip('/')}/audio/transcriptions",
+                headers=headers,
+                data=data,
+                files={"file": ("utterance.wav", wav_bytes, "audio/wav")},
+            )
+            response.raise_for_status()
+            text = response.json().get("text", "").strip()
+    except Exception:
+        logger.exception("transcribe: request to STT provider failed")
+        return ""
 
     accepted = len(text) >= MIN_TEXT_CHARS
     logger.info("transcribe: text=%r accepted=%s", text, accepted)
@@ -105,11 +112,17 @@ class UtteranceCollector:
     def __init__(
         self,
         on_utterance,
+        stt_base_url: str,
+        stt_api_key: str | None,
+        stt_model: str,
         cpu_lock: asyncio.Lock | None = None,
         language: str | None = None,
     ) -> None:
         self._vad = webrtcvad.Vad(3)
         self._on_utterance = on_utterance
+        self._stt_base_url = stt_base_url
+        self._stt_api_key = stt_api_key
+        self._stt_model = stt_model
         self._cpu_lock = cpu_lock or asyncio.Lock()
         self._language = language
         self._speech_frames: list[bytes] = []
@@ -179,8 +192,9 @@ class UtteranceCollector:
                     logger.info("utterance collector: dropping stale utterance, age=%.1fs", age)
                     return
 
-                loop = asyncio.get_running_loop()
-                text = await loop.run_in_executor(None, transcribe_pcm48k, pcm, self._language)
+                text = await transcribe_pcm48k(
+                    pcm, self._stt_base_url, self._stt_api_key, self._stt_model, self._language,
+                )
         except Exception:
             logger.exception("failed to transcribe caller utterance")
             return

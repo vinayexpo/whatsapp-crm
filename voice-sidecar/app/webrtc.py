@@ -97,6 +97,14 @@ class CallSession:
     def __init__(self, whatsapp_call_id: str, on_inbound_frame=None, language: str | None = None) -> None:
         self.whatsapp_call_id = whatsapp_call_id
         self.language = language
+        # Resolved per-call from the company's AiAssistantSetting (passed in
+        # the /sessions payload) -- there is no sidecar-local config for
+        # these, since the whole point is a per-company OpenAI-compatible
+        # endpoint, not a fixed one baked into this service's env.
+        self.ai_base_url: str | None = None
+        self.ai_api_key: str | None = None
+        self.tts_model: str = "tts-1"
+        self.tts_voice: str = "alloy"
         self.pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=build_ice_servers()))
         self.audio_track = TtsAudioTrack()
         self.pc.addTrack(self.audio_track)

@@ -1,12 +1,11 @@
 import asyncio
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 os.environ.setdefault("LARAVEL_BASE_URL", "http://backend/api/internal")
 os.environ.setdefault("LARAVEL_SHARED_SECRET", "test-secret")
 
-with patch("app.tts.piper_tts.PiperVoice.load"):
-    from app.main import _handle_asyncio_exception
+from app.main import _handle_asyncio_exception
 
 
 def test_suppresses_benign_aioice_retry_race():

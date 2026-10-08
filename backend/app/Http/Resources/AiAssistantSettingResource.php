@@ -16,6 +16,9 @@ class AiAssistantSettingResource extends JsonResource
             'baseUrl' => $this->base_url,
             'apiKey' => $this->api_key,
             'model' => $this->model,
+            'sttModel' => $this->stt_model,
+            'ttsModel' => $this->tts_model,
+            'ttsVoice' => $this->tts_voice,
         ];
     }
 }

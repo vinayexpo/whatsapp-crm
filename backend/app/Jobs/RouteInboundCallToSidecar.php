@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Jobs\Concerns\NotifiesOnFailure;
+use App\Models\AiAssistantSetting;
 use App\Models\WhatsappCall;
+use App\Scopes\CompanyScope;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
@@ -47,6 +49,10 @@ class RouteInboundCallToSidecar implements ShouldQueue
 
         $flow = $whatsappCall->callFlow;
 
+        $aiSettings = AiAssistantSetting::withoutGlobalScope(CompanyScope::class)
+            ->where('company_id', $whatsappCall->company_id)
+            ->first();
+
         Http::withHeaders(['X-Internal-Secret' => $secret])
             ->post(rtrim($baseUrl, '/').'/sessions', [
                 'whatsapp_call_id' => $whatsappCall->uuid,
@@ -56,6 +62,11 @@ class RouteInboundCallToSidecar implements ShouldQueue
                 'tts_voice_id' => $flow?->tts_voice_id,
                 'language' => $flow?->language ?? 'en',
                 'callback_base_url' => rtrim(config('app.url'), '/').'/api/internal',
+                'ai_base_url' => $aiSettings?->base_url,
+                'ai_api_key' => $aiSettings?->api_key,
+                'stt_model' => $aiSettings?->stt_model,
+                'tts_model' => $aiSettings?->tts_model,
+                'tts_voice' => $aiSettings?->tts_voice,
             ])
             ->throw();
     }

@@ -493,6 +493,9 @@ export interface AiAssistantSettings {
   baseUrl: string;
   apiKey: string | null;
   model: string;
+  sttModel: string;
+  ttsModel: string;
+  ttsVoice: string;
 }
 
 export interface AiChatMessage {

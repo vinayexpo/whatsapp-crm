@@ -5,8 +5,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.laravel_client import LaravelClient
-from app.stt import UtteranceCollector, warm_up_model
-from app.tts.piper_tts import PiperTtsProvider
+from app.stt import UtteranceCollector
+from app.tts.openai_tts import OpenAiTtsProvider
 from app.webrtc import SAMPLE_RATE, CallSession
 
 logging.basicConfig(level=logging.INFO)
@@ -16,17 +16,14 @@ logger = logging.getLogger("voice_sidecar")
 
 app = FastAPI()
 laravel = LaravelClient()
-tts = PiperTtsProvider()
+tts = OpenAiTtsProvider()
 
-# The production host has only 2 CPU cores. Piper synthesis and Whisper
-# transcription both run in the default thread executor, and both are CPU-
-# bound enough to starve the event loop's real-time RTP pacing (asyncio.sleep
-# calls in TtsAudioTrack.recv()) when they overlap -- observed live as a
-# flushed transcription task starting 380ms before a greeting's speak() call,
-# right when that greeting's audio was clipped on the receiving end even
-# though our own packetsSent/bytesSent accounting looked complete. Serializing
-# TTS and STT work through one lock keeps them from ever competing for the
-# same two cores mid-call.
+# STT and TTS are now remote HTTP calls (OpenAI-compatible API), not local
+# CPU-bound inference, so they no longer compete with the event loop's
+# real-time RTP pacing the way the old local Piper/SenseVoice models did.
+# The lock still serializes the *network* calls themselves so a slow
+# transcription and a slow synthesis on the same call don't race, but it's
+# no longer load-bearing for CPU contention.
 cpu_lock = asyncio.Lock()
 
 
@@ -49,19 +46,6 @@ async def _install_exception_handler() -> None:
     asyncio.get_event_loop().set_exception_handler(_handle_asyncio_exception)
 
 
-@app.on_event("startup")
-async def _warm_up_whisper() -> None:
-    # The STT/TTS models lazy-load their weights from disk on first use.
-    # Left lazy, that load cost lands inside a live caller's first utterance
-    # instead of at deploy time -- observed live as a 6.4s stall between
-    # "utterance flushed" and "processing audio" on the very first call
-    # after a redeploy. Loading every configured language's models once
-    # here, off the request path, means every real call only ever pays
-    # actual inference time.
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, warm_up_model)
-    await loop.run_in_executor(None, tts.warm_up)
-
 sessions: dict[str, CallSession] = {}
 
 
@@ -73,6 +57,11 @@ class CreateSessionRequest(BaseModel):
     tts_voice_id: str | None = None
     language: str | None = None
     callback_base_url: str | None = None
+    ai_base_url: str | None = None
+    ai_api_key: str | None = None
+    stt_model: str | None = None
+    tts_model: str | None = None
+    tts_voice: str | None = None
 
 
 class SpeakRequest(BaseModel):
@@ -80,7 +69,6 @@ class SpeakRequest(BaseModel):
 
 
 async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
-    language = session.language
     if session.pc.connectionState in ("failed", "closed"):
         logger.warning(
             "call %s: skipping speak(), peer connection state is %s (nothing would be heard)",
@@ -100,9 +88,24 @@ async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
         )
         return
 
+    if not session.ai_base_url:
+        logger.warning(
+            "call %s: skipping speak(), no AI Assistant base_url configured for this company",
+            session.whatsapp_call_id,
+        )
+        return
+
     total_bytes = 0
     async with cpu_lock:
-        async for chunk in tts.stream(text, voice_id, language):
+        async for chunk in tts.stream(
+            text,
+            session.ai_base_url,
+            session.ai_api_key,
+            session.tts_model,
+            # A flow-level tts_voice_id override takes precedence over the
+            # company-wide default voice.
+            voice_id or session.tts_voice,
+        ):
             total_bytes += len(chunk)
             session.audio_track.push_pcm(chunk)
     session.audio_track.end_utterance()
@@ -167,12 +170,37 @@ async def create_session(payload: CreateSessionRequest) -> dict:
         collector_holder["collector"].push_frame(frame_bytes)
 
     session = CallSession(payload.whatsapp_call_id, on_inbound_frame=on_inbound_frame, language=payload.language)
+    session.ai_base_url = payload.ai_base_url
+    session.ai_api_key = payload.ai_api_key
+    session.tts_model = payload.tts_model or "tts-1"
+    session.tts_voice = payload.tts_voice or "alloy"
     sessions[payload.whatsapp_call_id] = session
 
     async def on_utterance(text: str) -> None:
         await handle_caller_utterance(session, payload.tts_voice_id, text)
 
-    collector_holder["collector"] = UtteranceCollector(on_utterance, cpu_lock=cpu_lock, language=payload.language)
+    if payload.ai_base_url:
+        collector_holder["collector"] = UtteranceCollector(
+            on_utterance,
+            stt_base_url=payload.ai_base_url,
+            stt_api_key=payload.ai_api_key,
+            stt_model=payload.stt_model or "whisper-1",
+            cpu_lock=cpu_lock,
+            language=payload.language,
+        )
+    else:
+        logger.warning(
+            "call %s: no AI Assistant base_url configured for this company, caller speech will not be transcribed",
+            payload.whatsapp_call_id,
+        )
+        collector_holder["collector"] = UtteranceCollector(
+            lambda text: asyncio.sleep(0),
+            stt_base_url="",
+            stt_api_key=None,
+            stt_model="",
+            cpu_lock=cpu_lock,
+            language=payload.language,
+        )
 
     try:
         sdp_answer = await session.accept_offer(payload.sdp_offer)

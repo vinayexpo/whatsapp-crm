@@ -156,6 +156,9 @@ const DEFAULT_AI_ASSISTANT_SETTINGS: AiAssistantSettings = {
   baseUrl: "https://api.openai.com/v1",
   apiKey: "",
   model: "gpt-4o-mini",
+  sttModel: "whisper-1",
+  ttsModel: "tts-1",
+  ttsVoice: "alloy",
 };
 
 const DEFAULT_PAGINATION: PaginationMeta = { currentPage: 1, lastPage: 1, perPage: 20, total: 0 };
