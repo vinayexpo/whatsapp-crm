@@ -1,3 +1,4 @@
+import asyncio
 import struct
 from typing import AsyncIterator
 
@@ -78,9 +79,17 @@ class OpenAiTtsProvider:
         pcm = np.frombuffer(pcm_bytes, dtype=np.int16)
 
         if provider_sample_rate != SAMPLE_RATE:
+            # resample_poly is CPU-bound SciPy/FFT work -- for a multi-
+            # sentence reply this can take long enough to run synchronously
+            # that it stalls the event loop right as playout should start,
+            # producing an audible stutter at the start of speech. Run it in
+            # a worker thread so it can't block the asyncio loop that paces
+            # outbound RTP frames.
             # resample_poly silently returns all-zero output for int16 input
             # (integer-domain FIR filtering underflows to 0) -- must resample
             # in float before converting back to int16.
-            pcm = resample_poly(pcm.astype(np.float32), SAMPLE_RATE, provider_sample_rate).astype(np.int16)
+            pcm = await asyncio.to_thread(
+                lambda: resample_poly(pcm.astype(np.float32), SAMPLE_RATE, provider_sample_rate).astype(np.int16)
+            )
 
         yield pcm.tobytes()

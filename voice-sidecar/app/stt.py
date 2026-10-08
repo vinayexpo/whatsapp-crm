@@ -22,7 +22,13 @@ VAD_FRAME_SAMPLES = SAMPLE_RATE * VAD_FRAME_MS // 1000  # 960 @ 48kHz
 # for far fewer, larger transcription calls.
 SILENCE_MS_TO_END_UTTERANCE = 1200
 SILENCE_FRAMES_TO_END_UTTERANCE = SILENCE_MS_TO_END_UTTERANCE // VAD_FRAME_MS
-MIN_UTTERANCE_MS = 600
+# Whisper-family models reliably hallucinate generic filler text ("Thank
+# you.", "Hello.") on clips under ~1s of real speech instead of failing
+# loudly -- observed live where the caller's actual utterance was
+# transcribed as "Hello."/"Thank you." regardless of what was actually
+# said. Raising the floor discards too-short fragments instead of feeding
+# them to the model and trusting a wrong answer.
+MIN_UTTERANCE_MS = 1000
 MIN_UTTERANCE_FRAMES = MIN_UTTERANCE_MS // VAD_FRAME_MS
 STT_SAMPLE_RATE = 16000
 
