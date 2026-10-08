@@ -187,6 +187,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/ai-assistant-settings', [AiAssistantSettingController::class, 'show']);
         Route::patch('/ai-assistant-settings', [AiAssistantSettingController::class, 'update']);
+        Route::post('/ai-assistant-settings/models', [AiAssistantSettingController::class, 'listModels']);
         Route::post('/ai-assistant/chat', [AiAssistantSettingController::class, 'chat']);
 
         Route::get('/chatbots', [ChatbotController::class, 'index']);

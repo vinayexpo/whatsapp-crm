@@ -29,6 +29,8 @@ class AiAssistantSettingController extends Controller
             'baseUrl' => ['string', 'max:255'],
             'apiKey' => ['nullable', 'string'],
             'model' => ['string', 'max:255'],
+            'voiceBaseUrl' => ['nullable', 'string', 'max:255'],
+            'voiceApiKey' => ['nullable', 'string'],
             'sttModel' => ['string', 'max:255'],
             'ttsModel' => ['string', 'max:255'],
             'ttsVoice' => ['string', 'max:255'],
@@ -40,12 +42,48 @@ class AiAssistantSettingController extends Controller
             'base_url' => $data['baseUrl'] ?? $setting->base_url,
             'api_key' => $data['apiKey'] ?? $setting->api_key,
             'model' => $data['model'] ?? $setting->model,
+            'voice_base_url' => $data['voiceBaseUrl'] ?? $setting->voice_base_url,
+            'voice_api_key' => $data['voiceApiKey'] ?? $setting->voice_api_key,
             'stt_model' => $data['sttModel'] ?? $setting->stt_model,
             'tts_model' => $data['ttsModel'] ?? $setting->tts_model,
             'tts_voice' => $data['ttsVoice'] ?? $setting->tts_voice,
         ]);
 
         return response()->json(['data' => new AiAssistantSettingResource($setting)]);
+    }
+
+    public function listModels(Request $request): JsonResponse
+    {
+        $this->authorizeSettingsManage($request);
+
+        $data = $request->validate([
+            'baseUrl' => ['required', 'string', 'max:255'],
+            'apiKey' => ['nullable', 'string'],
+        ]);
+
+        try {
+            $response = Http::withToken($data['apiKey'] ?? '')
+                ->timeout(15)
+                ->get(rtrim($data['baseUrl'], '/').'/models');
+
+            if (! $response->successful()) {
+                return response()->json(['message' => 'Could not fetch models from this provider.'], 502);
+            }
+
+            $models = collect($response->json('data') ?? [])
+                ->map(fn ($item) => is_array($item) ? data_get($item, 'id') : null)
+                ->filter(fn ($id) => is_string($id) && $id !== '')
+                ->values();
+
+            return response()->json(['data' => $models]);
+        } catch (Throwable $e) {
+            Log::warning('AI Assistant model listing failed', [
+                'base_url' => $data['baseUrl'],
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Could not fetch models from this provider.'], 502);
+        }
     }
 
     public function chat(Request $request): JsonResponse

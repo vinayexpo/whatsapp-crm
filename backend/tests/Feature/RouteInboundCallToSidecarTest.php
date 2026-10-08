@@ -34,6 +34,8 @@ it('posts the meta sdp offer and the company ai voice settings to the sidecar se
         'base_url' => 'https://api.openai.com/v1',
         'api_key' => 'sk-test',
         'model' => 'gpt-4o-mini',
+        'voice_base_url' => 'https://voice.openai.com/v1',
+        'voice_api_key' => 'sk-voice-test',
         'stt_model' => 'whisper-1',
         'tts_model' => 'tts-1',
         'tts_voice' => 'alloy',
@@ -49,8 +51,8 @@ it('posts the meta sdp offer and the company ai voice settings to the sidecar se
             && $request['sdp_offer'] === 'v=0...fake-meta-offer'
             && $request['greeting'] === 'Hello there'
             && $request['tts_voice_id'] === 'alloy'
-            && $request['ai_base_url'] === 'https://api.openai.com/v1'
-            && $request['ai_api_key'] === 'sk-test'
+            && $request['ai_base_url'] === 'https://voice.openai.com/v1'
+            && $request['ai_api_key'] === 'sk-voice-test'
             && $request['stt_model'] === 'whisper-1'
             && $request['tts_model'] === 'tts-1'
             && $request['tts_voice'] === 'alloy';

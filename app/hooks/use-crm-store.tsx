@@ -156,6 +156,8 @@ const DEFAULT_AI_ASSISTANT_SETTINGS: AiAssistantSettings = {
   baseUrl: "https://api.openai.com/v1",
   apiKey: "",
   model: "gpt-4o-mini",
+  voiceBaseUrl: "",
+  voiceApiKey: "",
   sttModel: "whisper-1",
   ttsModel: "tts-1",
   ttsVoice: "alloy",

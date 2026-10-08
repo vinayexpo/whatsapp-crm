@@ -831,6 +831,14 @@ async function updateAiAssistantSettings(updates: Partial<AiAssistantSettings>):
   return data;
 }
 
+async function listAiAssistantModels(payload: { baseUrl: string; apiKey?: string | null }): Promise<string[]> {
+  const { data } = await apiRequest<{ data: string[] }>("/api/v1/ai-assistant-settings/models", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return data;
+}
+
 async function sendAiAssistantChat(
   messages: { role: "system" | "user" | "assistant"; content: string }[],
 ): Promise<string> {
@@ -2139,6 +2147,7 @@ export const apiClient = {
   updateNotificationPreferences,
   getAiAssistantSettings,
   updateAiAssistantSettings,
+  listAiAssistantModels,
   sendAiAssistantChat,
   listActivityFeed,
   listPhonebookFolders,

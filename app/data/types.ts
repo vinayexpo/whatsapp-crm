@@ -493,6 +493,8 @@ export interface AiAssistantSettings {
   baseUrl: string;
   apiKey: string | null;
   model: string;
+  voiceBaseUrl: string | null;
+  voiceApiKey: string | null;
   sttModel: string;
   ttsModel: string;
   ttsVoice: string;

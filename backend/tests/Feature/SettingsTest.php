@@ -377,6 +377,8 @@ it('allows an admin to view and update the global ai assistant settings', functi
 
     $update = $this->actingAs($admin)->patchJson('/api/v1/ai-assistant-settings', [
         'model' => 'gpt-4.1-mini',
+        'voiceBaseUrl' => 'https://voice.example.com/v1',
+        'voiceApiKey' => 'sk-voice-123',
         'sttModel' => 'whisper-2',
         'ttsModel' => 'tts-1-hd',
         'ttsVoice' => 'nova',
@@ -384,15 +386,69 @@ it('allows an admin to view and update the global ai assistant settings', functi
 
     $update->assertOk();
     $update->assertJsonPath('data.model', 'gpt-4.1-mini');
+    $update->assertJsonPath('data.voiceBaseUrl', 'https://voice.example.com/v1');
+    $update->assertJsonPath('data.voiceApiKey', 'sk-voice-123');
     $update->assertJsonPath('data.sttModel', 'whisper-2');
     $update->assertJsonPath('data.ttsModel', 'tts-1-hd');
     $update->assertJsonPath('data.ttsVoice', 'nova');
 
     $setting = AiAssistantSetting::current();
     expect($setting->model)->toBe('gpt-4.1-mini');
+    expect($setting->voice_base_url)->toBe('https://voice.example.com/v1');
+    expect($setting->voice_api_key)->toBe('sk-voice-123');
     expect($setting->stt_model)->toBe('whisper-2');
     expect($setting->tts_model)->toBe('tts-1-hd');
     expect($setting->tts_voice)->toBe('nova');
+});
+
+it('rejects unauthenticated ai assistant model listing', function () {
+    $this->postJson('/api/v1/ai-assistant-settings/models', [
+        'baseUrl' => 'https://api.openai.com/v1',
+    ])->assertUnauthorized();
+});
+
+it('forbids a non-admin from listing ai assistant models', function () {
+    $user = actingAsSettingsRole('manager');
+
+    $this->actingAs($user)->postJson('/api/v1/ai-assistant-settings/models', [
+        'baseUrl' => 'https://api.openai.com/v1',
+    ])->assertForbidden();
+});
+
+it('allows an admin to list models from the configured provider', function () {
+    $admin = actingAsSettingsRole('admin');
+
+    Http::fake([
+        'https://api.openai.com/v1/models' => Http::response([
+            'data' => [
+                ['id' => 'gpt-4o-mini'],
+                ['id' => 'gpt-4.1-mini'],
+            ],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/ai-assistant-settings/models', [
+        'baseUrl' => 'https://api.openai.com/v1',
+        'apiKey' => 'sk-test',
+    ]);
+
+    $response->assertOk();
+    $response->assertJson(['data' => ['gpt-4o-mini', 'gpt-4.1-mini']]);
+});
+
+it('returns a 502 when the provider model listing request fails', function () {
+    $admin = actingAsSettingsRole('admin');
+
+    Http::fake([
+        'https://api.openai.com/v1/models' => Http::response([], 500),
+    ]);
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/ai-assistant-settings/models', [
+        'baseUrl' => 'https://api.openai.com/v1',
+        'apiKey' => 'sk-test',
+    ]);
+
+    $response->assertStatus(502);
 });
 
 it('accepts ai assistant chat responses that return structured content parts', function () {
