@@ -172,7 +172,18 @@ async def create_session(payload: CreateSessionRequest) -> dict:
     def on_inbound_frame(frame_bytes: bytes) -> None:
         collector_holder["collector"].push_frame(frame_bytes)
 
-    session = CallSession(payload.whatsapp_call_id, on_inbound_frame=on_inbound_frame, language=payload.language)
+    async def on_call_ended() -> None:
+        try:
+            await laravel.call_ended(payload.whatsapp_call_id)
+        except Exception:
+            logger.exception("call %s: failed to report call-ended to Laravel", payload.whatsapp_call_id)
+
+    session = CallSession(
+        payload.whatsapp_call_id,
+        on_inbound_frame=on_inbound_frame,
+        on_call_ended=on_call_ended,
+        language=payload.language,
+    )
     session.ai_base_url = payload.ai_base_url
     session.ai_api_key = payload.ai_api_key
     session.tts_model = payload.tts_model or "tts-1"

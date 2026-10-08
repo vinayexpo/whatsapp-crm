@@ -296,7 +296,7 @@ it('advances the flow and records a collected variable on an action request', fu
     expect($whatsappCall->fresh()->collected_variables)->toBe(['budget' => '$5,000 to $10,000']);
 });
 
-it('terminates the call and dispatches completion on reaching an end_call node', function () {
+it('terminates the call without eagerly dispatching completion on reaching an end_call node', function () {
     Queue::fake();
 
     $flow = WhatsappCallFlow::factory()->create();
@@ -313,7 +313,13 @@ it('terminates the call and dispatches completion on reaching an end_call node',
     ]);
 
     $response->assertOk()->assertJsonPath('action', 'terminate');
-    Queue::assertPushed(ProcessWhatsappCallCompletion::class);
+
+    // The resolver only signals "nothing more to say" -- the sidecar still
+    // has to speak the closing line and tear down the peer connection
+    // before the call is actually marked completed (see
+    // SidecarCallController::ended()).
+    expect($whatsappCall->fresh()->status)->toBe('in_progress');
+    Queue::assertNotPushed(ProcessWhatsappCallCompletion::class);
 });
 
 it('returns 404 on an action request for an unknown call id', function () {

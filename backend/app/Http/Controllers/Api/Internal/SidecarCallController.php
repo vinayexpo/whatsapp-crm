@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Internal;
 
 use App\Events\WhatsappCallSdpAnswerReceived;
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessWhatsappCallCompletion;
 use App\Models\WhatsappCall;
 use App\Services\Calling\CallTurnRecorder;
 use App\Services\Calling\WhatsappCallDriverResolver;
@@ -70,6 +71,25 @@ class SidecarCallController extends Controller
         $whatsappCall->update(['transcript' => $transcript]);
 
         $turnRecorder->record($whatsappCall, 'ai', $validated['text']);
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    /**
+     * Called by the sidecar once it has actually closed the call's
+     * CallSession (peer connection torn down, closing line already spoken)
+     * -- this is the real end of the call, as opposed to
+     * WhatsappCallFlowStepResolver::resolve() returning action=terminate,
+     * which only means the script/LLM has nothing more to say. Marking
+     * completed here (not there) is what keeps the inbox's "Completed"
+     * message from appearing while the caller is still on the line.
+     */
+    public function ended(Request $request, WhatsappCall $whatsappCall): JsonResponse
+    {
+        if (! in_array($whatsappCall->status, ['completed', 'failed', 'missed'], true)) {
+            $whatsappCall->update(['status' => 'completed', 'ended_at' => now()]);
+            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
+        }
 
         return response()->json(['status' => 'ok']);
     }

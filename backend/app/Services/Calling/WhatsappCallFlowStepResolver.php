@@ -2,7 +2,6 @@
 
 namespace App\Services\Calling;
 
-use App\Jobs\ProcessWhatsappCallCompletion;
 use App\Events\WhatsappCallStatusUpdated;
 use App\Models\AiAssistantSetting;
 use App\Models\WhatsappCall;
@@ -58,9 +57,13 @@ class WhatsappCallFlowStepResolver
         $currentIndex = count($whatsappCall->collected_variables ?? []);
 
         if (! $flow || $currentIndex >= count($nodes)) {
-            $this->markCompleted($whatsappCall);
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
-
+            // Don't mark the call completed here -- the sidecar still has to
+            // speak its closing line and actually tear down the peer
+            // connection. Marking completed now (before any of that happens)
+            // makes the inbox show "Completed" while the caller is still on
+            // the line. The sidecar reports real completion via POST
+            // .../ended once it has actually closed the session (see
+            // SidecarCallController::ended()).
             return ['action' => 'terminate'];
         }
 
@@ -75,16 +78,11 @@ class WhatsappCallFlowStepResolver
         WhatsappCallStatusUpdated::dispatch($whatsappCall->fresh());
 
         if ($node['type'] === 'end_call') {
-            $this->markCompleted($whatsappCall);
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
-
             return ['action' => 'terminate', 'prompt' => $node['prompt'] ?? null];
         }
 
         if ($node['type'] === 'transfer_human') {
             $whatsappCall->update(['needs_human_followup' => true]);
-            $this->markCompleted($whatsappCall);
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
 
             return ['action' => 'terminate', 'prompt' => $node['prompt'] ?? null];
         }
@@ -110,9 +108,6 @@ class WhatsappCallFlowStepResolver
         $transcript = $whatsappCall->transcript ?? [];
 
         if (count($transcript) >= self::MAX_AI_CONVERSATION_TURNS) {
-            $this->markCompleted($whatsappCall);
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
-
             return ['action' => 'terminate', 'prompt' => $flow->fallback_message];
         }
 
@@ -132,9 +127,6 @@ class WhatsappCallFlowStepResolver
         $decoded = $content !== null ? json_decode($content, true) : null;
 
         if (! is_array($decoded) || ! isset($decoded['say']) || ! is_string($decoded['say'])) {
-            $this->markCompleted($whatsappCall);
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
-
             return ['action' => 'terminate', 'prompt' => $flow->fallback_message];
         }
 
@@ -142,16 +134,11 @@ class WhatsappCallFlowStepResolver
 
         if (! empty($decoded['handoff_to_human'])) {
             $whatsappCall->update(['needs_human_followup' => true]);
-            $this->markCompleted($whatsappCall);
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
 
             return ['action' => 'terminate', 'prompt' => $decoded['say']];
         }
 
         if (! empty($decoded['done'])) {
-            $this->markCompleted($whatsappCall);
-            ProcessWhatsappCallCompletion::dispatch($whatsappCall->id);
-
             return ['action' => 'terminate', 'prompt' => $decoded['say']];
         }
 
@@ -184,19 +171,5 @@ class WhatsappCallFlowStepResolver
         }
 
         return $messages;
-    }
-
-    // Meta's own status webhook may or may not deliver a terminal status for
-    // sidecar-driven calls (it fires independently of the flow reaching its
-    // last node), so the resolver marks the call completed itself the moment
-    // it decides the conversation is over — otherwise the call sits stuck at
-    // status=in_progress forever.
-    private function markCompleted(WhatsappCall $whatsappCall): void
-    {
-        if (in_array($whatsappCall->status, ['completed', 'failed', 'missed'], true)) {
-            return;
-        }
-
-        $whatsappCall->update(['status' => 'completed', 'ended_at' => now()]);
     }
 }

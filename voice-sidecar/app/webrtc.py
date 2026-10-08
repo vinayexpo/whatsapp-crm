@@ -94,9 +94,17 @@ def build_ice_servers() -> list[RTCIceServer]:
 
 
 class CallSession:
-    def __init__(self, whatsapp_call_id: str, on_inbound_frame=None, language: str | None = None) -> None:
+    def __init__(self, whatsapp_call_id: str, on_inbound_frame=None, on_call_ended=None, language: str | None = None) -> None:
         self.whatsapp_call_id = whatsapp_call_id
         self.language = language
+        # Fired exactly once, the first time this session is actually torn
+        # down -- either the inbound RTP track ending (caller hung up) or an
+        # explicit close() (script/LLM decided to end the call, or Laravel's
+        # DELETE /sessions backstop). This is the real "call ended" signal;
+        # main.py uses it to report completion to Laravel only once the call
+        # has truly finished, not when the script merely runs out of lines.
+        self._on_call_ended = on_call_ended
+        self._ended_reported = False
         # Resolved per-call from the company's AiAssistantSetting (passed in
         # the /sessions payload) -- there is no sidecar-local config for
         # these, since the whole point is a per-company OpenAI-compatible
@@ -173,6 +181,7 @@ class CallSession:
             except MediaStreamError:
                 logger.info("call %s: inbound track ended after %d frames", self.whatsapp_call_id, frames_received)
                 self.call_ended = True
+                self._report_ended()
                 break
 
             frames_received += 1
@@ -259,7 +268,14 @@ class CallSession:
 
         return self.pc.localDescription.sdp
 
+    def _report_ended(self) -> None:
+        if self._ended_reported or self._on_call_ended is None:
+            return
+        self._ended_reported = True
+        asyncio.ensure_future(self._on_call_ended())
+
     async def close(self) -> None:
         if self._inbound_task is not None:
             self._inbound_task.cancel()
         await self.pc.close()
+        self._report_ended()

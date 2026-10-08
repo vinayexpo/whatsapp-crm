@@ -94,8 +94,12 @@ it('terminates the call when the ai marks the conversation done', function () {
         ->assertJsonPath('action', 'terminate')
         ->assertJsonPath('prompt', 'Great, thanks! Goodbye.');
 
-    expect($whatsappCall->fresh()->status)->toBe('completed');
-    Queue::assertPushed(ProcessWhatsappCallCompletion::class);
+    // The resolver only signals "nothing more to say" -- the sidecar still
+    // has to speak the closing line and tear down the peer connection
+    // before the call is actually marked completed (see
+    // SidecarCallController::ended()).
+    expect($whatsappCall->fresh()->status)->toBe('in_progress');
+    Queue::assertNotPushed(ProcessWhatsappCallCompletion::class);
 });
 
 it('terminates and flags human followup when the ai requests handoff', function () {
@@ -125,8 +129,8 @@ it('terminates and flags human followup when the ai requests handoff', function 
     $response->assertOk()->assertJsonPath('action', 'terminate');
 
     expect($whatsappCall->fresh()->needs_human_followup)->toBeTrue();
-    expect($whatsappCall->fresh()->status)->toBe('completed');
-    Queue::assertPushed(ProcessWhatsappCallCompletion::class);
+    expect($whatsappCall->fresh()->status)->toBe('in_progress');
+    Queue::assertNotPushed(ProcessWhatsappCallCompletion::class);
 });
 
 it('falls back to the flow fallback message when the ai response is malformed', function () {
@@ -164,7 +168,7 @@ it('falls back to the flow fallback message when the ai response is malformed', 
         ->assertJsonPath('action', 'terminate')
         ->assertJsonPath('prompt', 'Sorry, something went wrong. Goodbye.');
 
-    expect($whatsappCall->fresh()->status)->toBe('completed');
+    expect($whatsappCall->fresh()->status)->toBe('in_progress');
 });
 
 it('falls back to the flow fallback message when no ai assistant is configured', function () {
@@ -232,7 +236,7 @@ it('force-terminates after hitting the hard turn ceiling regardless of the ai re
         ->assertJsonPath('prompt', 'We have to end the call now. Goodbye.');
 
     Http::assertNothingSent();
-    expect($whatsappCall->fresh()->status)->toBe('completed');
+    expect($whatsappCall->fresh()->status)->toBe('in_progress');
 });
 
 it('still walks fixed nodes unaffected when conversation_mode is scripted', function () {
