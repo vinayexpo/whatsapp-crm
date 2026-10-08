@@ -380,8 +380,10 @@ it('allows an admin to view and update the global ai assistant settings', functi
         'voiceBaseUrl' => 'https://voice.example.com/v1',
         'voiceApiKey' => 'sk-voice-123',
         'sttModel' => 'whisper-2',
+        'sttUrl' => 'https://voice.example.com/v1/stt/transcribe',
         'ttsModel' => 'tts-1-hd',
         'ttsVoice' => 'nova',
+        'ttsUrl' => 'https://voice.example.com/v1/tts/synthesize',
     ]);
 
     $update->assertOk();
@@ -389,16 +391,20 @@ it('allows an admin to view and update the global ai assistant settings', functi
     $update->assertJsonPath('data.voiceBaseUrl', 'https://voice.example.com/v1');
     $update->assertJsonPath('data.voiceApiKey', 'sk-voice-123');
     $update->assertJsonPath('data.sttModel', 'whisper-2');
+    $update->assertJsonPath('data.sttUrl', 'https://voice.example.com/v1/stt/transcribe');
     $update->assertJsonPath('data.ttsModel', 'tts-1-hd');
     $update->assertJsonPath('data.ttsVoice', 'nova');
+    $update->assertJsonPath('data.ttsUrl', 'https://voice.example.com/v1/tts/synthesize');
 
     $setting = AiAssistantSetting::current();
     expect($setting->model)->toBe('gpt-4.1-mini');
     expect($setting->voice_base_url)->toBe('https://voice.example.com/v1');
     expect($setting->voice_api_key)->toBe('sk-voice-123');
     expect($setting->stt_model)->toBe('whisper-2');
+    expect($setting->stt_url)->toBe('https://voice.example.com/v1/stt/transcribe');
     expect($setting->tts_model)->toBe('tts-1-hd');
     expect($setting->tts_voice)->toBe('nova');
+    expect($setting->tts_url)->toBe('https://voice.example.com/v1/tts/synthesize');
 });
 
 it('rejects unauthenticated ai assistant model listing', function () {

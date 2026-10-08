@@ -37,8 +37,10 @@ it('posts the meta sdp offer and the company ai voice settings to the sidecar se
         'voice_base_url' => 'https://voice.openai.com/v1',
         'voice_api_key' => 'sk-voice-test',
         'stt_model' => 'whisper-1',
+        'stt_url' => 'https://voice.openai.com/v1/stt/transcribe',
         'tts_model' => 'tts-1',
         'tts_voice' => 'alloy',
+        'tts_url' => 'https://voice.openai.com/v1/tts/synthesize',
     ]);
 
     (new RouteInboundCallToSidecar($whatsappCall->id, 'v=0...fake-meta-offer'))->handle();
@@ -54,8 +56,10 @@ it('posts the meta sdp offer and the company ai voice settings to the sidecar se
             && $request['ai_base_url'] === 'https://voice.openai.com/v1'
             && $request['ai_api_key'] === 'sk-voice-test'
             && $request['stt_model'] === 'whisper-1'
+            && $request['stt_url'] === 'https://voice.openai.com/v1/stt/transcribe'
             && $request['tts_model'] === 'tts-1'
-            && $request['tts_voice'] === 'alloy';
+            && $request['tts_voice'] === 'alloy'
+            && $request['tts_url'] === 'https://voice.openai.com/v1/tts/synthesize';
     });
 });
 
@@ -77,8 +81,10 @@ it('posts null ai voice settings when the company has not configured an AI Assis
         return $request['ai_base_url'] === null
             && $request['ai_api_key'] === null
             && $request['stt_model'] === null
+            && $request['stt_url'] === null
             && $request['tts_model'] === null
-            && $request['tts_voice'] === null;
+            && $request['tts_voice'] === null
+            && $request['tts_url'] === null;
     });
 });
 

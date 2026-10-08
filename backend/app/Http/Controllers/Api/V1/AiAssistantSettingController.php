@@ -32,8 +32,10 @@ class AiAssistantSettingController extends Controller
             'voiceBaseUrl' => ['nullable', 'string', 'max:255'],
             'voiceApiKey' => ['nullable', 'string'],
             'sttModel' => ['string', 'max:255'],
+            'sttUrl' => ['nullable', 'string', 'max:255'],
             'ttsModel' => ['string', 'max:255'],
             'ttsVoice' => ['string', 'max:255'],
+            'ttsUrl' => ['nullable', 'string', 'max:255'],
         ]);
 
         $setting = AiAssistantSetting::current();
@@ -45,8 +47,10 @@ class AiAssistantSettingController extends Controller
             'voice_base_url' => $data['voiceBaseUrl'] ?? $setting->voice_base_url,
             'voice_api_key' => $data['voiceApiKey'] ?? $setting->voice_api_key,
             'stt_model' => $data['sttModel'] ?? $setting->stt_model,
+            'stt_url' => $data['sttUrl'] ?? $setting->stt_url,
             'tts_model' => $data['ttsModel'] ?? $setting->tts_model,
             'tts_voice' => $data['ttsVoice'] ?? $setting->tts_voice,
+            'tts_url' => $data['ttsUrl'] ?? $setting->tts_url,
         ]);
 
         return response()->json(['data' => new AiAssistantSettingResource($setting)]);

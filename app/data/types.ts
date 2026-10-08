@@ -496,8 +496,10 @@ export interface AiAssistantSettings {
   voiceBaseUrl: string | null;
   voiceApiKey: string | null;
   sttModel: string;
+  sttUrl: string | null;
   ttsModel: string;
   ttsVoice: string;
+  ttsUrl: string | null;
 }
 
 export interface AiChatMessage {

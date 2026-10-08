@@ -65,8 +65,10 @@ class RouteInboundCallToSidecar implements ShouldQueue
                 'ai_base_url' => $aiSettings?->voice_base_url,
                 'ai_api_key' => $aiSettings?->voice_api_key,
                 'stt_model' => $aiSettings?->stt_model,
+                'stt_url' => $aiSettings?->stt_url,
                 'tts_model' => $aiSettings?->tts_model,
                 'tts_voice' => $aiSettings?->tts_voice,
+                'tts_url' => $aiSettings?->tts_url,
             ])
             ->throw();
     }

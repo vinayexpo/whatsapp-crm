@@ -60,8 +60,10 @@ class CreateSessionRequest(BaseModel):
     ai_base_url: str | None = None
     ai_api_key: str | None = None
     stt_model: str | None = None
+    stt_url: str | None = None
     tts_model: str | None = None
     tts_voice: str | None = None
+    tts_url: str | None = None
 
 
 class SpeakRequest(BaseModel):
@@ -105,6 +107,7 @@ async def speak(session: CallSession, text: str, voice_id: str | None) -> None:
             # A flow-level tts_voice_id override takes precedence over the
             # company-wide default voice.
             voice_id or session.tts_voice,
+            session.tts_url,
         ):
             total_bytes += len(chunk)
             session.audio_track.push_pcm(chunk)
@@ -174,6 +177,7 @@ async def create_session(payload: CreateSessionRequest) -> dict:
     session.ai_api_key = payload.ai_api_key
     session.tts_model = payload.tts_model or "tts-1"
     session.tts_voice = payload.tts_voice or "alloy"
+    session.tts_url = payload.tts_url
     sessions[payload.whatsapp_call_id] = session
 
     async def on_utterance(text: str) -> None:
@@ -187,6 +191,7 @@ async def create_session(payload: CreateSessionRequest) -> dict:
             stt_model=payload.stt_model or "whisper-1",
             cpu_lock=cpu_lock,
             language=payload.language,
+            stt_url=payload.stt_url,
         )
     else:
         logger.warning(

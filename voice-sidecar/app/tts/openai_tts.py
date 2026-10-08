@@ -25,12 +25,14 @@ class OpenAiTtsProvider:
         api_key: str | None,
         model: str,
         voice: str,
+        tts_url: str | None = None,
     ) -> AsyncIterator[bytes]:
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        url = tts_url or f"{base_url.rstrip('/')}/audio/speech"
 
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
             response = await client.post(
-                f"{base_url.rstrip('/')}/audio/speech",
+                url,
                 headers=headers,
                 json={
                     "model": model,

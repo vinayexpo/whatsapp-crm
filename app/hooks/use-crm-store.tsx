@@ -159,8 +159,10 @@ const DEFAULT_AI_ASSISTANT_SETTINGS: AiAssistantSettings = {
   voiceBaseUrl: "",
   voiceApiKey: "",
   sttModel: "whisper-1",
+  sttUrl: "",
   ttsModel: "tts-1",
   ttsVoice: "alloy",
+  ttsUrl: "",
 };
 
 const DEFAULT_PAGINATION: PaginationMeta = { currentPage: 1, lastPage: 1, perPage: 20, total: 0 };

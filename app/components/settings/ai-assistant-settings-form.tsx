@@ -61,8 +61,10 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
   const [voiceBaseUrl, setVoiceBaseUrl] = useState(settings.voiceBaseUrl ?? "");
   const [voiceApiKey, setVoiceApiKey] = useState(settings.voiceApiKey ?? "");
   const [sttModel, setSttModel] = useState(settings.sttModel);
+  const [sttUrl, setSttUrl] = useState(settings.sttUrl ?? "");
   const [ttsModel, setTtsModel] = useState(settings.ttsModel);
   const [ttsVoice, setTtsVoice] = useState(settings.ttsVoice);
+  const [ttsUrl, setTtsUrl] = useState(settings.ttsUrl ?? "");
   const [showApiKey, setShowApiKey] = useState(false);
   const [showVoiceApiKey, setShowVoiceApiKey] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -77,8 +79,10 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
     setVoiceBaseUrl(settings.voiceBaseUrl ?? "");
     setVoiceApiKey(settings.voiceApiKey ?? "");
     setSttModel(settings.sttModel);
+    setSttUrl(settings.sttUrl ?? "");
     setTtsModel(settings.ttsModel);
     setTtsVoice(settings.ttsVoice);
+    setTtsUrl(settings.ttsUrl ?? "");
   }, [
     settings.baseUrl,
     settings.apiKey,
@@ -86,8 +90,10 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
     settings.voiceBaseUrl,
     settings.voiceApiKey,
     settings.sttModel,
+    settings.sttUrl,
     settings.ttsModel,
     settings.ttsVoice,
+    settings.ttsUrl,
   ]);
 
   // Fetch the model list for whatever base_url/api_key is already saved, so
@@ -109,8 +115,10 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
     voiceBaseUrl !== (settings.voiceBaseUrl ?? "") ||
     voiceApiKey !== (settings.voiceApiKey ?? "") ||
     sttModel !== settings.sttModel ||
+    sttUrl !== (settings.sttUrl ?? "") ||
     ttsModel !== settings.ttsModel ||
-    ttsVoice !== settings.ttsVoice;
+    ttsVoice !== settings.ttsVoice ||
+    ttsUrl !== (settings.ttsUrl ?? "");
   const canSave =
     baseUrl.trim().length > 0 &&
     apiKey.trim().length > 0 &&
@@ -127,8 +135,10 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
       voiceBaseUrl: voiceBaseUrl.trim() || null,
       voiceApiKey: voiceApiKey.trim() || null,
       sttModel: sttModel.trim(),
+      sttUrl: sttUrl.trim() || null,
       ttsModel: ttsModel.trim(),
       ttsVoice: ttsVoice.trim(),
+      ttsUrl: ttsUrl.trim() || null,
     });
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2500);
@@ -268,6 +278,15 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
           />
         )}
       />
+      <TextField
+        label="Speech-to-Text Endpoint URL (optional)"
+        value={sttUrl}
+        onChange={(e) => setSttUrl(e.target.value)}
+        placeholder={`${voiceBaseUrl || "https://api.openai.com/v1"}/audio/transcriptions`}
+        helperText="Only needed if this provider's transcription endpoint isn't {Voice Base API URL}/audio/transcriptions."
+        fullWidth
+        disabled={readOnly}
+      />
       <Autocomplete
         freeSolo
         options={voiceModels.options}
@@ -295,6 +314,15 @@ export function AiAssistantSettingsForm({ settings, onChange, readOnly = false }
             }}
           />
         )}
+      />
+      <TextField
+        label="Text-to-Speech Endpoint URL (optional)"
+        value={ttsUrl}
+        onChange={(e) => setTtsUrl(e.target.value)}
+        placeholder={`${voiceBaseUrl || "https://api.openai.com/v1"}/audio/speech`}
+        helperText="Only needed if this provider's speech synthesis endpoint isn't {Voice Base API URL}/audio/speech."
+        fullWidth
+        disabled={readOnly}
       />
       <TextField
         label="Text-to-Speech Voice"

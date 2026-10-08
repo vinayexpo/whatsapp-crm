@@ -12,7 +12,7 @@ class AiAssistantSetting extends Model
 
     protected $fillable = [
         'base_url', 'api_key', 'model', 'stt_model', 'tts_model', 'tts_voice',
-        'voice_base_url', 'voice_api_key',
+        'voice_base_url', 'voice_api_key', 'tts_url', 'stt_url',
     ];
 
     public static function current(): self

@@ -72,6 +72,7 @@ async def transcribe_pcm48k(
     api_key: str | None,
     model: str,
     language: str | None = None,
+    stt_url: str | None = None,
 ) -> str:
     """pcm is 16-bit mono @ 48kHz. Posts to an OpenAI-compatible
     /audio/transcriptions endpoint and returns the transcript, or "" if the
@@ -83,11 +84,12 @@ async def transcribe_pcm48k(
         data["language"] = language
 
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    url = stt_url or f"{base_url.rstrip('/')}/audio/transcriptions"
 
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
             response = await client.post(
-                f"{base_url.rstrip('/')}/audio/transcriptions",
+                url,
                 headers=headers,
                 data=data,
                 files={"file": ("utterance.wav", wav_bytes, "audio/wav")},
@@ -117,6 +119,7 @@ class UtteranceCollector:
         stt_model: str,
         cpu_lock: asyncio.Lock | None = None,
         language: str | None = None,
+        stt_url: str | None = None,
     ) -> None:
         self._vad = webrtcvad.Vad(3)
         self._on_utterance = on_utterance
@@ -125,6 +128,7 @@ class UtteranceCollector:
         self._stt_model = stt_model
         self._cpu_lock = cpu_lock or asyncio.Lock()
         self._language = language
+        self._stt_url = stt_url
         self._speech_frames: list[bytes] = []
         self._silence_run = 0
         self._in_speech = False
@@ -193,7 +197,7 @@ class UtteranceCollector:
                     return
 
                 text = await transcribe_pcm48k(
-                    pcm, self._stt_base_url, self._stt_api_key, self._stt_model, self._language,
+                    pcm, self._stt_base_url, self._stt_api_key, self._stt_model, self._language, self._stt_url,
                 )
         except Exception:
             logger.exception("failed to transcribe caller utterance")

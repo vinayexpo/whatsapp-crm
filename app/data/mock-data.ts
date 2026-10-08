@@ -799,6 +799,8 @@ export const DEFAULT_AI_ASSISTANT_SETTINGS: AiAssistantSettings = {
   voiceBaseUrl: "",
   voiceApiKey: "",
   sttModel: "whisper-1",
+  sttUrl: "",
   ttsModel: "tts-1",
   ttsVoice: "alloy",
+  ttsUrl: "",
 };
