@@ -37,6 +37,13 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
+const AVAILABILITY_LABELS: Record<Product["availability"], string> = {
+  in_stock: "In stock",
+  out_of_stock: "Out of stock",
+  preorder: "Preorder",
+  discontinued: "Discontinued",
+};
+
 export default function CommerceCatalog() {
   const [tab, setTab] = useState<"products" | "categories" | "addons" | "inventory">("products");
   const [products, setProducts] = useState<Product[]>([]);
@@ -318,25 +325,42 @@ export default function CommerceCatalog() {
                           onClick={() => setSelectedProductId(product.id)}
                         >
                           <Stack direction="row" sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
-                            <Box
-                              sx={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 2,
-                                bgcolor: "rgba(91, 110, 245, 0.12)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                            >
-                              <Inventory2RoundedIcon sx={{ color: "#5B6EF5" }} fontSize="small" />
-                            </Box>
-                            <Chip
-                              label={product.isActive ? "Active" : "Inactive"}
-                              size="small"
-                              color={product.isActive ? "success" : "default"}
-                              variant={product.isActive ? "filled" : "outlined"}
-                            />
+                            {product.images.length > 0 ? (
+                              <Box
+                                component="img"
+                                src={product.images[0]}
+                                alt={product.name}
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 2,
+                                  objectFit: "cover",
+                                  bgcolor: "rgba(91, 110, 245, 0.12)",
+                                }}
+                              />
+                            ) : (
+                              <Box
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 2,
+                                  bgcolor: "rgba(91, 110, 245, 0.12)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <Inventory2RoundedIcon sx={{ color: "#5B6EF5" }} fontSize="small" />
+                              </Box>
+                            )}
+                            <Stack direction="row" spacing={0.75}>
+                              <Chip
+                                label={AVAILABILITY_LABELS[product.availability]}
+                                size="small"
+                                color={product.availability === "in_stock" ? "success" : "default"}
+                                variant={product.availability === "in_stock" ? "filled" : "outlined"}
+                              />
+                            </Stack>
                           </Stack>
                           <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 1.5 }}>
                             {product.name}

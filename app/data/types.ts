@@ -640,6 +640,11 @@ export interface Product {
   pickupAvailable: boolean;
   isService: boolean;
   isActive: boolean;
+  availability: "in_stock" | "out_of_stock" | "preorder" | "discontinued";
+  condition: "new" | "refurbished" | "used";
+  productUrl: string | null;
+  gtin: string | null;
+  mpn: string | null;
   variants: ProductVariant[];
   addons: AddonDefinition[];
   createdAt: string;

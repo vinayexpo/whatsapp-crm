@@ -12,7 +12,7 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
         $products = [];
         $url = "https://graph.facebook.com/v20.0/{$catalogId}/products";
         $params = [
-            'fields' => 'id,retailer_id,name,description,price,availability,image_url',
+            'fields' => 'id,retailer_id,name,description,price,availability,image_url,url,condition,gtin,mpn',
             'limit' => 100,
         ];
 
@@ -25,8 +25,12 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
                     'name' => $item['name'] ?? '',
                     'description' => $item['description'] ?? null,
                     'price_minor' => $this->parsePriceMinor($item['price'] ?? null),
-                    'availability' => $item['availability'] ?? 'in stock',
+                    'availability' => $this->normalizeAvailability($item['availability'] ?? null),
                     'image_url' => $item['image_url'] ?? null,
+                    'product_url' => $item['url'] ?? null,
+                    'condition' => $this->normalizeCondition($item['condition'] ?? null),
+                    'gtin' => $item['gtin'] ?? null,
+                    'mpn' => $item['mpn'] ?? null,
                 ];
             }
 
@@ -51,8 +55,12 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
                         'name' => $item['name'],
                         'description' => $item['description'] ?? '',
                         'price' => number_format($item['price_minor'] / 100, 2, '.', '') . ' ' . ($item['currency'] ?? 'USD'),
-                        'availability' => $item['availability'],
+                        'availability' => $this->denormalizeAvailability($item['availability'] ?? 'in_stock'),
                         'image_url' => $item['image_url'] ?? '',
+                        'url' => $item['product_url'] ?? '',
+                        'condition' => $item['condition'] ?? 'new',
+                        'gtin' => $item['gtin'] ?? '',
+                        'mpn' => $item['mpn'] ?? '',
                     ],
                 ],
             ]),
@@ -68,5 +76,34 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
         [$amount] = explode(' ', trim($price), 2) + [null, null];
 
         return (int) round((float) $amount * 100);
+    }
+
+    private function normalizeAvailability(?string $availability): string
+    {
+        return match ($availability) {
+            'out of stock' => 'out_of_stock',
+            'preorder' => 'preorder',
+            'discontinued' => 'discontinued',
+            default => 'in_stock',
+        };
+    }
+
+    private function denormalizeAvailability(string $availability): string
+    {
+        return match ($availability) {
+            'out_of_stock' => 'out of stock',
+            'preorder' => 'preorder',
+            'discontinued' => 'discontinued',
+            default => 'in stock',
+        };
+    }
+
+    private function normalizeCondition(?string $condition): string
+    {
+        return match ($condition) {
+            'refurbished' => 'refurbished',
+            'used' => 'used',
+            default => 'new',
+        };
     }
 }

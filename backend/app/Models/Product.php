@@ -35,6 +35,11 @@ class Product extends Model
         'pickup_available',
         'is_service',
         'is_active',
+        'availability',
+        'condition',
+        'product_url',
+        'gtin',
+        'mpn',
     ];
 
     protected function casts(): array

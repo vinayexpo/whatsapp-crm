@@ -1324,6 +1324,11 @@ async function createProduct(product: {
   pickupAvailable?: boolean;
   isService?: boolean;
   isActive?: boolean;
+  availability?: Product["availability"];
+  condition?: Product["condition"];
+  productUrl?: string | null;
+  gtin?: string | null;
+  mpn?: string | null;
 }): Promise<Product> {
   const { data } = await apiRequest<{ data: Product }>("/api/v1/commerce/products", {
     method: "POST",
@@ -1356,6 +1361,11 @@ async function updateProduct(
     pickupAvailable: boolean;
     isService: boolean;
     isActive: boolean;
+    availability: Product["availability"];
+    condition: Product["condition"];
+    productUrl: string | null;
+    gtin: string | null;
+    mpn: string | null;
   }>,
 ): Promise<Product> {
   const { data } = await apiRequest<{ data: Product }>(`/api/v1/commerce/products/${productId}`, {

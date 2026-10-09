@@ -184,6 +184,11 @@ class ProductController extends Controller
             'pickupAvailable' => ['sometimes', 'boolean'],
             'isService' => ['sometimes', 'boolean'],
             'isActive' => ['sometimes', 'boolean'],
+            'availability' => ['sometimes', 'in:in_stock,out_of_stock,preorder,discontinued'],
+            'condition' => ['sometimes', 'in:new,refurbished,used'],
+            'productUrl' => ['sometimes', 'nullable', 'string', 'max:2048'],
+            'gtin' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'mpn' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
     }
 
@@ -217,6 +222,11 @@ class ProductController extends Controller
             'pickupAvailable' => 'pickup_available',
             'isService' => 'is_service',
             'isActive' => 'is_active',
+            'availability' => 'availability',
+            'condition' => 'condition',
+            'productUrl' => 'product_url',
+            'gtin' => 'gtin',
+            'mpn' => 'mpn',
         ];
 
         foreach ($map as $requestKey => $column) {

@@ -266,7 +266,7 @@ it('sends a properly formatted batch request when pushing via the real driver', 
         'name' => 'Widget',
         'description' => 'A widget',
         'price_minor' => 1299,
-        'availability' => 'in stock',
+        'availability' => 'in_stock',
         'image_url' => 'https://example.com/w.jpg',
     ]);
 
