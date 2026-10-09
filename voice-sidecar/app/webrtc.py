@@ -118,6 +118,14 @@ class CallSession:
         self.pc.addTrack(self.audio_track)
         self._on_inbound_frame = on_inbound_frame
         self._inbound_task: asyncio.Task | None = None
+        # Set once the script/LLM has spoken its closing line. From that
+        # point the session no longer reacts to caller speech, but the peer
+        # connection is deliberately left open -- actually hanging up is the
+        # caller's doing, detected via the inbound track ending (see
+        # _consume_inbound_audio). The watchdog below is a safety net only,
+        # for callers who never hang up after the AI is done talking.
+        self.conversation_over = False
+        self._hangup_watchdog_task: asyncio.Task | None = None
         # Starts gated "on" (not "off") because ICE/DTLS negotiation and the
         # greeting's priming silence happen before speak() ever runs for this
         # call -- without this, inbound frames during that window (echo, line
@@ -181,6 +189,8 @@ class CallSession:
             except MediaStreamError:
                 logger.info("call %s: inbound track ended after %d frames", self.whatsapp_call_id, frames_received)
                 self.call_ended = True
+                if self._hangup_watchdog_task is not None:
+                    self._hangup_watchdog_task.cancel()
                 self._report_ended()
                 break
 
@@ -274,7 +284,30 @@ class CallSession:
         self._ended_reported = True
         asyncio.ensure_future(self._on_call_ended())
 
+    def mark_conversation_over(self, hangup_timeout: float = 45.0) -> None:
+        """The script/LLM has spoken its closing line and has nothing more
+        to say. This deliberately does NOT close the peer connection --
+        actually ending the call is the caller's action (hanging up), not
+        ours, so the inbox shouldn't show "Completed" until that happens.
+        Starts a bounded watchdog that force-closes if the caller never
+        hangs up, so a silent line doesn't hold the session open forever."""
+        if self.conversation_over:
+            return
+        self.conversation_over = True
+
+        async def _watchdog() -> None:
+            await asyncio.sleep(hangup_timeout)
+            logger.info(
+                "call %s: caller did not hang up within %.0fs of the closing line, force-closing",
+                self.whatsapp_call_id, hangup_timeout,
+            )
+            await self.close()
+
+        self._hangup_watchdog_task = asyncio.ensure_future(_watchdog())
+
     async def close(self) -> None:
+        if self._hangup_watchdog_task is not None:
+            self._hangup_watchdog_task.cancel()
         if self._inbound_task is not None:
             self._inbound_task.cancel()
         await self.pc.close()

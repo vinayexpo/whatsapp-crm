@@ -149,6 +149,13 @@ async def healthz() -> dict:
 async def handle_caller_utterance(session: CallSession, voice_id: str | None, text: str) -> None:
     logger.info("call %s: caller said %r", session.whatsapp_call_id, text)
 
+    if session.conversation_over:
+        # The script/LLM already spoke its closing line. We're only still
+        # here waiting for the caller to hang up (see mark_conversation_over)
+        # -- nothing left to resolve, so don't re-engage the flow/LLM.
+        logger.info("call %s: ignoring caller speech after closing line", session.whatsapp_call_id)
+        return
+
     try:
         result = await laravel.next_prompt(session.whatsapp_call_id, text)
     except Exception:
@@ -160,9 +167,13 @@ async def handle_caller_utterance(session: CallSession, voice_id: str | None, te
         await speak(session, prompt, voice_id)
 
     if result.get("action") == "terminate":
-        session_obj = sessions.pop(session.whatsapp_call_id, None)
-        if session_obj:
-            await session_obj.close()
+        # Speaking the closing line is not the same as the call ending --
+        # the caller is still on the line until their device actually hangs
+        # up. Don't pop/close the session here; mark_conversation_over()
+        # leaves the peer connection open (ignoring further caller speech)
+        # and lets the inbound-track-ended path report real completion,
+        # with a bounded watchdog as a backstop. See CallSession docs.
+        session.mark_conversation_over()
 
 
 @app.post("/sessions")
