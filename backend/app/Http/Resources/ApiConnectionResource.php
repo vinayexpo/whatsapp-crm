@@ -19,6 +19,7 @@ class ApiConnectionResource extends JsonResource
             'accountName' => $this->account_name,
             'identifier' => $this->identifier,
             'status' => $this->status,
+            'hasAppSecret' => (bool) $this->app_secret,
             'wabaId' => $this->waba_id,
             'phoneNumberId' => $this->phone_number_id,
             'instagramAccountId' => $this->instagram_account_id,

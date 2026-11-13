@@ -72,6 +72,50 @@ it('rejects an inbound webhook with an invalid signature', function () {
     expect(WebhookEvent::query()->count())->toBe(0);
 });
 
+it('accepts an inbound webhook signed with a connection app secret from a different meta app', function () {
+    Queue::fake();
+    config(['services.meta.app_secret' => 'crm-app-secret']);
+
+    ApiConnection::factory()->create([
+        'channel' => 'whatsapp',
+        'access_token' => 'test-token',
+        'app_secret' => 'other-app-secret',
+    ]);
+
+    $payload = inboundWhatsAppPayload();
+    $body = json_encode($payload);
+    $signature = 'sha256='.hash_hmac('sha256', $body, 'other-app-secret');
+
+    $this->call('POST', '/api/webhooks/whatsapp', [], [], [], [
+        'CONTENT_TYPE' => 'application/json',
+        'HTTP_X-Hub-Signature-256' => $signature,
+    ], $body)->assertNoContent();
+
+    expect(WebhookEvent::query()->count())->toBe(1);
+    Queue::assertPushed(ProcessInboundWhatsAppMessage::class);
+});
+
+it('rejects an inbound webhook signed with a secret matching neither the global nor any connection secret', function () {
+    config(['services.meta.app_secret' => 'crm-app-secret']);
+
+    ApiConnection::factory()->create([
+        'channel' => 'whatsapp',
+        'access_token' => 'test-token',
+        'app_secret' => 'other-app-secret',
+    ]);
+
+    $payload = inboundWhatsAppPayload();
+    $body = json_encode($payload);
+    $signature = 'sha256='.hash_hmac('sha256', $body, 'unknown-secret');
+
+    $this->call('POST', '/api/webhooks/whatsapp', [], [], [], [
+        'CONTENT_TYPE' => 'application/json',
+        'HTTP_X-Hub-Signature-256' => $signature,
+    ], $body)->assertUnauthorized();
+
+    expect(WebhookEvent::query()->count())->toBe(0);
+});
+
 it('accepts an inbound webhook with a valid signature and dispatches processing', function () {
     Queue::fake();
     config(['services.meta.app_secret' => 'test-secret']);

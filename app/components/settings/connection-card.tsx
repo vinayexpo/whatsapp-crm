@@ -36,13 +36,15 @@ interface ConnectionCardProps {
       instagramAccountId?: string;
       twilioAccountSid?: string;
       twilioPhoneNumber?: string;
+      appSecret?: string;
     },
   ) => Promise<void>;
   onSaveVerifyToken?: (connectionId: string, verifyToken: string) => Promise<void>;
+  onSaveAppSecret?: (connectionId: string, appSecret: string) => Promise<void>;
   disabled?: boolean;
 }
 
-export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyToken, disabled = false }: ConnectionCardProps) {
+export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyToken, onSaveAppSecret, disabled = false }: ConnectionCardProps) {
   const isConnected = connection.status === "connected";
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ count: number; syncedAt: string } | null>(null);
@@ -56,6 +58,7 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
   const [accessToken, setAccessToken] = useState("");
   const [wabaId, setWabaId] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [appSecret, setAppSecret] = useState("");
   const [instagramAccountId, setInstagramAccountId] = useState("");
   const [twilioAccountSid, setTwilioAccountSid] = useState("");
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState("");
@@ -68,6 +71,11 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
   const [savingVerifyToken, setSavingVerifyToken] = useState(false);
   const [verifyTokenSaved, setVerifyTokenSaved] = useState(false);
   const [verifyTokenError, setVerifyTokenError] = useState<string | null>(null);
+
+  const [appSecretInput, setAppSecretInput] = useState("");
+  const [savingAppSecret, setSavingAppSecret] = useState(false);
+  const [appSecretSaved, setAppSecretSaved] = useState(false);
+  const [appSecretError, setAppSecretError] = useState<string | null>(null);
 
   async function handleCopy(value: string) {
     try {
@@ -92,6 +100,23 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
       setVerifyTokenError("Couldn't save the verify token. Try again.");
     } finally {
       setSavingVerifyToken(false);
+    }
+  }
+
+  async function handleSaveAppSecret() {
+    if (!onSaveAppSecret) return;
+    setSavingAppSecret(true);
+    setAppSecretError(null);
+    setAppSecretSaved(false);
+    try {
+      await onSaveAppSecret(connection.id, appSecretInput.trim());
+      setAppSecretSaved(true);
+      setAppSecretInput("");
+      setTimeout(() => setAppSecretSaved(false), 1500);
+    } catch {
+      setAppSecretError("Couldn't save the app secret. Try again.");
+    } finally {
+      setSavingAppSecret(false);
     }
   }
 
@@ -125,6 +150,7 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
     setAccessToken("");
     setWabaId(connection.wabaId ?? "");
     setPhoneNumberId(connection.phoneNumberId ?? "");
+    setAppSecret("");
     setInstagramAccountId(connection.instagramAccountId ?? "");
     setTwilioAccountSid(connection.twilioAccountSid ?? "");
     setTwilioPhoneNumber(connection.twilioPhoneNumber ?? "");
@@ -143,6 +169,7 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
         instagramAccountId: connection.channel === "instagram" ? instagramAccountId : undefined,
         twilioAccountSid: connection.channel === "voice" ? twilioAccountSid : undefined,
         twilioPhoneNumber: connection.channel === "voice" ? twilioPhoneNumber : undefined,
+        appSecret: connection.channel === "voice" ? undefined : appSecret,
       });
       setDialogOpen(false);
     } catch (error) {
@@ -337,6 +364,49 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
                             {verifyTokenError}
                           </Typography>
                         )}
+                        {connection.channel === "whatsapp" && (
+                          <>
+                            <Stack direction="row" sx={{ alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                              <TextField
+                                label="Meta App Secret"
+                                value={appSecretInput}
+                                onChange={(e) => setAppSecretInput(e.target.value)}
+                                size="small"
+                                fullWidth
+                                type="password"
+                                placeholder={
+                                  connection.hasAppSecret
+                                    ? "Saved — paste a new value to replace it"
+                                    : "Only needed when this number belongs to a different Meta app"
+                                }
+                                disabled={savingAppSecret}
+                                slotProps={{ input: { sx: { fontFamily: "monospace", fontSize: 13 } } }}
+                              />
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={handleSaveAppSecret}
+                                disabled={savingAppSecret || !onSaveAppSecret || !appSecretInput.trim()}
+                                startIcon={savingAppSecret ? <CircularProgress size={14} /> : undefined}
+                              >
+                                Save
+                              </Button>
+                            </Stack>
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                              Needed to validate webhooks from a Meta app other than the one this CRM uses.
+                            </Typography>
+                            {appSecretSaved && (
+                              <Typography variant="caption" sx={{ color: "success.main" }}>
+                                App secret saved.
+                              </Typography>
+                            )}
+                            {appSecretError && (
+                              <Typography variant="caption" sx={{ color: "error.main" }}>
+                                {appSecretError}
+                              </Typography>
+                            )}
+                          </>
+                        )}
                       </Stack>
                     )}
                 </Box>
@@ -383,6 +453,19 @@ export function ConnectionCard({ connection, onToggle, onConnect, onSaveVerifyTo
                   onChange={(e) => setPhoneNumberId(e.target.value)}
                   fullWidth
                   disabled={connecting}
+                />
+                <TextField
+                  label="Meta App Secret (optional)"
+                  value={appSecret}
+                  onChange={(e) => setAppSecret(e.target.value)}
+                  fullWidth
+                  type="password"
+                  disabled={connecting}
+                  helperText={
+                    connection.hasAppSecret
+                      ? "An app secret is saved. Leave blank to keep it, or paste a new one to replace it."
+                      : "Only needed when this number belongs to a Meta app other than the one this CRM uses for webhooks."
+                  }
                 />
               </>
             ) : connection.channel === "voice" ? (

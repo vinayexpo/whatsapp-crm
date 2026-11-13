@@ -23,6 +23,7 @@ class Chatbot extends Model
         'welcome_message',
         'general_fallback_enabled',
         'channels',
+        'api_connection_id',
     ];
 
     protected function casts(): array
@@ -50,6 +51,11 @@ class Chatbot extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function apiConnection(): BelongsTo
+    {
+        return $this->belongsTo(ApiConnection::class);
     }
 
     public function trainingEntries(): HasMany

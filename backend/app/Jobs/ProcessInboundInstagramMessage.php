@@ -168,9 +168,17 @@ class ProcessInboundInstagramMessage implements ShouldQueue
 
         $handle = '@ig_'.$senderId;
 
-        $companyId = ApiConnection::query()->where('channel', 'instagram')->value('company_id');
+        $recipientId = data_get($messagingEvent, 'recipient.id');
+        $connection = ApiConnection::query()
+            ->where('channel', 'instagram')
+            ->when($recipientId, fn ($query) => $query->where('instagram_account_id', $recipientId))
+            ->orderByDesc('instagram_account_id')
+            ->first()
+            ?? ApiConnection::query()->where('channel', 'instagram')->first();
 
-        [$conversation, $message, $isNewContact] = DB::transaction(function () use ($senderId, $handle, $messagingEvent, $companyId) {
+        $companyId = $connection?->company_id;
+
+        [$conversation, $message, $isNewContact] = DB::transaction(function () use ($senderId, $handle, $messagingEvent, $companyId, $connection) {
             $contact = Contact::withoutGlobalScope(CompanyScope::class)
                 ->where('company_id', $companyId)
                 ->where('handle', $handle)
@@ -196,7 +204,15 @@ class ProcessInboundInstagramMessage implements ShouldQueue
                 ->where('company_id', $companyId)
                 ->where('contact_id', $contact->id)
                 ->where('channel', 'instagram')
+                ->where(function ($query) use ($connection) {
+                    $query->whereNull('api_connection_id')->orWhere('api_connection_id', $connection?->id);
+                })
                 ->first();
+
+            if ($conversation && $conversation->api_connection_id === null && $connection) {
+                $conversation->api_connection_id = $connection->id;
+                $conversation->save();
+            }
 
             if (! $conversation) {
                 $conversation = new Conversation([
@@ -204,6 +220,7 @@ class ProcessInboundInstagramMessage implements ShouldQueue
                     'channel' => 'instagram',
                     'status' => 'open',
                     'unread_count' => 0,
+                    'api_connection_id' => $connection?->id,
                 ]);
                 $conversation->company_id = $companyId;
                 $conversation->save();

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -9,8 +9,10 @@ import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import { apiClient, ApiError } from "~/utils/api-client";
-import type { Chatbot, ChatbotChannel } from "~/data/types";
+import type { ApiConnection, Chatbot, ChatbotChannel } from "~/data/types";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
 
 interface ChatbotSettingsPanelProps {
@@ -25,9 +27,24 @@ export function ChatbotSettingsPanel({ chatbot, onUpdated, onDelete }: ChatbotSe
   const [active, setActive] = useState(chatbot.status === "active");
   const [generalFallbackEnabled, setGeneralFallbackEnabled] = useState(chatbot.generalFallbackEnabled);
   const [channels, setChannels] = useState<ChatbotChannel[]>(chatbot.channels ?? ["website"]);
+  const [apiConnectionId, setApiConnectionId] = useState<string | null>(chatbot.apiConnectionId ?? null);
+  const [whatsappConnections, setWhatsappConnections] = useState<ApiConnection[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiClient
+      .listApiConnections()
+      .then((connections) => {
+        setWhatsappConnections(
+          connections.filter((c) => c.channel === "whatsapp" && c.status === "connected"),
+        );
+      })
+      .catch(() => {
+        // selector stays empty on failure
+      });
+  }, []);
 
   function handleChannelsChange(_event: unknown, next: ChatbotChannel[]) {
     if (next.length > 0) {
@@ -45,6 +62,7 @@ export function ChatbotSettingsPanel({ chatbot, onUpdated, onDelete }: ChatbotSe
         status: active ? "active" : "inactive",
         generalFallbackEnabled,
         channels,
+        apiConnectionId,
       });
       onUpdated(updated);
     } catch (err) {
@@ -119,6 +137,36 @@ export function ChatbotSettingsPanel({ chatbot, onUpdated, onDelete }: ChatbotSe
             : "Enable Instagram or WhatsApp to let this bot auto-reply to inbound messages on those channels."}
         </Typography>
       </Stack>
+
+      {(channels.includes("whatsapp") || channels.includes("instagram")) && (
+        <Stack spacing={0.75}>
+          <Typography variant="subtitle2">{channels.includes("instagram") ? "Instagram account" : "WhatsApp account"}</Typography>
+          <Select
+            size="small"
+            value={apiConnectionId ?? ""}
+            onChange={(e) => setApiConnectionId(e.target.value === "" ? null : e.target.value)}
+            displayEmpty
+            sx={{ maxWidth: 340 }}
+          >
+            <MenuItem value="">
+              <em>All accounts (default)</em>
+            </MenuItem>
+            {(channels.includes("whatsapp")
+              ? whatsappConnections.filter((c) => c.channel === "whatsapp")
+              : whatsappConnections.filter((c) => c.channel === "instagram")
+            ).map((connection) => (
+              <MenuItem key={connection.id} value={connection.id}>
+                {connection.accountName} ({connection.identifier})
+              </MenuItem>
+            ))}
+          </Select>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            {apiConnectionId
+              ? "Inbound messages to this account are answered by this bot. Other accounts fall back to the default bot."
+              : "Pick a specific account to give it its own chatbot, or leave empty to use this bot as the default for all accounts."}
+          </Typography>
+        </Stack>
+      )}
 
       <Stack spacing={0.5}>
         <FormControlLabel

@@ -657,6 +657,7 @@ async function updateApiConnection(
   twilioAccountSid?: string,
   twilioPhoneNumber?: string,
   verifyToken?: string,
+  appSecret?: string,
 ): Promise<ApiConnection> {
   const { data } = await apiRequest<{ data: ApiConnection }>(`/api/v1/api-connections/${connectionId}`, {
     method: "PATCH",
@@ -669,6 +670,7 @@ async function updateApiConnection(
       twilioAccountSid,
       twilioPhoneNumber,
       verifyToken,
+      appSecret,
     }),
   });
   return data;
@@ -982,7 +984,7 @@ async function listChatbots(params?: {
   return unwrapPaginated(body);
 }
 
-async function createChatbot(chatbot: { name: string; welcomeMessage?: string | null }): Promise<Chatbot> {
+async function createChatbot(chatbot: { name: string; welcomeMessage?: string | null; apiConnectionId?: string | null }): Promise<Chatbot> {
   const { data } = await apiRequest<{ data: Chatbot }>("/api/v1/chatbots", {
     method: "POST",
     body: JSON.stringify(chatbot),
@@ -999,6 +1001,7 @@ async function updateChatbot(
     allowedOrigins: string[];
     generalFallbackEnabled: boolean;
     channels: ChatbotChannel[];
+    apiConnectionId: string | null;
   }>,
 ): Promise<Chatbot> {
   const { data } = await apiRequest<{ data: Chatbot }>(`/api/v1/chatbots/${chatbotId}`, {

@@ -15,7 +15,7 @@ class ApiConnection extends Model
     use BelongsToCompany, HasFactory, HasUuid;
 
     protected $fillable = [
-        'company_id', 'channel', 'label', 'account_name', 'identifier', 'status', 'access_token', 'verify_token', 'connected_at',
+        'company_id', 'channel', 'label', 'account_name', 'identifier', 'status', 'access_token', 'app_secret', 'verify_token', 'connected_at',
         'waba_id', 'phone_number_id', 'instagram_account_id', 'twilio_account_sid', 'twilio_phone_number',
         'calling_enabled', 'calling_status', 'calling_verified_at',
         'onboarding_type', 'smb_app_linked_at', 'wa_business_app_phone_number',
@@ -23,12 +23,14 @@ class ApiConnection extends Model
 
     protected $hidden = [
         'access_token',
+        'app_secret',
     ];
 
     protected function casts(): array
     {
         return [
             'access_token' => 'encrypted',
+            'app_secret' => 'encrypted',
             'connected_at' => 'datetime',
             'calling_enabled' => 'boolean',
             'calling_verified_at' => 'datetime',

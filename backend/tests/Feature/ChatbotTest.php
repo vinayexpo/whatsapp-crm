@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ApiConnection;
 use App\Models\Chatbot;
 use App\Models\ChatbotTrainingEntry;
 use App\Models\Company;
@@ -107,6 +108,73 @@ it('allows an admin to create a chatbot with an auto-generated widget key', func
     expect(strlen($widgetKey))->toBe(32);
 
     $this->assertDatabaseHas('chatbots', ['name' => 'Support Bot']);
+});
+
+it('allows assigning a chatbot to a whatsapp api connection', function () {
+    $company = Company::factory()->create();
+    $user = User::factory()->create(['company_id' => $company->id]);
+    $user->assignRole('admin');
+
+    $connection = ApiConnection::factory()->connected()->create([
+        'company_id' => $company->id,
+        'channel' => 'whatsapp',
+        'phone_number_id' => 'conn-phone-1',
+    ]);
+
+    $response = $this->actingAs($user)->postJson('/api/v1/chatbots', [
+        'name' => 'Account Two Bot',
+        'apiConnectionId' => $connection->id,
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.apiConnectionId', $connection->uuid)
+        ->assertJsonPath('data.apiConnectionName', $connection->label);
+
+    $this->assertDatabaseHas('chatbots', [
+        'name' => 'Account Two Bot',
+        'api_connection_id' => $connection->id,
+    ]);
+});
+
+it('rejects assigning a chatbot to another company api connection', function () {
+    $user = actingAsChatbotRole('admin');
+    $user->update(['company_id' => Company::factory()->create()->id]);
+
+    $otherCompany = Company::factory()->create();
+
+    $connection = ApiConnection::factory()->connected()->create([
+        'company_id' => $otherCompany->id,
+        'channel' => 'whatsapp',
+        'phone_number_id' => 'conn-phone-2',
+    ]);
+
+    $this->actingAs($user)->postJson('/api/v1/chatbots', [
+        'name' => 'Rogue Bot',
+        'apiConnectionId' => $connection->id,
+    ])->assertJsonValidationErrors('apiConnectionId');
+});
+
+it('allows clearing a chatbot api connection assignment', function () {
+    $company = Company::factory()->create();
+    $user = User::factory()->create(['company_id' => $company->id]);
+    $user->assignRole('admin');
+
+    $connection = ApiConnection::factory()->connected()->create([
+        'company_id' => $company->id,
+        'channel' => 'whatsapp',
+        'phone_number_id' => 'conn-phone-3',
+    ]);
+
+    $chatbot = Chatbot::factory()->create([
+        'company_id' => $company->id,
+        'api_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user)->patchJson("/api/v1/chatbots/{$chatbot->uuid}", [
+        'apiConnectionId' => null,
+    ])->assertOk()->assertJsonPath('data.apiConnectionId', null);
+
+    $this->assertDatabaseHas('chatbots', ['id' => $chatbot->id, 'api_connection_id' => null]);
 });
 
 it('forbids an agent from creating a chatbot', function () {

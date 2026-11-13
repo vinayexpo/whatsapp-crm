@@ -30,6 +30,7 @@ class ApiConnectionController extends Controller
         $data = $request->validate([
             'status' => ['required', 'in:connected,disconnected'],
             'accessToken' => ['nullable', 'string'],
+            'appSecret' => ['nullable', 'string'],
             'wabaId' => ['nullable', 'string'],
             'phoneNumberId' => ['nullable', 'string'],
             'instagramAccountId' => ['nullable', 'string'],
@@ -40,6 +41,10 @@ class ApiConnectionController extends Controller
 
         if (array_key_exists('verifyToken', $data) && in_array($apiConnection->channel, ['whatsapp', 'instagram'], true)) {
             $apiConnection->update(['verify_token' => $data['verifyToken'] ?: null]);
+        }
+
+        if (array_key_exists('appSecret', $data) && in_array($apiConnection->channel, ['whatsapp', 'instagram'], true)) {
+            $apiConnection->update(['app_secret' => $data['appSecret'] ?: null]);
         }
 
         if ($data['status'] === 'connected' && $apiConnection->channel === 'voice') {

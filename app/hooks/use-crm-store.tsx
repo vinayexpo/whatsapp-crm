@@ -110,9 +110,11 @@ interface CrmStoreValue {
       twilioAccountSid?: string;
       twilioPhoneNumber?: string;
       verifyToken?: string;
+      appSecret?: string;
     },
   ) => Promise<void>;
   saveWebhookVerifyToken: (connectionId: string, verifyToken: string) => Promise<void>;
+  saveConnectionAppSecret: (connectionId: string, appSecret: string) => Promise<void>;
   addWhatsAppEmbeddedSignupConnection: (payload: {
     code: string;
     wabaId: string;
@@ -773,6 +775,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
         twilioAccountSid?: string;
         twilioPhoneNumber?: string;
         verifyToken?: string;
+        appSecret?: string;
       },
     ) => {
       const updated = await apiClient.updateApiConnection(
@@ -785,6 +788,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
         credentials.twilioAccountSid,
         credentials.twilioPhoneNumber,
         credentials.verifyToken,
+        credentials.appSecret,
       );
       setApiConnections((prev) => prev.map((c) => (c.id === connectionId ? updated : c)));
     },
@@ -805,6 +809,27 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
         undefined,
         undefined,
         verifyToken,
+      );
+      setApiConnections((prev) => prev.map((c) => (c.id === connectionId ? updated : c)));
+    },
+    [apiConnections],
+  );
+
+  const saveConnectionAppSecret = useCallback(
+    async (connectionId: string, appSecret: string) => {
+      const current = apiConnections.find((c) => c.id === connectionId);
+      if (!current) return;
+      const updated = await apiClient.updateApiConnection(
+        connectionId,
+        current.status,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        appSecret,
       );
       setApiConnections((prev) => prev.map((c) => (c.id === connectionId ? updated : c)));
     },
@@ -904,6 +929,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       toggleApiConnection,
       connectApiConnection,
       saveWebhookVerifyToken,
+      saveConnectionAppSecret,
       addWhatsAppEmbeddedSignupConnection,
       teamMembers,
       assignableMembers,
@@ -955,6 +981,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       toggleApiConnection,
       connectApiConnection,
       saveWebhookVerifyToken,
+      saveConnectionAppSecret,
       addWhatsAppEmbeddedSignupConnection,
       teamMembers,
       assignableMembers,

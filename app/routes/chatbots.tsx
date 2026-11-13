@@ -68,7 +68,7 @@ export default function Chatbots() {
 
   const selectedChatbot = chatbots.find((c) => c.id === selectedChatbotId) ?? null;
 
-  async function handleCreate(input: { name: string; welcomeMessage?: string }) {
+  async function handleCreate(input: { name: string; welcomeMessage?: string; apiConnectionId?: string | null }) {
     const created = await apiClient.createChatbot(input);
     if (page === 1) {
       setChatbots((prev) => [created, ...prev]);
@@ -186,9 +186,14 @@ export default function Chatbots() {
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 1.5 }}>
                   {chatbot.name}
                 </Typography>
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
                   Widget key: {chatbot.widgetKey.slice(0, 10)}…
                 </Typography>
+                {chatbot.apiConnectionName && (
+                  <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.5 }}>
+                    Account: {chatbot.apiConnectionName}
+                  </Typography>
+                )}
               </Paper>
             </Grid>
           ))}

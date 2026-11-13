@@ -111,9 +111,17 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 ->where('company_id', $companyId)
                 ->where('contact_id', $contact->id)
                 ->where('channel', 'whatsapp')
+                ->where(function ($query) use ($connectionId) {
+                    $query->whereNull('api_connection_id')->orWhere('api_connection_id', $connectionId);
+                })
                 ->first();
 
             $isNewConversation = ! $conversation;
+
+            if ($conversation && $conversation->api_connection_id === null) {
+                $conversation->api_connection_id = $connectionId;
+                $conversation->save();
+            }
 
             if (! $conversation) {
                 $conversation = new Conversation([

@@ -78,15 +78,33 @@ class WhatsAppWebhookController extends Controller
 
     private function hasValidSignature(Request $request): bool
     {
-        $secret = config('services.meta.app_secret');
+        $signature = $request->header('X-Hub-Signature-256', '');
+        $body = $request->getContent();
 
-        if (empty($secret)) {
+        $secrets = ApiConnection::query()
+            ->whereNotNull('app_secret')
+            ->get(['app_secret'])
+            ->map(fn (ApiConnection $connection) => (string) $connection->app_secret)
+            ->filter(fn (string $secret) => $secret !== '');
+
+        $globalSecret = (string) config('services.meta.app_secret');
+
+        if ($globalSecret !== '') {
+            $secrets->prepend($globalSecret);
+        }
+
+        if ($secrets->isEmpty()) {
             return true;
         }
 
-        $signature = $request->header('X-Hub-Signature-256', '');
-        $expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
+        foreach ($secrets as $secret) {
+            $expected = 'sha256='.hash_hmac('sha256', $body, $secret);
 
-        return hash_equals($expected, $signature);
+            if (hash_equals($expected, $signature)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

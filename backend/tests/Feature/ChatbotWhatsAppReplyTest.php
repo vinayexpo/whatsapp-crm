@@ -142,6 +142,60 @@ it('does not generate a reply when no whatsapp-enabled chatbot is configured', f
     expect(Message::query()->where('conversation_id', $conversation->id)->where('direction', 'outbound')->exists())->toBeFalse();
 });
 
+it('uses the chatbot assigned to the conversation whatsapp connection over the default', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wa_reply_3']]], 200),
+    ]);
+
+    [$company, $conversation, $message] = createWhatsAppConversation();
+
+    $connection = ApiConnection::factory()->connected()->create([
+        'company_id' => $company->id,
+        'channel' => 'whatsapp',
+        'phone_number_id' => 'wa-phone-3',
+    ]);
+
+    $conversation->update(['api_connection_id' => $connection->id]);
+
+    Chatbot::factory()->create([
+        'company_id' => $company->id,
+        'status' => 'active',
+        'channels' => ['website', 'whatsapp'],
+    ]);
+
+    $assignedBot = Chatbot::factory()->create([
+        'company_id' => $company->id,
+        'status' => 'active',
+        'channels' => ['whatsapp'],
+        'api_connection_id' => $connection->id,
+    ]);
+
+    (new GenerateChatbotWhatsAppReply($conversation->id, $message->id))->handle(
+        app(\App\Services\Chatbot\ChatbotReplyServiceInterface::class),
+        app(\App\Services\Messaging\MessagingDriverResolver::class),
+    );
+
+    expect($conversation->fresh()->chatbot_id)->toBe($assignedBot->id);
+    expect(Message::query()->where('conversation_id', $conversation->id)->where('direction', 'outbound')->exists())->toBeTrue();
+});
+
+it('does not use a chatbot belonging to another company', function () {
+    [$company, $conversation, $message] = createWhatsAppConversation();
+
+    Chatbot::factory()->create([
+        'company_id' => Company::factory()->create()->id,
+        'status' => 'active',
+        'channels' => ['whatsapp'],
+    ]);
+
+    (new GenerateChatbotWhatsAppReply($conversation->id, $message->id))->handle(
+        app(\App\Services\Chatbot\ChatbotReplyServiceInterface::class),
+        app(\App\Services\Messaging\MessagingDriverResolver::class),
+    );
+
+    expect(Message::query()->where('conversation_id', $conversation->id)->where('direction', 'outbound')->exists())->toBeFalse();
+});
+
 it('skips the whatsapp chatbot reply when an automation flow already replied', function () {
     [$company, $conversation, $message] = createWhatsAppConversation();
 

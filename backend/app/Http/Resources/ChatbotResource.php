@@ -23,6 +23,8 @@ class ChatbotResource extends JsonResource
             'welcomeMessage' => $this->welcome_message,
             'generalFallbackEnabled' => $this->general_fallback_enabled,
             'channels' => $this->channels ?? ['website'],
+            'apiConnectionId' => $this->apiConnection?->uuid,
+            'apiConnectionName' => $this->apiConnection?->label,
             'createdAt' => $this->created_at?->toIso8601String(),
         ];
     }

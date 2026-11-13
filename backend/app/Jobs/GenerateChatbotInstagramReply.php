@@ -43,16 +43,13 @@ class GenerateChatbotInstagramReply implements ShouldQueue
             return;
         }
 
-        $chatbot = Chatbot::query()
-            ->where('status', 'active')
-            ->whereJsonContains('channels', 'instagram')
-            ->first();
+        $chatbot = $this->resolveChatbot($conversation, 'instagram');
 
         if (! $chatbot) {
             return;
         }
 
-        if (! $conversation->chatbot_id) {
+        if ($conversation->chatbot_id !== $chatbot->id) {
             $conversation->update(['chatbot_id' => $chatbot->id]);
         }
 
@@ -68,7 +65,9 @@ class GenerateChatbotInstagramReply implements ShouldQueue
 
         $conversation->update(['last_message_at' => $outboundMessage->sent_at]);
 
-        $connection = ApiConnection::query()->where('channel', 'instagram')->first();
+        $connection = $conversation->api_connection_id
+            ? ApiConnection::find($conversation->api_connection_id)
+            : ApiConnection::query()->where('channel', 'instagram')->where('company_id', $conversation->company_id)->first();
         $externalId = $resolver->forConnection($connection)->send($outboundMessage, $connection ?? new ApiConnection);
         $outboundMessage->update(['external_message_id' => $externalId]);
 
@@ -78,6 +77,26 @@ class GenerateChatbotInstagramReply implements ShouldQueue
         if ($replyService->isHandoff($replyText)) {
             $this->notifyHandoff($chatbot, $conversation);
         }
+    }
+
+    private function resolveChatbot(Conversation $conversation, string $channel): ?Chatbot
+    {
+        $baseQuery = Chatbot::query()
+            ->where('company_id', $conversation->company_id)
+            ->where('status', 'active')
+            ->whereJsonContains('channels', $channel);
+
+        if ($conversation->api_connection_id) {
+            $chatbot = (clone $baseQuery)
+                ->where('api_connection_id', $conversation->api_connection_id)
+                ->first();
+
+            if ($chatbot) {
+                return $chatbot;
+            }
+        }
+
+        return $baseQuery->whereNull('api_connection_id')->first();
     }
 
     private function notifyHandoff(Chatbot $chatbot, Conversation $conversation): void

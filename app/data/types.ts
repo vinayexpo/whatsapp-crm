@@ -302,6 +302,7 @@ export interface ApiConnection {
   accountName: string;
   identifier: string;
   status: ApiConnectionStatus;
+  hasAppSecret: boolean;
   wabaId: string | null;
   phoneNumberId: string | null;
   instagramAccountId: string | null;
@@ -522,6 +523,8 @@ export interface Chatbot {
   welcomeMessage: string | null;
   generalFallbackEnabled: boolean;
   channels: ChatbotChannel[];
+  apiConnectionId: string | null;
+  apiConnectionName?: string | null;
   createdAt: string;
 }
 

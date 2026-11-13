@@ -6,9 +6,11 @@ use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ChatbotResource;
 use App\Models\Chatbot;
+use App\Models\ApiConnection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 
 class ChatbotController extends Controller
 {
@@ -20,6 +22,7 @@ class ChatbotController extends Controller
 
         return ChatbotResource::collection(
             Chatbot::query()
+                ->with('apiConnection')
                 ->when($request->filled('status'), fn ($q) => $q->where('status', $request->query('status')))
                 ->when($request->filled('channel'), fn ($q) => $q->whereJsonContains('channels', $request->query('channel')))
                 ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->query('search').'%'))
@@ -43,7 +46,10 @@ class ChatbotController extends Controller
             'generalFallbackEnabled' => ['sometimes', 'boolean'],
             'channels' => ['sometimes', 'array'],
             'channels.*' => ['in:website,instagram,whatsapp'],
+            'apiConnectionId' => ['sometimes', 'nullable', 'integer', 'exists:api_connections,id'],
         ]);
+
+        $this->validateApiConnection($data['apiConnectionId'] ?? null);
 
         $chatbot = Chatbot::query()->create([
             'name' => $data['name'],
@@ -52,6 +58,7 @@ class ChatbotController extends Controller
             'welcome_message' => $data['welcomeMessage'] ?? null,
             'general_fallback_enabled' => $data['generalFallbackEnabled'] ?? false,
             'channels' => $data['channels'] ?? ['website'],
+            'api_connection_id' => $data['apiConnectionId'] ?? null,
         ]);
 
         return response()->json(['data' => new ChatbotResource($chatbot)], 201);
@@ -77,7 +84,10 @@ class ChatbotController extends Controller
             'generalFallbackEnabled' => ['sometimes', 'boolean'],
             'channels' => ['sometimes', 'array'],
             'channels.*' => ['in:website,instagram,whatsapp'],
+            'apiConnectionId' => ['sometimes', 'nullable', 'integer', 'exists:api_connections,id'],
         ]);
+
+        $this->validateApiConnection($data['apiConnectionId'] ?? null, $chatbot->company_id);
 
         $update = [];
         if (array_key_exists('name', $data)) {
@@ -98,6 +108,9 @@ class ChatbotController extends Controller
         if (array_key_exists('channels', $data)) {
             $update['channels'] = $data['channels'];
         }
+        if (array_key_exists('apiConnectionId', $data)) {
+            $update['api_connection_id'] = $data['apiConnectionId'];
+        }
 
         $chatbot->update($update);
 
@@ -111,5 +124,24 @@ class ChatbotController extends Controller
         $chatbot->delete();
 
         return response()->json(['message' => 'Chatbot deleted.']);
+    }
+
+    private function validateApiConnection(?int $apiConnectionId, ?int $chatbotCompanyId = null): void
+    {
+        if ($apiConnectionId === null) {
+            return;
+        }
+
+        $connection = ApiConnection::query()->withoutGlobalScopes()->find($apiConnectionId);
+
+        $companyId = $chatbotCompanyId
+            ?? auth()->user()?->company_id
+            ?? $connection->company_id;
+
+        if ($companyId !== null && (int) $connection->company_id !== (int) $companyId) {
+            throw ValidationException::withMessages([
+                'apiConnectionId' => 'The selected WhatsApp account does not belong to this company.',
+            ]);
+        }
     }
 }

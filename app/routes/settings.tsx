@@ -38,6 +38,7 @@ export default function Settings() {
     toggleApiConnection,
     connectApiConnection,
     saveWebhookVerifyToken,
+    saveConnectionAppSecret,
     addWhatsAppEmbeddedSignupConnection,
     teamMembers,
     inviteTeamMember,
@@ -112,6 +113,7 @@ export default function Settings() {
                     onToggle={toggleApiConnection}
                     onConnect={connectApiConnection}
                     onSaveVerifyToken={saveWebhookVerifyToken}
+                    onSaveAppSecret={saveConnectionAppSecret}
                     disabled={!isCurrentUserAdmin}
                   />
                 ))}
