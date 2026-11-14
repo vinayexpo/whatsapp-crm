@@ -180,6 +180,17 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 }
             }
 
+            if ($type === 'reaction') {
+                $text = 'Reacted '.data_get($inboundMessage, 'reaction.emoji', '').' to a message';
+            }
+
+            if ($type === 'unsupported') {
+                $rawType = data_get($inboundMessage, 'unsupported.raw_type') ?? 'unknown';
+                $text = "Unsupported message type ({$rawType}) — its content can't be displayed by the WhatsApp Cloud API.";
+            } elseif ($text === '' && $attachment === null && $locationLat === null && $interactiveReplyId === null && ! isset($inboundMessage['buttons'])) {
+                $text = "This message content isn't supported and can't be displayed.";
+            }
+
             $message = Message::query()->create([
                 'conversation_id' => $conversation->id,
                 'direction' => 'inbound',

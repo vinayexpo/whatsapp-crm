@@ -169,6 +169,85 @@ it('creates a contact, conversation, and message when processing an inbound mess
     expect($event->fresh()->processed_at)->not->toBeNull();
 });
 
+it('stores a readable placeholder for unsupported inbound message types', function () {
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'contacts' => [
+                                    ['wa_id' => '15559876543', 'profile' => ['name' => 'Jane Doe']],
+                                ],
+                                'messages' => [
+                                    [
+                                        'from' => '15559876543',
+                                        'id' => 'wamid.UNSUPPORTED1',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'type' => 'unsupported',
+                                        'errors' => [
+                                            ['code' => 131051, 'title' => 'Message type unknown'],
+                                        ],
+                                        'unsupported' => ['type' => 'unknown', 'raw_type' => 'unknown'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    $message = Message::query()->where('external_message_id', 'wamid.UNSUPPORTED1')->first();
+    expect($message)->not->toBeNull();
+    expect($message->text)->toContain('Unsupported message type');
+    expect($message->text)->toContain('unknown');
+    expect($message->text)->not->toBe('');
+});
+
+it('stores a readable placeholder for inbound messages with no displayable content', function () {
+    ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
+    $event = WebhookEvent::query()->create([
+        'provider' => 'whatsapp',
+        'payload' => [
+            'entry' => [
+                [
+                    'changes' => [
+                        [
+                            'value' => [
+                                'contacts' => [
+                                    ['wa_id' => '15559876543', 'profile' => ['name' => 'Jane Doe']],
+                                ],
+                                'messages' => [
+                                    [
+                                        'from' => '15559876543',
+                                        'id' => 'wamid.EMPTY1',
+                                        'timestamp' => (string) now()->timestamp,
+                                        'type' => 'sticker',
+                                        'sticker' => [],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    (new ProcessInboundWhatsAppMessage($event->id))->handle();
+
+    $message = Message::query()->where('external_message_id', 'wamid.EMPTY1')->first();
+    expect($message)->not->toBeNull();
+    expect($message->text)->toBe("This message content isn't supported and can't be displayed.");
+});
+
 it('downloads and stores inbound media as a message attachment', function () {
     Storage::fake('public');
     $connection = ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token']);
