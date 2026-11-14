@@ -123,7 +123,7 @@ it('allows assigning a chatbot to a whatsapp api connection', function () {
 
     $response = $this->actingAs($user)->postJson('/api/v1/chatbots', [
         'name' => 'Account Two Bot',
-        'apiConnectionId' => $connection->id,
+        'apiConnectionId' => $connection->uuid,
     ]);
 
     $response->assertCreated()
@@ -150,7 +150,7 @@ it('rejects assigning a chatbot to another company api connection', function () 
 
     $this->actingAs($user)->postJson('/api/v1/chatbots', [
         'name' => 'Rogue Bot',
-        'apiConnectionId' => $connection->id,
+        'apiConnectionId' => $connection->uuid,
     ])->assertJsonValidationErrors('apiConnectionId');
 });
 
