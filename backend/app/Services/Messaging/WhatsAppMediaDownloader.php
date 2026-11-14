@@ -42,7 +42,8 @@ class WhatsAppMediaDownloader
             return null;
         }
 
-        $extension = Str::after($mimeType, '/');
+        $extension = Str::after(Str::before($mimeType, ';'), '/');
+        $extension = preg_replace('/[^A-Za-z0-9]/', '', $extension) ?: 'bin';
         $path = 'inbound-media/'.Str::uuid().'.'.$extension;
 
         Storage::disk('public')->put($path, $file->body());

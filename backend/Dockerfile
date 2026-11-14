@@ -21,7 +21,9 @@ COPY backend/ .
 
 RUN composer dump-autoload --optimize \
     && mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data storage/logs bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
+    && chmod -R 775 storage bootstrap/cache \
+    && rm -rf public/storage \
+    && ln -s /app/storage/app/public public/storage
 
 EXPOSE 8080
 
