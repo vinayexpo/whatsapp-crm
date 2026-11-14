@@ -32,8 +32,10 @@ interface ChatMenuFlowBuilderProps {
 
 const MESSAGE_MAX = 1024;
 const BUTTON_LABEL_MAX = 20;
+const LIST_BUTTON_LABEL_MAX = 20;
 const AI_PROMPT_MAX = 2000;
 const MAX_BUTTONS_PER_NODE = 10;
+const DEFAULT_LIST_BUTTON_LABEL = "Choose an option";
 
 function newId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -142,6 +144,10 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
       const nodeProblems: string[] = [];
       if (!node.message.trim()) nodeProblems.push("Message is empty.");
       if (node.message.length > MESSAGE_MAX) nodeProblems.push(`Message exceeds ${MESSAGE_MAX} characters.`);
+      const listButtonLabel = node.listButtonLabel ?? "";
+      if (node.buttons.length > 3 && listButtonLabel.length > LIST_BUTTON_LABEL_MAX) {
+        nodeProblems.push(`List button label exceeds ${LIST_BUTTON_LABEL_MAX} characters.`);
+      }
       for (const button of node.buttons) {
         if (!button.label.trim()) nodeProblems.push("A button is missing a label.");
         else if (button.label.length > BUTTON_LABEL_MAX) {
@@ -175,6 +181,8 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
           type: node.buttons.length > 0 ? ("menu" as ChatMenuFlowNodeType) : ("content" as ChatMenuFlowNodeType),
           message: node.message.trim(),
           renderAs: node.buttons.length > 3 ? ("list" as const) : ("button" as const),
+          listButtonLabel:
+            node.buttons.length > 3 && (node.listButtonLabel ?? "").trim() ? (node.listButtonLabel ?? "").trim() : null,
           buttons: node.buttons.map((b) => ({ id: b.id.trim(), label: b.label.trim(), nextNodeId: b.nextNodeId.trim() })),
         }))
         .filter((node) => node.id && node.message);
@@ -291,6 +299,18 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
                   error={messageLen > MESSAGE_MAX}
                   helperText={`${messageLen}/${MESSAGE_MAX} characters — this is what WhatsApp shows the customer.`}
                 />
+
+                {node.buttons.length > 3 && (
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="List button label"
+                    value={node.listButtonLabel ?? ""}
+                    onChange={(e) => updateNode(index, { listButtonLabel: e.target.value.slice(0, LIST_BUTTON_LABEL_MAX) })}
+                    placeholder={DEFAULT_LIST_BUTTON_LABEL}
+                    helperText={`Text on the green bar above the list (max ${LIST_BUTTON_LABEL_MAX} characters). Defaults to "${DEFAULT_LIST_BUTTON_LABEL}".`}
+                  />
+                )}
 
                 <Stack spacing={1}>
                   <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -452,7 +472,7 @@ export function ChatMenuFlowBuilder({ flow, onUpdated }: ChatMenuFlowBuilderProp
                   {previewNode.buttons.length > 3 ? (
                     <Box sx={{ bgcolor: "#fff", borderRadius: 1, p: 1.25, textAlign: "center" }}>
                       <Typography variant="body2" sx={{ color: "#00a5f4", fontWeight: 600 }}>
-                        Choose an option ▾
+                        {(previewNode.listButtonLabel ?? "").trim() || DEFAULT_LIST_BUTTON_LABEL} ▾
                       </Typography>
                     </Box>
                   ) : (

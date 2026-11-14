@@ -148,6 +148,21 @@ class ChatMenuFlowEngine
     {
         $isLeaf = empty($node['buttons']);
 
+        $interactiveStyle = null;
+        $listButtonLabel = null;
+
+        if (! $isLeaf) {
+            $interactiveStyle = count($node['buttons']) > 3
+                ? 'list'
+                : ($node['renderAs'] ?? $node['n'] ?? 'button');
+
+            if ($interactiveStyle === 'list') {
+                $listButtonLabel = isset($node['listButtonLabel']) && trim($node['listButtonLabel']) !== ''
+                    ? trim($node['listButtonLabel'])
+                    : 'Choose an option';
+            }
+        }
+
         $conversation->update([
             'current_chat_flow_id' => $isLeaf ? null : $flow->id,
             'current_chat_flow_node_id' => $isLeaf ? null : $node['id'],
@@ -162,6 +177,8 @@ class ChatMenuFlowEngine
             'attachment_url' => $node['mediaUrl'] ?? null,
             'attachment_type' => $node['mediaType'] ?? null,
             'buttons' => empty($node['buttons']) ? null : $node['buttons'],
+            'interactive_style' => $interactiveStyle,
+            'list_button_label' => $listButtonLabel,
         ]);
 
         $conversation->update(['last_message_at' => $outboundMessage->sent_at]);

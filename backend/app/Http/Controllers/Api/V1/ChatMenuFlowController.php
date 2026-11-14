@@ -141,6 +141,8 @@ class ChatMenuFlowController extends Controller
             'nodes.*.mediaUrl' => ['sometimes', 'nullable', 'string'],
             'nodes.*.mediaType' => ['sometimes', 'nullable', 'string'],
             'nodes.*.renderAs' => ['sometimes', 'in:button,list'],
+            // WhatsApp caps the list-picker button label at 20 characters.
+            'nodes.*.listButtonLabel' => ['sometimes', 'nullable', 'string', 'max:20'],
             'nodes.*.buttons' => ['sometimes', 'array', 'max:10'],
             'nodes.*.buttons.*.id' => ['required_with:nodes.*.buttons', 'string'],
             // Meta caps quick-reply button titles at 20 characters and list-row

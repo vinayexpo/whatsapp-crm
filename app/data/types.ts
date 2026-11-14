@@ -374,6 +374,7 @@ export interface ChatMenuFlowNode {
   mediaUrl?: string | null;
   mediaType?: string | null;
   renderAs?: ChatMenuFlowRenderAs;
+  listButtonLabel?: string | null;
   buttons: ChatMenuFlowButton[];
 }
 

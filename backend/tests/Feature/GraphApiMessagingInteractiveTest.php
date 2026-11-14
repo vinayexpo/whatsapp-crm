@@ -48,6 +48,36 @@ it('sends a button-type interactive message when the message has 3 or fewer butt
     });
 });
 
+it('uses the message stored interactive style and list button label when present', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.789']]], 200),
+    ]);
+
+    $connection = ApiConnection::factory()->create(['channel' => 'whatsapp', 'access_token' => 'test-token', 'phone_number_id' => '1234567890']);
+    $contact = Contact::factory()->create(['channel' => 'whatsapp', 'handle' => '15551234567']);
+    $conversation = Conversation::factory()->create(['contact_id' => $contact->id, 'channel' => 'whatsapp']);
+    $buttons = collect(range(1, 2))->map(fn ($i) => ['id' => "btn-{$i}", 'label' => "Option {$i}", 'nextNodeId' => "node-{$i}"])->all();
+    $message = Message::factory()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'outbound',
+        'text' => 'Pick one',
+        'buttons' => $buttons,
+        'interactive_style' => 'list',
+        'list_button_label' => 'Select your option',
+    ]);
+
+    (new GraphApiMessagingService())->send($message, $connection);
+
+    Http::assertSent(function ($request) {
+        $body = $request->data();
+
+        return $body['type'] === 'interactive'
+            && $body['interactive']['type'] === 'list'
+            && $body['interactive']['action']['button'] === 'Select your option'
+            && count($body['interactive']['action']['sections'][0]['rows']) === 2;
+    });
+});
+
 it('sends a list-type interactive message when the message has more than 3 buttons', function () {
     Http::fake([
         'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.456']]], 200),

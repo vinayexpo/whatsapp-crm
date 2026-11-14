@@ -47,14 +47,18 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
             // Chat menu flow nodes attach up to 3 buttons (rendered as Meta's
             // interactive "button" type) or up to 10 items grouped into a
             // "list" type -- Meta rejects more than 3 inline reply buttons,
-            // so anything larger must use the list format instead.
+            // so anything larger must use the list format instead. The flow
+            // engine resolves and stores the style + list label on the
+            // message; older messages fall back to deciding by count.
+            $style = $message->interactive_style ?? (count($message->buttons) > 3 ? 'list' : 'button');
+
             $payload['type'] = 'interactive';
-            $payload['interactive'] = count($message->buttons) > 3
+            $payload['interactive'] = $style === 'list'
                 ? [
                     'type' => 'list',
                     'body' => ['text' => $message->text],
                     'action' => [
-                        'button' => 'Choose an option',
+                        'button' => $message->list_button_label ?: 'Choose an option',
                         'sections' => [[
                             'title' => 'Options',
                             'rows' => array_map(

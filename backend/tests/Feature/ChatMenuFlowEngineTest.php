@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Services\ChatFlow\ChatMenuFlowEngine;
 use Database\Seeders\PipelineStagesSeeder;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->seed(PipelineStagesSeeder::class);
@@ -66,6 +67,56 @@ it('advances to the next node when a button is clicked via interactive_reply_id'
 
     $reply = Message::query()->where('conversation_id', $conversation->id)->where('direction', 'outbound')->first();
     expect($reply->text)->toContain('catering');
+});
+
+it('stores the resolved interactive style and list button label on the outbound message', function () {
+    $rootId = (string) Str::uuid();
+    $leafId = (string) Str::uuid();
+    $buttons = collect(range(1, 4))->map(fn ($i) => ['id' => "btn-{$i}", 'label' => "Opt {$i}", 'nextNodeId' => $leafId])->all();
+
+    $flow = makeChatMenuFlow([
+        'entry_node_id' => $rootId,
+        'nodes' => [
+            [
+                'id' => $rootId,
+                'type' => 'menu',
+                'message' => 'What would you like?',
+                'renderAs' => 'list',
+                'listButtonLabel' => 'Select your option',
+                'buttons' => $buttons,
+            ],
+            [
+                'id' => $leafId,
+                'type' => 'content',
+                'message' => 'Done!',
+                'renderAs' => 'button',
+                'buttons' => [],
+            ],
+        ],
+    ]);
+
+    $contact = Contact::factory()->create(['channel' => 'whatsapp']);
+    $conversation = Conversation::factory()->create(['contact_id' => $contact->id, 'channel' => 'whatsapp', 'company_id' => $flow->company_id]);
+    $inbound = Message::factory()->create(['conversation_id' => $conversation->id, 'direction' => 'inbound', 'text' => 'services']);
+
+    app(ChatMenuFlowEngine::class)->handle($conversation, $inbound);
+
+    $reply = Message::query()->where('conversation_id', $conversation->id)->where('direction', 'outbound')->first();
+    expect($reply->interactive_style)->toBe('list');
+    expect($reply->list_button_label)->toBe('Select your option');
+});
+
+it('stores the button style for nodes with three or fewer buttons', function () {
+    $flow = makeChatMenuFlow();
+    $contact = Contact::factory()->create(['channel' => 'whatsapp']);
+    $conversation = Conversation::factory()->create(['contact_id' => $contact->id, 'channel' => 'whatsapp', 'company_id' => $flow->company_id]);
+    $inbound = Message::factory()->create(['conversation_id' => $conversation->id, 'direction' => 'inbound', 'text' => 'services']);
+
+    app(ChatMenuFlowEngine::class)->handle($conversation, $inbound);
+
+    $reply = Message::query()->where('conversation_id', $conversation->id)->where('direction', 'outbound')->first();
+    expect($reply->interactive_style)->toBe('button');
+    expect($reply->list_button_label)->toBeNull();
 });
 
 it('falls back to AI (returns false, keeps flow position) when free text is typed mid-flow', function () {

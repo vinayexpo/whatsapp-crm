@@ -14,7 +14,7 @@ class Message extends Model
     protected $fillable = [
         'conversation_id', 'direction', 'text', 'status', 'external_message_id',
         'attachment_url', 'attachment_type', 'sent_at', 'buttons', 'interactive_reply_id', 'origin',
-        'location_lat', 'location_lng',
+        'location_lat', 'location_lng', 'interactive_style', 'list_button_label',
     ];
 
     protected function casts(): array
