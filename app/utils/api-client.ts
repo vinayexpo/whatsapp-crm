@@ -446,8 +446,34 @@ async function sendMessage(conversationId: string, text: string, attachmentFile?
   return data;
 }
 
-async function markConversationRead(conversationId: string): Promise<Conversation> {
-  const { data } = await apiRequest<{ data: Conversation }>(`/api/v1/conversations/${conversationId}/read`, {
+async function listConversationMedia(conversationId: string): Promise<Message[]> {
+  const { data } = await apiRequest<{ data: Message[] }>(`/api/v1/conversations/${conversationId}/media`);
+  return data;
+}
+
+async function downloadMessageAttachment(messageId: string, fileName?: string): Promise<void> {
+  const headers = new Headers();
+  const token = getAuthToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/messages/${messageId}/attachment`, { headers });
+
+  if (!response.ok) {
+    throw new ApiError("Attachment download failed", response.status);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = fileName ?? "attachment";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+async function markConversationRead(conversationId: string): Promise<Conversation> {  const { data } = await apiRequest<{ data: Conversation }>(`/api/v1/conversations/${conversationId}/read`, {
     method: "POST",
   });
   return data;
@@ -2122,6 +2148,8 @@ export const apiClient = {
   updateContact,
   listConversations,
   listMessages,
+  listConversationMedia,
+  downloadMessageAttachment,
   sendMessage,
   markConversationRead,
   updateConversationStatus,

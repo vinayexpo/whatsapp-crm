@@ -200,6 +200,7 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 'sent_at' => $sentAt,
                 'attachment_url' => $attachment['url'] ?? null,
                 'attachment_type' => $attachment['type'] ?? null,
+                'attachment_name' => $attachment['name'] ?? null,
                 'interactive_reply_id' => $interactiveReplyId,
                 'location_lat' => $locationLat,
                 'location_lng' => $locationLng,
@@ -280,7 +281,7 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         $type = $inboundMessage['type'] ?? 'text';
         $media = $inboundMessage[$type] ?? null;
 
-        if (! $connection || ! $media || ! isset($media['id']) || ! in_array($type, ['image', 'video', 'audio', 'document'], true)) {
+        if (! $connection || ! $media || ! isset($media['id']) || ! in_array($type, ['image', 'video', 'audio', 'document', 'sticker'], true)) {
             return null;
         }
 
@@ -288,6 +289,7 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             $media['id'],
             $media['mime_type'] ?? 'application/octet-stream',
             $connection,
+            $media['filename'] ?? null,
         );
     }
 

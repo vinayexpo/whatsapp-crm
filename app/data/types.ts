@@ -52,6 +52,7 @@ export interface Message {
   status: MessageStatus;
   attachmentUrl?: string;
   attachmentType?: "image" | "document" | "audio" | "video";
+  attachmentName?: string;
 }
 
 export type ConversationStatus = "open" | "pending" | "resolved" | "archived";

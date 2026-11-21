@@ -21,6 +21,7 @@ it('downloads inbound media to the public disk and returns its url and type', fu
     expect($result['type'])->toBe('image');
     expect($result['url'])->toContain('/storage/inbound-media/');
     expect(str_ends_with($result['url'], '.jpeg'))->toBeTrue();
+    expect($result['name'])->toBe('attachment.jpeg');
 
     $stored = Storage::disk('public')->files('inbound-media');
     expect(count($stored))->toBe(1);
@@ -45,8 +46,23 @@ it('uses a clean extension for mime types with parameters', function () {
     expect($result['type'])->toBe('audio');
 });
 
-it('returns null when the media url cannot be resolved', function () {
+it('keeps the original document filename', function () {
     Storage::fake('public');
+
+    Http::fake([
+        'graph.facebook.com/v20.0/media-4' => Http::response(['url' => 'https://lookaside.fbsbx.com/file/media-4'], 200),
+        'lookaside.fbsbx.com/*' => Http::response('pdf-bytes', 200),
+    ]);
+
+    $connection = ApiConnection::factory()->make(['access_token' => 'token']);
+
+    $result = app(WhatsAppMediaDownloader::class)->download('media-4', 'application/pdf', $connection, 'Invoice 2026.pdf');
+
+    expect($result['type'])->toBe('document');
+    expect($result['name'])->toBe('Invoice 2026.pdf');
+});
+
+it('returns null when the media url cannot be resolved', function () {    Storage::fake('public');
 
     Http::fake([
         'graph.facebook.com/v20.0/media-3' => Http::response(['error' => ['message' => 'not found']], 404),

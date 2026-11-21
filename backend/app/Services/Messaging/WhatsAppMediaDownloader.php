@@ -15,9 +15,9 @@ class WhatsAppMediaDownloader
      * bytes have to be fetched (via a second, temporary download URL) and
      * persisted on our own storage before that URL expires.
      *
-     * @return array{url: string, type: string}|null
+     * @return array{url: string, type: string, name: string}|null
      */
-    public function download(string $mediaId, string $mimeType, ApiConnection $connection): ?array
+    public function download(string $mediaId, string $mimeType, ApiConnection $connection, ?string $fileName = null): ?array
     {
         $metadata = Http::withToken($connection->access_token)
             ->get("https://graph.facebook.com/v20.0/{$mediaId}");
@@ -42,7 +42,8 @@ class WhatsAppMediaDownloader
             return null;
         }
 
-        $extension = Str::after(Str::before($mimeType, ';'), '/');
+        $baseMimeType = Str::before($mimeType, ';');
+        $extension = Str::after($baseMimeType, '/');
         $extension = preg_replace('/[^A-Za-z0-9]/', '', $extension) ?: 'bin';
         $path = 'inbound-media/'.Str::uuid().'.'.$extension;
 
@@ -50,8 +51,20 @@ class WhatsAppMediaDownloader
 
         return [
             'url' => Storage::disk('public')->url($path),
-            'type' => $this->attachmentType($mimeType),
+            'type' => $this->attachmentType($baseMimeType),
+            'name' => $this->resolveName($fileName, $extension),
         ];
+    }
+
+    private function resolveName(?string $fileName, string $extension): string
+    {
+        $name = trim(basename(str_replace('\\', '/', (string) $fileName)));
+
+        if ($name === '' || $name === '.' || $name === '..') {
+            return 'attachment.'.$extension;
+        }
+
+        return Str::limit($name, 180, '');
     }
 
     private function attachmentType(string $mimeType): string

@@ -253,6 +253,78 @@ it('sends an outbound attachment to Meta via the two-step media upload instead o
     expect($message->external_message_id)->toBe('wamid.SENT1');
 });
 
+it('lists media messages of a conversation', function () {
+    $conversation = Conversation::factory()->create();
+    $user = actingAsConversationRole('agent');
+
+    Message::query()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'text' => '',
+        'status' => 'delivered',
+        'attachment_url' => 'https://example.com/files/invoice.pdf',
+        'attachment_type' => 'document',
+        'attachment_name' => 'invoice.pdf',
+        'sent_at' => now(),
+    ]);
+    Message::query()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'text' => 'hello',
+        'status' => 'delivered',
+        'sent_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user)->getJson("/api/v1/conversations/{$conversation->uuid}/media");
+
+    $response->assertOk();
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.attachmentName'))->toBe('invoice.pdf');
+    expect($response->json('data.0.attachmentType'))->toBe('document');
+});
+
+it('downloads a stored attachment with its original filename', function () {
+    $conversation = Conversation::factory()->create();
+    $user = actingAsConversationRole('agent');
+
+    Http::fake([
+        'example.com/files/report.docx' => Http::response('binary-docx', 200, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
+    ]);
+
+    $message = Message::query()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'text' => '',
+        'status' => 'delivered',
+        'attachment_url' => 'https://example.com/files/report.docx',
+        'attachment_type' => 'document',
+        'attachment_name' => 'report.docx',
+        'sent_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user)->get("/api/v1/messages/{$message->uuid}/attachment");
+
+    $response->assertOk();
+    expect($response->headers->get('content-disposition'))->toContain('report.docx');
+    expect($response->streamedContent())->toBe('binary-docx');
+});
+
+it('stores the original filename on outbound attachments', function () {
+    Illuminate\Support\Facades\Storage::fake('public');
+
+    $conversation = Conversation::factory()->create();
+    $user = actingAsConversationRole('agent');
+
+    $file = Illuminate\Http\UploadedFile::fake()->create('proposal.pdf', 20, 'application/pdf');
+
+    $this->actingAs($user)->postJson("/api/v1/conversations/{$conversation->uuid}/messages", [
+        'attachmentFile' => $file,
+    ])->assertCreated()
+        ->assertJsonPath('data.attachmentName', 'proposal.pdf');
+
+    expect(Message::query()->where('conversation_id', $conversation->id)->value('attachment_name'))->toBe('proposal.pdf');
+});
+
 it('marks a conversation as read', function () {
     $conversation = Conversation::factory()->create(['unread_count' => 5]);
     $user = actingAsConversationRole('agent');

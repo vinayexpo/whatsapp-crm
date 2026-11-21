@@ -16,6 +16,7 @@ use App\Services\Messaging\MessagingDriverResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -107,6 +108,7 @@ class ConversationController extends Controller
 
         $attachmentUrl = null;
         $attachmentType = null;
+        $attachmentName = null;
         $attachmentFile = $request->hasFile('attachmentFile') ? $request->file('attachmentFile') : null;
 
         if ($attachmentFile) {
@@ -121,6 +123,7 @@ class ConversationController extends Controller
             // the actual send to Meta below uploads the file bytes directly
             // and never relies on this URL being publicly fetchable.
             $attachmentUrl = Storage::disk('public')->url($attachmentFile->store('conversation-attachments', 'public'));
+            $attachmentName = $attachmentFile->getClientOriginalName();
         }
 
         $message = Message::query()->create([
@@ -130,6 +133,7 @@ class ConversationController extends Controller
             'status' => 'sent',
             'attachment_url' => $attachmentUrl,
             'attachment_type' => $attachmentType,
+            'attachment_name' => $attachmentName,
             'sent_at' => now(),
         ]);
 
@@ -157,9 +161,56 @@ class ConversationController extends Controller
         return response()->json(['data' => new MessageResource($message->load('conversation'))], 201);
     }
 
-    public function markRead(Conversation $conversation): JsonResponse
+    /**
+     * Every image/video/audio/document exchanged in a conversation, so the
+     * inbox can show a media gallery without paging through the whole thread.
+     */
+    public function media(Request $request, Conversation $conversation): JsonResponse
     {
-        $this->authorize('update', $conversation);
+        $this->authorize('view', $conversation);
+
+        $limit = min((int) $request->query('limit', 200), 500);
+        $limit = $limit < 1 ? 200 : $limit;
+
+        $messages = $conversation->messages()
+            ->with('conversation')
+            ->whereNotNull('attachment_url')
+            ->orderByDesc('sent_at')
+            ->limit($limit)
+            ->get();
+
+        return response()->json(['data' => MessageResource::collection($messages)]);
+    }
+
+    /**
+     * Stream a stored attachment back through the API so documents always
+     * download with their original filename, even when the underlying file
+     * lives on a remote disk (S3) and its own URL would open in-browser.
+     */
+    public function downloadAttachment(Message $message)
+    {
+        $conversation = $message->conversation;
+        abort_if($conversation === null, 404);
+
+        $this->authorize('view', $conversation);
+
+        abort_if(empty($message->attachment_url), 404);
+
+        $file = Http::get($message->attachment_url);
+
+        abort_unless($file->successful(), 404);
+
+        $name = $message->attachment_name ?: basename(parse_url($message->attachment_url, PHP_URL_PATH) ?? 'attachment');
+
+        return response()->streamDownload(
+            fn () => print $file->body(),
+            $name,
+            ['Content-Type' => $file->header('Content-Type') ?: 'application/octet-stream'],
+        );
+    }
+
+    public function markRead(Conversation $conversation): JsonResponse
+    {        $this->authorize('update', $conversation);
 
         $conversation->update(['unread_count' => 0]);
 

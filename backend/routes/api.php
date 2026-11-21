@@ -133,6 +133,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/conversations', [ConversationController::class, 'index']);
         Route::get('/conversations/{conversation}/messages', [ConversationController::class, 'messages']);
         Route::post('/conversations/{conversation}/messages', [ConversationController::class, 'sendMessage']);
+        Route::get('/conversations/{conversation}/media', [ConversationController::class, 'media']);
+        Route::get('/messages/{message}/attachment', [ConversationController::class, 'downloadAttachment']);
         Route::post('/conversations/{conversation}/read', [ConversationController::class, 'markRead']);
         Route::patch('/conversations/{conversation}/status', [ConversationController::class, 'updateStatus']);
         Route::patch('/conversations/{conversation}/assign', [ConversationController::class, 'assign']);

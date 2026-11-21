@@ -14,6 +14,11 @@ import Tooltip from "@mui/material/Tooltip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import DoneRoundedIcon from "@mui/icons-material/DoneRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
@@ -22,6 +27,9 @@ import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import InsertDriveFileRoundedIcon from "@mui/icons-material/InsertDriveFileRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import PermMediaRoundedIcon from "@mui/icons-material/PermMediaRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
@@ -81,6 +89,44 @@ export function ChatWindow({
   const [callPanelOpen, setCallPanelOpen] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const prevScrollHeightRef = useRef<number | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; type: "image" | "video" } | null>(null);
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const [mediaItems, setMediaItems] = useState<Message[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaTab, setMediaTab] = useState<"image" | "video" | "document">("image");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!mediaOpen) return;
+    let cancelled = false;
+    setMediaLoading(true);
+    apiClient
+      .listConversationMedia(conversation.id)
+      .then((items) => {
+        if (!cancelled) setMediaItems(items);
+      })
+      .catch(() => {
+        if (!cancelled) setMediaItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMediaLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mediaOpen, conversation.id]);
+
+  async function handleDownloadAttachment(message: Message) {
+    const name = message.attachmentName || message.text || "attachment";
+    setDownloadingId(message.id);
+    try {
+      await apiClient.downloadMessageAttachment(message.id, name);
+    } catch {
+      setCallSnackbar({ severity: "error", message: "Download failed. Please try again." });
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   useEffect(() => {
     if (prevScrollHeightRef.current !== null && scrollRef.current) {
@@ -178,6 +224,11 @@ export function ChatWindow({
           </Box>
         </button>
         <Box sx={{ flex: 1, minWidth: { xs: 0, sm: "auto" } }} />
+        <Tooltip title="Media, links and docs">
+          <IconButton size="small" onClick={() => setMediaOpen(true)} sx={{ flexShrink: 0 }}>
+            <PermMediaRoundedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
         {conversation.channel === "whatsapp" && (
           <Tooltip title={`Call ${contact.name} on WhatsApp`}>
             <span>
@@ -265,13 +316,37 @@ export function ChatWindow({
                 <Box
                   component="img"
                   src={message.attachmentUrl}
-                  alt="Attachment"
-                  sx={{ display: "block", width: "100%", maxWidth: 260, borderRadius: 1.5, mb: 0.75 }}
+                  alt={message.attachmentName ?? "Attachment"}
+                  onClick={() => setLightbox({ url: message.attachmentUrl as string, type: "image" })}
+                  sx={{
+                    display: "block",
+                    width: "100%",
+                    maxWidth: 260,
+                    borderRadius: 1.5,
+                    mb: 0.75,
+                    cursor: "zoom-in",
+                  }}
                 />
               )}
               {message.attachmentUrl && message.attachmentType === "video" && (
-                <Box sx={{ mb: 0.75 }}>
+                <Box sx={{ mb: 0.75, position: "relative" }}>
                   <video controls src={message.attachmentUrl} style={{ width: "100%", maxWidth: 260, borderRadius: 6 }} />
+                  <Tooltip title="Open video">
+                    <IconButton
+                      size="small"
+                      onClick={() => setLightbox({ url: message.attachmentUrl as string, type: "video" })}
+                      sx={{
+                        position: "absolute",
+                        top: 4,
+                        right: 4,
+                        bgcolor: "rgba(0,0,0,0.55)",
+                        color: "#fff",
+                        "&:hover": { bgcolor: "rgba(0,0,0,0.75)" },
+                      }}
+                    >
+                      <PermMediaRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               )}
               {message.attachmentUrl && message.attachmentType === "audio" && (
@@ -292,7 +367,31 @@ export function ChatWindow({
                   }}
                 >
                   <InsertDriveFileRoundedIcon fontSize="small" />
-                  <Typography variant="caption">Proposal.pdf</Typography>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="caption" sx={{ display: "block", fontWeight: 600, wordBreak: "break-all" }}>
+                      {message.attachmentName || message.text || "Document"}
+                    </Typography>
+                    {message.attachmentName && message.text && (
+                      <Typography variant="caption" sx={{ display: "block", opacity: 0.7, wordBreak: "break-all" }}>
+                        {message.text}
+                      </Typography>
+                    )}
+                  </Box>
+                  <Tooltip title="Download">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownloadAttachment(message)}
+                        disabled={downloadingId === message.id}
+                      >
+                        {downloadingId === message.id ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <DownloadRoundedIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                 </Stack>
               )}
               <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
@@ -339,7 +438,7 @@ export function ChatWindow({
             ref={fileInputRef}
             type="file"
             hidden
-            accept="image/*,video/*"
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
             onChange={handleAttachmentSelected}
           />
           <IconButton size="small" onClick={() => fileInputRef.current?.click()}>
@@ -408,6 +507,152 @@ export function ChatWindow({
           </Alert>
         ) : undefined}
       </Snackbar>
+
+      <Dialog open={Boolean(lightbox)} onClose={() => setLightbox(null)} maxWidth="lg" fullWidth>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+          {lightbox?.type === "video" ? "Video" : "Photo"}
+          <IconButton size="small" onClick={() => setLightbox(null)} aria-label="Close preview">
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", justifyContent: "center", bgcolor: "#111", p: 1 }}>
+          {lightbox?.type === "image" && (
+            <Box
+              component="img"
+              src={lightbox.url}
+              alt="Attachment preview"
+              sx={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain" }}
+            />
+          )}
+          {lightbox?.type === "video" && (
+            <video
+              key={lightbox.url}
+              controls
+              autoPlay
+              src={lightbox.url}
+              style={{ maxWidth: "100%", maxHeight: "80vh" }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mediaOpen} onClose={() => setMediaOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+          Media, links and docs
+          <IconButton size="small" onClick={() => setMediaOpen(false)} aria-label="Close media">
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Tabs value={mediaTab} onChange={(_, value) => setMediaTab(value)} sx={{ mb: 2 }}>
+            <Tab value="image" label={`Photos (${mediaItems.filter((m) => m.attachmentType === "image").length})`} />
+            <Tab value="video" label={`Videos (${mediaItems.filter((m) => m.attachmentType === "video").length})`} />
+            <Tab value="document" label={`Docs (${mediaItems.filter((m) => m.attachmentType === "document").length})`} />
+          </Tabs>
+
+          {mediaLoading && (
+            <Stack sx={{ alignItems: "center", py: 4 }}>
+              <CircularProgress size={24} />
+            </Stack>
+          )}
+
+          {!mediaLoading && mediaItems.filter((m) => m.attachmentType === mediaTab).length === 0 && (
+            <Typography variant="body2" sx={{ color: "text.secondary", py: 3, textAlign: "center" }}>
+              Nothing here yet.
+            </Typography>
+          )}
+
+          {!mediaLoading && mediaTab === "document" ? (
+            <Stack spacing={1}>
+              {mediaItems
+                .filter((m) => m.attachmentType === "document")
+                .map((message) => (
+                  <Stack
+                    key={message.id}
+                    direction="row"
+                    sx={{
+                      alignItems: "center",
+                      gap: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: 1.5,
+                      p: 1,
+                    }}
+                  >
+                    <InsertDriveFileRoundedIcon fontSize="small" sx={{ color: "primary.main" }} />
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, wordBreak: "break-all" }}>
+                        {message.attachmentName || message.text || "Document"}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                        {formatTime(message.timestamp)}
+                      </Typography>
+                    </Box>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDownloadAttachment(message)}
+                      disabled={downloadingId === message.id}
+                      aria-label="Download document"
+                    >
+                      {downloadingId === message.id ? (
+                        <CircularProgress size={16} />
+                      ) : (
+                        <DownloadRoundedIcon fontSize="small" />
+                      )}
+                    </IconButton>
+                  </Stack>
+                ))}
+            </Stack>
+          ) : (
+            !mediaLoading && (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+                  gap: 1,
+                }}
+              >
+                {mediaItems
+                  .filter((m) => m.attachmentType === mediaTab && m.attachmentUrl)
+                  .map((message) => (
+                    <Box
+                      key={message.id}
+                      onClick={() =>
+                        setLightbox({
+                          url: message.attachmentUrl as string,
+                          type: mediaTab === "video" ? "video" : "image",
+                        })
+                      }
+                      sx={{
+                        position: "relative",
+                        paddingTop: "100%",
+                        borderRadius: 1.5,
+                        overflow: "hidden",
+                        cursor: "pointer",
+                        bgcolor: "action.hover",
+                      }}
+                    >
+                      {mediaTab === "image" ? (
+                        <Box
+                          component="img"
+                          src={message.attachmentUrl}
+                          alt={message.attachmentName ?? "Photo"}
+                          sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <Box
+                          component="video"
+                          src={message.attachmentUrl}
+                          sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </Box>
+                  ))}
+              </Box>
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
