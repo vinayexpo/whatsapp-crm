@@ -17,6 +17,8 @@ vi.mock("~/utils/api-client", () => ({
   },
 }));
 
+vi.mock("~/hooks/use-crm-store", () => ({ useCrmStore: () => ({ templatesRevision: 0 }) }));
+
 function folder(id: string, name: string): PhonebookFolder {
   return { id, name, contactCount: 12, createdAt: "", updatedAt: "" };
 }

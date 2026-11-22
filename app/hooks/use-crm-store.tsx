@@ -19,6 +19,8 @@ import type {
   TeamMemberRole,
 } from "~/data/types";
 import { useAuth } from "~/hooks/use-auth";
+import { useBatchedRefresh } from "~/hooks/use-batched-refresh";
+import { mergeMessages, sortConversations, updateConversation } from "~/utils/realtime-state";
 
 const AGGREGATE_PER_PAGE = 100;
 
@@ -43,6 +45,9 @@ interface AutomationFlowFilters {
 }
 
 interface CrmStoreValue {
+  campaignsRevision: number;
+  templatesRevision: number;
+  dashboardRevision: number;
   contacts: Contact[];
   contactsPagination: PaginationMeta;
   fetchContactsPage: (page: number, filters?: ContactFilters, perPage?: number) => void;
@@ -215,6 +220,12 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     DEFAULT_NOTIFICATION_PREFERENCES,
   );
   const { user: currentUser, status: authStatus } = useAuth();
+  const [inboxRevision, refreshInbox] = useBatchedRefresh(currentUser?.id);
+  const [campaignsRevision, refreshCampaigns] = useBatchedRefresh(currentUser?.id);
+  const [templatesRevision, refreshTemplates] = useBatchedRefresh(currentUser?.id);
+  const [dashboardRevision, refreshDashboard] = useBatchedRefresh(currentUser?.id);
+  const activeConversationRef = useRef(activeConversationId);
+  activeConversationRef.current = activeConversationId;
   const [aiAssistantSettings, setAiAssistantSettings] = useState<AiAssistantSettings>(DEFAULT_AI_ASSISTANT_SETTINGS);
 
   const fetchContactsPage = useCallback((page: number, filters?: ContactFilters, perPage?: number) => {
@@ -300,8 +311,17 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       .then(({ data, meta }) => {
         if (!cancelled) {
           const pinned = pinnedConversationRef.current;
-          const merged = pinned && !data.some((c) => c.id === pinned.id) ? [pinned, ...data] : data;
-          setConversations(merged);
+          const active = conversationsRef.current.find((conversation) => conversation.id === activeConversationRef.current);
+          const assignee = conversationsAssignedTo === "me" ? currentUser?.id : conversationsAssignedTo;
+          const activeMatchesFilters = active
+            && !conversationsSearch
+            && (!conversationsStatus || active.status === conversationsStatus)
+            && (!conversationsChannel || active.channel === conversationsChannel)
+            && (currentUser?.role !== "agent" || active.assignedTo?.id === currentUser.id)
+            && (!assignee || (assignee === "unassigned" ? !active.assignedTo : active.assignedTo?.id === assignee));
+          const kept = pinned ?? (activeMatchesFilters ? active : null);
+          const merged = kept && !data.some((c) => c.id === kept.id) ? [kept, ...data] : data;
+          setConversations(sortConversations(merged));
           setConversationsPagination(meta);
         }
       })
@@ -319,6 +339,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     conversationsSearch,
     conversationsStatus,
     conversationsChannel,
+    inboxRevision,
   ]);
 
   useEffect(() => {
@@ -335,7 +356,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus, currentUser?.role]);
+  }, [authStatus, currentUser?.role, inboxRevision]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
@@ -345,7 +366,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
         .listMessages(activeConversationId, { limit: 30 })
         .then(({ data, hasMore }) => {
           if (cancelled) return;
-          setMessages((prev) => [...prev.filter((m) => m.conversationId !== activeConversationId), ...data]);
+          setMessages((prev) => mergeMessages(prev, data));
           setHasMoreOlderByConversation((prev) => ({ ...prev, [activeConversationId]: hasMore }));
         })
         .catch(() => {
@@ -355,7 +376,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus, activeConversationId]);
+  }, [authStatus, activeConversationId, inboxRevision]);
 
   useEffect(() => {
     if (authStatus !== "authenticated" || !currentUser?.companyId) return;
@@ -363,22 +384,46 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     const echo = getEcho();
     const channelName = `company.${currentUser.companyId}.conversations`;
 
-    echo.private(channelName).listen(".conversation.created", (payload: { conversation: Conversation }) => {
-      setConversations((prev) => {
-        if (prev.some((c) => c.id === payload.conversation.id)) return prev;
-        if (conversationsPagination.currentPage !== 1) return prev;
-        return [payload.conversation, ...prev].slice(0, conversationsPagination.perPage || prev.length + 1);
+    const onConversation = ({ conversation }: { conversation: Conversation }) => {
+      // Update known cards immediately. Re-fetch the current server page to
+      // reconcile new cards, filters, permissions, totals and off-page ordering.
+      setConversations((prev) => updateConversation(prev, conversation));
+      setAllConversations((prev) => updateConversation(prev, conversation));
+      refreshInbox();
+      refreshDashboard();
+    };
+    const channel = echo.private(channelName)
+      .listen(".conversation.created", onConversation)
+      .listen(".conversation.updated", onConversation)
+      .listen(".message.received", ({ message }: { message: Message }) => {
+        setMessages((prev) => mergeMessages(prev, [message]));
+        refreshInbox();
+        refreshDashboard();
       });
-      setConversationsPagination((prev) => ({ ...prev, total: prev.total + 1 }));
-      setAllConversations((prev) =>
-        prev.some((c) => c.id === payload.conversation.id) ? prev : [payload.conversation, ...prev],
-      );
+    channel.subscribed(() => {
+      // Subscription success also runs after a reconnect: recover missed events.
+      refreshInbox();
+      refreshDashboard();
     });
+
+    const updatesName = `company.${currentUser.companyId}.updates`;
+    echo.private(updatesName)
+      .listen(".company.data-updated", ({ resource }: { resource: string }) => {
+        if (resource === "campaigns") refreshCampaigns();
+        if (resource === "templates") refreshTemplates();
+        if (resource !== "templates") refreshDashboard();
+      })
+      .subscribed(() => {
+        refreshCampaigns();
+        refreshTemplates();
+        refreshDashboard();
+      });
 
     return () => {
       echo.leave(channelName);
+      echo.leave(updatesName);
     };
-  }, [authStatus, currentUser?.companyId, conversationsPagination.currentPage, conversationsPagination.perPage]);
+  }, [authStatus, currentUser?.id, currentUser?.companyId, refreshInbox, refreshCampaigns, refreshTemplates, refreshDashboard]);
 
   const subscribedConversationIds = useRef<Set<string>>(new Set());
 
@@ -387,34 +432,33 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
 
     const echo = getEcho();
 
-    for (const c of conversations) {
-      if (subscribedConversationIds.current.has(c.id)) continue;
-      subscribedConversationIds.current.add(c.id);
+    const desired = new Set(conversations.map((conversation) => conversation.id));
+    if (activeConversationId) desired.add(activeConversationId);
+    for (const id of subscribedConversationIds.current) {
+      if (!desired.has(id)) {
+        echo.leave(`conversation.${id}`);
+        subscribedConversationIds.current.delete(id);
+      }
+    }
+
+    for (const id of desired) {
+      if (subscribedConversationIds.current.has(id)) continue;
+      subscribedConversationIds.current.add(id);
 
       echo
-        .private(`conversation.${c.id}`)
+        .private(`conversation.${id}`)
         .listen(".message.received", (payload: { message: Message }) => {
-          setMessages((prev) => (prev.some((m) => m.id === payload.message.id) ? prev : [...prev, payload.message]));
+          setMessages((prev) => mergeMessages(prev, [payload.message]));
         })
         .listen(".message.status-updated", (payload: { messageId: string; status: Message["status"] }) => {
-          setMessages((prev) => prev.map((m) => (m.id === payload.messageId ? { ...m, status: payload.status } : m)));
+          setMessages((prev) => mergeMessages(prev, prev.filter((m) => m.id === payload.messageId).map((m) => ({ ...m, status: payload.status }))));
         })
         .listen(".conversation.updated", (payload: { conversation: Conversation }) => {
-          setConversations((prev) => {
-            const exists = prev.some((c) => c.id === payload.conversation.id);
-            return exists
-              ? prev.map((c) => (c.id === payload.conversation.id ? payload.conversation : c))
-              : [payload.conversation, ...prev];
-          });
-          setAllConversations((prev) => {
-            const exists = prev.some((c) => c.id === payload.conversation.id);
-            return exists
-              ? prev.map((c) => (c.id === payload.conversation.id ? payload.conversation : c))
-              : [payload.conversation, ...prev];
-          });
+          setConversations((prev) => updateConversation(prev, payload.conversation));
+          setAllConversations((prev) => updateConversation(prev, payload.conversation));
         });
     }
-  }, [authStatus, conversations]);
+  }, [authStatus, currentUser?.id, conversations, activeConversationId]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
@@ -423,7 +467,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       subscribedConversationIds.current.forEach((id) => echo.leave(`conversation.${id}`));
       subscribedConversationIds.current.clear();
     };
-  }, [authStatus]);
+  }, [authStatus, currentUser?.id]);
 
   const fetchCampaignsPage = useCallback((page: number, filters?: CampaignFilters) => {
     setCampaignsPage(page);
@@ -447,7 +491,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus, campaignsPage, campaignsFilters]);
+  }, [authStatus, campaignsPage, campaignsFilters, campaignsRevision]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
@@ -463,7 +507,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus]);
+  }, [authStatus, campaignsRevision]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
@@ -479,7 +523,7 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authStatus]);
+  }, [authStatus, dashboardRevision]);
 
   const fetchAutomationFlowsPage = useCallback((page: number, filters?: AutomationFlowFilters) => {
     setAutomationFlowsPage(page);
@@ -631,11 +675,11 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
 
   const sendMessage = useCallback((conversationId: string, text: string, attachmentFile?: File | null) => {
     apiClient.sendMessage(conversationId, text, attachmentFile).then((sent) => {
-      setMessages((prev) => [...prev, sent]);
+      setMessages((prev) => mergeMessages(prev, [sent]));
       const patch = (c: Conversation) =>
         c.id === conversationId ? { ...c, lastMessagePreview: text || "Attachment", lastMessageAt: sent.timestamp } : c;
-      setConversations((prev) => prev.map(patch));
-      setAllConversations((prev) => prev.map(patch));
+      setConversations((prev) => sortConversations(prev.map(patch)));
+      setAllConversations((prev) => sortConversations(prev.map(patch)));
     });
   }, []);
 
@@ -893,6 +937,9 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      campaignsRevision,
+      templatesRevision,
+      dashboardRevision,
       contacts,
       contactsPagination,
       fetchContactsPage,
@@ -944,6 +991,9 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
       updateAiAssistantSettings,
     }),
     [
+      campaignsRevision,
+      templatesRevision,
+      dashboardRevision,
       contacts,
       contactsPagination,
       fetchContactsPage,

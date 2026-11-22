@@ -14,13 +14,22 @@ class ConversationUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public bool $afterCommit = true;
+
     public function __construct(public Conversation $conversation) {}
 
     public function broadcastOn(): array
     {
         $conversationUuid = $this->conversation->uuid;
 
-        return $conversationUuid ? [new PrivateChannel('conversation.'.$conversationUuid)] : [];
+        $channels = $conversationUuid ? [new PrivateChannel('conversation.'.$conversationUuid)] : [];
+        $companyUuid = $this->conversation->company?->uuid;
+
+        if ($companyUuid) {
+            $channels[] = new PrivateChannel('company.'.$companyUuid.'.conversations');
+        }
+
+        return $channels;
     }
 
     public function broadcastAs(): string

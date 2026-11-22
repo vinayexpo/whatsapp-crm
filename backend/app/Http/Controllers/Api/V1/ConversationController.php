@@ -210,9 +210,11 @@ class ConversationController extends Controller
     }
 
     public function markRead(Conversation $conversation): JsonResponse
-    {        $this->authorize('update', $conversation);
+    {
+        $this->authorize('update', $conversation);
 
         $conversation->update(['unread_count' => 0]);
+        ConversationUpdated::dispatch($conversation);
 
         return response()->json(['data' => new ConversationResource($conversation->load(['contact', 'assignedTo']))]);
     }
@@ -226,6 +228,7 @@ class ConversationController extends Controller
         ]);
 
         $conversation->update(['status' => $data['status']]);
+        ConversationUpdated::dispatch($conversation);
 
         return response()->json(['data' => new ConversationResource($conversation->load(['contact', 'assignedTo']))]);
     }

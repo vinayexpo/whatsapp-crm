@@ -37,6 +37,7 @@ import type {
   WhatsappTemplate,
 } from "~/data/types";
 import { apiClient } from "~/utils/api-client";
+import { useCrmStore } from "~/hooks/use-crm-store";
 
 interface CampaignBuilderDialogProps {
   open: boolean;
@@ -64,6 +65,7 @@ const STEPS = ["Audience", "Message", "Review & Schedule"];
 const AVAILABLE_TAGS = ["VIP", "New", "Enterprise", "Wholesale", "Design", "Repeat Customer", "Retail", "Fashion", "Influencer"];
 
 export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiConnections }: CampaignBuilderDialogProps) {
+  const { templatesRevision } = useCrmStore();
   const [activeStep, setActiveStep] = useState(0);
   const [name, setName] = useState("");
   const [campaignMode, setCampaignMode] = useState<"message" | "voiceCall" | "whatsappCall">("message");
@@ -119,7 +121,7 @@ export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiCo
     return () => {
       cancelled = true;
     };
-  }, [open, channel, whatsappConnection]);
+  }, [open, channel, whatsappConnection, templatesRevision]);
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
   const selectedFolderSummary = folders.find((f) => f.id === phonebookFolderId) ?? null;

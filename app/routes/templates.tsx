@@ -23,6 +23,7 @@ import { RoleGuard } from "~/components/role-guard/role-guard";
 import { TemplateBuilderDialog } from "~/components/templates/template-builder-dialog";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient, ApiError } from "~/utils/api-client";
+import { useCrmStore } from "~/hooks/use-crm-store";
 import type { ApiConnection, WhatsappTemplate, WhatsappTemplateStatus } from "~/data/types";
 import type { Route } from "./+types/templates";
 
@@ -41,6 +42,7 @@ const STATUS_COLOR: Record<WhatsappTemplateStatus, "default" | "warning" | "succ
 };
 
 export default function Templates() {
+  const { templatesRevision } = useCrmStore();
   const [connections, setConnections] = useState<ApiConnection[]>([]);
   const [connectionId, setConnectionId] = useState<string>("");
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
@@ -86,6 +88,7 @@ export default function Templates() {
       setLastPage(1);
       return;
     }
+    let cancelled = false;
     apiClient
       .listTemplates(connectionId, {
         page,
@@ -93,11 +96,16 @@ export default function Templates() {
         status: statusFilter === "all" ? undefined : statusFilter,
       })
       .then(({ data, meta }) => {
+        if (cancelled) return;
+        if (page > meta.lastPage) setPage(meta.lastPage);
         setTemplates(data);
         setLastPage(meta.lastPage);
       })
-      .catch(() => setTemplates([]));
-  }, [connectionId, page, debouncedSearch, statusFilter]);
+      .catch(() => {
+        if (!cancelled) setError("Could not refresh message templates. Please try again.");
+      });
+    return () => { cancelled = true; };
+  }, [connectionId, page, debouncedSearch, statusFilter, templatesRevision]);
 
   function openCreate() {
     setEditingTemplate(null);

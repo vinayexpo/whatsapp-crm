@@ -68,7 +68,7 @@ function CardHeading({ title, subtitle }: { title: string; subtitle?: string }) 
 }
 
 export default function Analytics() {
-  const { allCampaigns, dailyMetrics } = useCrmStore();
+  const { allCampaigns, dailyMetrics, dashboardRevision } = useCrmStore();
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
   const [rangePreset, setRangePreset] = useState<DateRangePreset>("14d");
   const [customStart, setCustomStart] = useState<Dayjs | null>(null);
@@ -76,10 +76,14 @@ export default function Analytics() {
   const [funnelCounts, setFunnelCounts] = useState<{ stage: string; count: number }[]>([]);
 
   useEffect(() => {
-    apiClient.getPipelineFunnel().then(setFunnelCounts).catch(() => {
+    let cancelled = false;
+    apiClient.getPipelineFunnel().then((data) => {
+      if (!cancelled) setFunnelCounts(data);
+    }).catch(() => {
       // funnel stays empty on failure
     });
-  }, []);
+    return () => { cancelled = true; };
+  }, [dashboardRevision]);
 
   const latestMetricDate = useMemo(
     () => (dailyMetrics.length > 0 ? dayjs(dailyMetrics[dailyMetrics.length - 1].date) : dayjs()),

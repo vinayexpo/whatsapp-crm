@@ -16,6 +16,10 @@ Broadcast::channel('conversation.{uuid}', function ($user, string $uuid) {
 });
 
 Broadcast::channel('company.{companyUuid}.conversations', function ($user, string $companyUuid) {
+    return $user->company && $user->company->uuid === $companyUuid && $user->can('conversations.view');
+});
+
+Broadcast::channel('company.{companyUuid}.updates', function ($user, string $companyUuid) {
     return $user->company && $user->company->uuid === $companyUuid;
 });
 

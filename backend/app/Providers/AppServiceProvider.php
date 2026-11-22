@@ -2,18 +2,25 @@
 
 namespace App\Providers;
 
+use App\Models\ActivityLog;
+use App\Models\Campaign;
+use App\Models\CampaignRecipient;
+use App\Models\Contact;
+use App\Models\DailyMetric;
+use App\Models\WhatsappTemplate;
+use App\Observers\CompanyDataObserver;
 use App\Services\Calling\FakeWhatsappCallService;
 use App\Services\Calling\GraphApiWhatsappCallService;
 use App\Services\Calling\WhatsappCallServiceInterface;
-use App\Services\ChatFlow\ChatMenuFlowGeneratorServiceInterface;
-use App\Services\ChatFlow\FakeChatMenuFlowGeneratorService;
-use App\Services\ChatFlow\OpenAiChatMenuFlowGeneratorService;
 use App\Services\Chatbot\ChatbotReplyServiceInterface;
 use App\Services\Chatbot\FakeChatbotReplyService;
 use App\Services\Chatbot\FakeTrainingEntryGeneratorService;
 use App\Services\Chatbot\OpenAiChatbotReplyService;
 use App\Services\Chatbot\OpenAiTrainingEntryGeneratorService;
 use App\Services\Chatbot\TrainingEntryGeneratorServiceInterface;
+use App\Services\ChatFlow\ChatMenuFlowGeneratorServiceInterface;
+use App\Services\ChatFlow\FakeChatMenuFlowGeneratorService;
+use App\Services\ChatFlow\OpenAiChatMenuFlowGeneratorService;
 use App\Services\Notifications\FakePushNotificationService;
 use App\Services\Notifications\PushNotificationServiceInterface;
 use App\Services\Notifications\WebPushNotificationService;
@@ -81,6 +88,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        foreach ([
+            Campaign::class,
+            CampaignRecipient::class,
+            WhatsappTemplate::class,
+            Contact::class,
+            DailyMetric::class,
+            ActivityLog::class,
+        ] as $model) {
+            $model::observe(CompanyDataObserver::class);
+        }
+
         // Railway's edge proxy terminates TLS and forwards plain HTTP to the
         // container, so the request Laravel sees always looks like http://.
         // Force https so url()/route() generate the correct public scheme

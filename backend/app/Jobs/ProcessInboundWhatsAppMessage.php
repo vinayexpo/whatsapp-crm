@@ -6,6 +6,9 @@ use App\Events\ConversationCreated;
 use App\Events\ConversationUpdated;
 use App\Events\MessageReceived;
 use App\Events\MessageStatusUpdated;
+use App\Events\WhatsappCallStatusUpdated;
+use App\Http\Controllers\Api\V1\PaymentController;
+use App\Jobs\Concerns\NotifiesOnFailure;
 use App\Models\ActivityLog;
 use App\Models\ApiConnection;
 use App\Models\CampaignRecipient;
@@ -15,11 +18,9 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Models\WhatsappCall;
-use App\Events\WhatsappCallStatusUpdated;
-use App\Jobs\Concerns\NotifiesOnFailure;
+use App\Models\WhatsappTemplate;
 use App\Scopes\CompanyScope;
 use App\Services\ChatFlow\ChatMenuFlowEngine;
-use App\Http\Controllers\Api\V1\PaymentController;
 use App\Services\Commerce\CommerceOrderEngine;
 use App\Services\Messaging\WhatsAppMediaDownloader;
 use App\Services\Notifications\NotificationDispatchService;
@@ -31,7 +32,7 @@ use Throwable;
 
 class ProcessInboundWhatsAppMessage implements ShouldQueue
 {
-    use Queueable, NotifiesOnFailure;
+    use NotifiesOnFailure, Queueable;
 
     public function __construct(public int $webhookEventId) {}
 
@@ -47,6 +48,12 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             foreach (data_get($entry, 'changes', []) as $change) {
                 $value = data_get($change, 'value', []);
 
+                if (($change['field'] ?? null) === 'message_template_status_update') {
+                    $this->applyTemplateStatusUpdate((string) ($entry['id'] ?? ''), $value);
+
+                    continue;
+                }
+
                 foreach (data_get($value, 'messages', []) as $inboundMessage) {
                     $this->storeInboundMessage($value, $inboundMessage);
                 }
@@ -58,6 +65,27 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
         }
 
         $event->update(['processed_at' => now(), 'status' => 'processed']);
+    }
+
+    private function applyTemplateStatusUpdate(string $wabaId, array $value): void
+    {
+        $templateId = $value['message_template_id'] ?? null;
+        $status = strtolower((string) ($value['event'] ?? ''));
+
+        if ($wabaId === '' || ! $templateId || ! in_array($status, ['approved', 'rejected', 'pending'], true)) {
+            return;
+        }
+
+        WhatsappTemplate::query()
+            ->where('meta_template_id', (string) $templateId)
+            ->whereHas('apiConnection', fn ($query) => $query->where('channel', 'whatsapp')->where('waba_id', $wabaId))
+            ->each(function (WhatsappTemplate $template) use ($status, $value) {
+                $reason = $value['reason'] ?? null;
+                $template->update([
+                    'status' => $status,
+                    'rejection_reason' => $status === 'rejected' && $reason !== 'NONE' ? $reason : null,
+                ]);
+            });
     }
 
     private function storeInboundMessage(array $value, array $inboundMessage): void
@@ -334,7 +362,7 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             $reason = $errors[0]['message'] ?? $errors[0]['title'] ?? null;
             $details = $errors[0]['error_data']['details'] ?? null;
 
-            CampaignRecipient::query()->where('message_id', $message->id)->update([
+            CampaignRecipient::query()->where('message_id', $message->id)->first()?->update([
                 'status' => 'failed',
                 'failure_reason' => trim(($reason ?? 'Message delivery failed.').($details ? " {$details}" : '')),
             ]);

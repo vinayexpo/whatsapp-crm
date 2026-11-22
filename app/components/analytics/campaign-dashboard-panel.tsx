@@ -13,6 +13,7 @@ import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import dayjs from "dayjs";
 import { apiClient } from "~/utils/api-client";
+import { useCrmStore } from "~/hooks/use-crm-store";
 import type { CampaignDashboardData } from "~/data/types";
 import { CampaignPerformanceTable } from "./campaign-performance-table";
 
@@ -34,6 +35,7 @@ function CardHeading({ title, subtitle }: { title: string; subtitle?: string }) 
 }
 
 export function CampaignDashboardPanel({ from, to }: { from?: string; to?: string }) {
+  const { campaignsRevision } = useCrmStore();
   const [dashboard, setDashboard] = useState<CampaignDashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ export function CampaignDashboardPanel({ from, to }: { from?: string; to?: strin
     return () => {
       cancelled = true;
     };
-  }, [from, to]);
+  }, [from, to, campaignsRevision]);
 
   const chartData = useMemo(
     () =>
@@ -67,7 +69,7 @@ export function CampaignDashboardPanel({ from, to }: { from?: string; to?: strin
     [dashboard],
   );
 
-  if (loading) {
+  if (loading && !dashboard) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
         <CircularProgress size={28} />

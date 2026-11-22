@@ -14,6 +14,8 @@ class ConversationCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public bool $afterCommit = true;
+
     public function __construct(public Conversation $conversation) {}
 
     public function broadcastOn(): array
@@ -30,6 +32,9 @@ class ConversationCreated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return ['conversation' => (new ConversationResource($this->conversation->fresh(['contact', 'assignedTo', 'messages'])))->resolve()];
+        $conversation = $this->conversation->fresh(['contact', 'assignedTo']);
+        $conversation?->load(['messages' => fn ($query) => $query->latest('sent_at')->limit(1)]);
+
+        return ['conversation' => (new ConversationResource($conversation ?? $this->conversation))->resolve()];
     }
 }

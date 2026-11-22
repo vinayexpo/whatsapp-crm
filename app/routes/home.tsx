@@ -19,6 +19,7 @@ import CampaignIcon from "@mui/icons-material/Campaign";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { AppLayout } from "~/components/app-layout/app-layout";
+import { useCrmStore } from "~/hooks/use-crm-store";
 import { ChannelIcon } from "~/components/channel-icon/channel-icon";
 import { apiClient } from "~/utils/api-client";
 import { formatCurrency, formatRelativeTime } from "~/utils/format";
@@ -53,6 +54,7 @@ const CAMPAIGNS_PER_PAGE = 4;
 const ACTIVITY_PER_PAGE = 5;
 
 export default function Home() {
+  const { dashboardRevision, campaignsRevision } = useCrmStore();
   const greeting = getGreeting(new Date().getHours());
   const [summary, setSummary] = useState({
     totalContacts: 0,
@@ -81,7 +83,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [dashboardRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,7 +96,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [campaignsPage]);
+  }, [campaignsPage, campaignsRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,7 +109,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [activityPage]);
+  }, [activityPage, dashboardRevision]);
 
   const metrics = [
     {

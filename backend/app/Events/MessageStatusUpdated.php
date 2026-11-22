@@ -13,6 +13,8 @@ class MessageStatusUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public bool $afterCommit = true;
+
     public function __construct(public Message $message) {}
 
     public function broadcastOn(): array
