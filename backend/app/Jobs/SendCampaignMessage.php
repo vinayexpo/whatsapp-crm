@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\ConversationCreated;
 use App\Events\ConversationUpdated;
 use App\Models\ApiConnection;
+use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -79,6 +80,28 @@ class SendCampaignMessage implements ShouldQueue
             return;
         }
 
+        // Templates are scoped to a single WABA. Sending a template through a
+        // different connection makes Meta answer 132001 ("Template name does
+        // not exist in the translation"), so the connection is resolved from
+        // the template first and a mismatch is reported up front.
+        $connection = $this->resolveConnection($conversation, $campaign, $template);
+
+        if ($template && $connection && $template->api_connection_id && (int) $template->api_connection_id !== (int) $connection->id) {
+            $recipient->update([
+                'status' => 'failed',
+                'failure_reason' => "The template \"{$template->name}\" belongs to a different WhatsApp number than this conversation. Create the campaign for the number the template was approved on, or use a template from this conversation's number.",
+            ]);
+
+            return;
+        }
+
+        if (! $connection) {
+            // No connection row (e.g. unit tests / a company without a number
+            // yet). Keep the previous behaviour: let the driver produce the
+            // error rather than pre-failing here.
+            $connection = new ApiConnection;
+        }
+
         $text = $template ? $this->renderTemplate($template->body, $campaign->template_variables ?? []) : $campaign->message;
 
         $message = DB::transaction(function () use ($recipient, $conversation, $text, $campaign) {
@@ -103,19 +126,15 @@ class SendCampaignMessage implements ShouldQueue
             return $message;
         });
 
-        $connection = $conversation->api_connection_id
-            ? ApiConnection::find($conversation->api_connection_id)
-            : ApiConnection::query()->where('channel', $conversation->channel)->first();
-
         $templatePayload = $template ? $this->buildTemplatePayload($template, $campaign->template_variables ?? [], $message->attachment_url) : null;
 
         try {
-            $externalId = $resolver->forConnection($connection)->send($message, $connection ?? new ApiConnection, $templatePayload);
+            $externalId = $resolver->forConnection($connection)->send($message, $connection, $templatePayload);
         } catch (Throwable $e) {
             $message->update(['status' => 'failed']);
             $recipient->update([
                 'status' => 'failed',
-                'failure_reason' => $e->getMessage(),
+                'failure_reason' => $this->describeSendFailure($e, $template),
             ]);
 
             throw $e;
@@ -197,6 +216,39 @@ class SendCampaignMessage implements ShouldQueue
 
         return $headerComponent
             && in_array(strtolower($headerComponent['format'] ?? ''), ['image', 'video', 'document'], true);
+    }
+
+    private function resolveConnection(Conversation $conversation, Campaign $campaign, ?WhatsappTemplate $template): ?ApiConnection
+    {
+        if ($conversation->api_connection_id) {
+            return ApiConnection::query()->find($conversation->api_connection_id);
+        }
+
+        if ($template?->api_connection_id) {
+            $connection = ApiConnection::query()->find($template->api_connection_id);
+
+            if ($connection) {
+                return $connection;
+            }
+        }
+
+        return ApiConnection::query()
+            ->where('company_id', $campaign->company_id)
+            ->where('channel', $conversation->channel)
+            ->first()
+            ?? ApiConnection::query()->where('channel', $conversation->channel)->first();
+    }
+
+    private function describeSendFailure(Throwable $exception, ?WhatsappTemplate $template): string
+    {
+        $reason = $exception->getMessage();
+        $templateName = $template?->name ?? 'this template';
+
+        if (str_contains($reason, '132001')) {
+            return "Meta could not find \"{$templateName}\" (language: ".($template?->language ?? 'unknown').") on the sending WhatsApp number yet — 132001. This usually means the template is still under review or was created moments ago; open Templates, run Sync and retry once Meta shows it as approved.";
+        }
+
+        return $reason;
     }
 
     public function failed(Throwable $e): void

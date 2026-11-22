@@ -14,6 +14,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
@@ -49,7 +50,7 @@ class WhatsappTemplateController extends Controller
             ]);
         }
 
-        $templates = $resolver->forConnection($apiConnection)->fetchTemplates($apiConnection);
+        $templates = $this->runMetaCall(fn () => $resolver->forConnection($apiConnection)->fetchTemplates($apiConnection));
         $syncedAt = now();
 
         foreach ($templates as $template) {
@@ -161,10 +162,10 @@ class WhatsappTemplateController extends Controller
             ]);
         }
 
-        $result = $resolver->forConnection($whatsappTemplate->apiConnection)->submitTemplate(
+        $result = $this->runMetaCall(fn () => $resolver->forConnection($whatsappTemplate->apiConnection)->submitTemplate(
             $whatsappTemplate->apiConnection,
             $whatsappTemplate,
-        );
+        ));
 
         $whatsappTemplate->update([
             'meta_template_id' => $result['meta_template_id'],
@@ -188,10 +189,10 @@ class WhatsappTemplateController extends Controller
             ]);
         }
 
-        $result = $resolver->forConnection($whatsappTemplate->apiConnection)->pushTemplateEdits(
+        $result = $this->runMetaCall(fn () => $resolver->forConnection($whatsappTemplate->apiConnection)->pushTemplateEdits(
             $whatsappTemplate->apiConnection,
             $whatsappTemplate,
-        );
+        ));
 
         $whatsappTemplate->update([
             'status' => $result['status'],
@@ -211,7 +212,7 @@ class WhatsappTemplateController extends Controller
             'media' => ['required', 'file', 'mimes:jpg,jpeg,png,mp4,pdf', 'max:16384'],
         ]);
 
-        $handle = $resolver->forConnection($apiConnection)->uploadHeaderMedia($apiConnection, $data['media']);
+        $handle = $this->runMetaCall(fn () => $resolver->forConnection($apiConnection)->uploadHeaderMedia($apiConnection, $data['media']));
 
         return response()->json(['data' => ['handle' => $handle]]);
     }
@@ -235,6 +236,30 @@ class WhatsappTemplateController extends Controller
     {
         if (! $request->user()->can('campaigns.manage')) {
             throw new AuthorizationException;
+        }
+    }
+
+    /**
+     * Run a Meta Graph API call and translate transport/API failures into a
+     * validation error carrying Meta's own message, instead of letting the
+     * RequestException bubble up as a generic "Server Error" response.
+     *
+     * @template T
+     * @param  callable(): T  $call
+     * @return T
+     */
+    private function runMetaCall(callable $call): mixed
+    {
+        try {
+            return $call();
+        } catch (RequestException $exception) {
+            $message = $exception->response?->json('error.message')
+                ?? $exception->response?->json('error.error_user_msg')
+                ?? $exception->getMessage();
+
+            throw ValidationException::withMessages([
+                'meta' => $message,
+            ]);
         }
     }
 

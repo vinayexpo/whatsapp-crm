@@ -182,3 +182,48 @@ it('sends a template-rendered message outside the 24-hour window when a template
     $message = Message::query()->find($recipient->fresh()->message_id);
     expect($message->text)->toBe('Hi Amara, your order #1234 is confirmed.');
 });
+
+it('fails the recipient instead of calling Meta when the template belongs to another connection', function () {
+    \Illuminate\Support\Facades\Queue::fake();
+    \Illuminate\Support\Facades\Http::fake();
+
+    $conversationConnection = ApiConnection::factory()->connected()->create(['channel' => 'whatsapp']);
+    $templateConnection = ApiConnection::factory()->connected()->create(['channel' => 'whatsapp']);
+
+    $template = WhatsappTemplate::factory()->create([
+        'api_connection_id' => $templateConnection->id,
+        'status' => 'approved',
+        'body' => 'Hi {{1}}',
+        'variables' => ['1'],
+    ]);
+
+    $contact = Contact::factory()->create(['channel' => 'whatsapp']);
+    $conversation = Conversation::factory()->create([
+        'contact_id' => $contact->id,
+        'channel' => 'whatsapp',
+        'api_connection_id' => $conversationConnection->id,
+    ]);
+    Message::factory()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'sent_at' => now()->subHours(30),
+    ]);
+
+    $campaign = Campaign::factory()->create([
+        'channel' => 'whatsapp',
+        'message' => 'fallback text',
+        'whatsapp_template_id' => $template->id,
+        'template_variables' => ['1' => 'Amara'],
+    ]);
+    $recipient = CampaignRecipient::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_id' => $contact->id,
+        'status' => 'pending',
+    ]);
+
+    (new SendCampaignMessage($recipient->id))->handle(app(\App\Services\Messaging\MessagingDriverResolver::class));
+
+    expect($recipient->fresh()->status)->toBe('failed');
+    expect($recipient->fresh()->failure_reason)->toContain('different WhatsApp number');
+    \Illuminate\Support\Facades\Http::assertNothingSent();
+});

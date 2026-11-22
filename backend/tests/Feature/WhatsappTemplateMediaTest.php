@@ -166,3 +166,20 @@ it('hits the two-step resumable upload endpoints in order with the right payload
         },
     ]);
 });
+
+it('resolves the Meta app id from the connection token when META_APP_ID is not configured', function () {
+    $connection = ApiConnection::factory()->connected()->create(['channel' => 'whatsapp']);
+    config(['services.meta.app_id' => null]);
+
+    Http::fake([
+        'graph.facebook.com/v20.0/app*' => Http::response(['id' => 'resolved-app-9'], 200),
+        'graph.facebook.com/v20.0/resolved-app-9/uploads' => Http::response(['id' => 'upload:session-9'], 200),
+        'graph.facebook.com/v20.0/upload:session-9' => Http::response(['h' => 'resolved-handle'], 200),
+    ]);
+
+    $file = UploadedFile::fake()->image('header.jpg')->size(100);
+
+    expect((new GraphApiTemplateService)->uploadHeaderMedia($connection, $file))->toBe('resolved-handle');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'resolved-app-9/uploads'));
+});

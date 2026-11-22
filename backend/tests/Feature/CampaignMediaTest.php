@@ -181,12 +181,13 @@ it('includes a header component with the attachment when a template has a media 
         'graph.facebook.com/*/messages' => Http::response(['messages' => [['id' => 'wamid.template-media123']]], 200),
     ]);
 
-    ApiConnection::factory()->connected()->create([
+    $connection = ApiConnection::factory()->connected()->create([
         'channel' => 'whatsapp',
         'phone_number_id' => 'phone-789',
     ]);
 
     $template = WhatsappTemplate::factory()->create([
+        'api_connection_id' => $connection->id,
         'name' => 'birthday',
         'status' => 'approved',
         'body' => 'Happy Birthday {{1}}!',
@@ -238,7 +239,7 @@ it('fails clearly when a media-header template is sent without a campaign attach
         'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.template-media456']]], 200),
     ]);
 
-    ApiConnection::factory()->connected()->create([
+    $connection = ApiConnection::factory()->connected()->create([
         'channel' => 'whatsapp',
         'phone_number_id' => 'phone-790',
     ]);
@@ -249,6 +250,7 @@ it('fails clearly when a media-header template is sent without a campaign attach
     // for a real attachment. A campaign without its own media must fail
     // with a clear reason instead of silently sending a broken payload.
     $template = WhatsappTemplate::factory()->create([
+        'api_connection_id' => $connection->id,
         'name' => 'anniversary',
         'status' => 'approved',
         'body' => 'Congrats {{1}}!',

@@ -30,6 +30,15 @@ class ConversationUpdated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return ['conversation' => (new ConversationResource($this->conversation->fresh(['contact', 'assignedTo', 'messages'])))->resolve()];
+        // Only the most recent message is needed for the inbox preview.
+        // Loading the whole thread here loaded every message of the
+        // conversation into memory on each broadcast (queued), which is what
+        // exhausted the worker's memory limit on long-running conversations.
+        $conversation = $this->conversation->fresh(['contact', 'assignedTo']);
+        $conversation?->load(['messages' => fn ($query) => $query->latest('sent_at')->limit(1)]);
+
+        return [
+            'conversation' => (new ConversationResource($conversation ?? $this->conversation))->resolve(),
+        ];
     }
 }

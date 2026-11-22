@@ -68,6 +68,16 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
             return;
         }
 
+        // Meta can deliver the same webhook event more than once (retries,
+        // overlapping subscriptions). Skip it before touching any state:
+        // otherwise the unique index on external_message_id throws and the
+        // whole job fails, re-running every other message in the batch.
+        $inboundId = $inboundMessage['id'] ?? null;
+
+        if ($inboundId && Message::query()->where('external_message_id', $inboundId)->exists()) {
+            return;
+        }
+
         $profileName = collect(data_get($value, 'contacts', []))
             ->firstWhere('wa_id', $waId)['profile']['name'] ?? $waId;
 

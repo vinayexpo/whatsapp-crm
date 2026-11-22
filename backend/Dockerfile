@@ -27,4 +27,4 @@ RUN composer dump-autoload --optimize \
 
 EXPOSE 8080
 
-CMD php artisan migrate --force && php artisan db:seed --class=RolesAndPermissionsSeeder --force && php artisan db:seed --class=PipelineStagesForAllCompaniesSeeder --force && (php artisan storage:link || true) && (while true; do php artisan queue:work --sleep=1 --tries=3; sleep 1; done &) && (php artisan schedule:work &) && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+CMD php -d memory_limit=512M artisan migrate --force && php -d memory_limit=512M artisan db:seed --class=RolesAndPermissionsSeeder --force && php -d memory_limit=512M artisan db:seed --class=PipelineStagesForAllCompaniesSeeder --force && (php artisan storage:link || true) && (while true; do php -d memory_limit=512M artisan queue:work --sleep=1 --tries=3; sleep 1; done &) && (php -d memory_limit=512M artisan schedule:work &) && php -d memory_limit=512M artisan serve --host=0.0.0.0 --port=${PORT:-8080}
