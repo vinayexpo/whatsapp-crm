@@ -6,6 +6,8 @@ use App\Models\Contact;
 use App\Models\PhonebookFolder;
 use App\Models\PipelineStage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Exception as SpreadsheetException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ContactImportService
@@ -26,7 +28,10 @@ class ContactImportService
         $rows = $this->parseRows($file);
 
         $summary = ['created' => 0, 'attached' => 0, 'skipped' => 0, 'errors' => []];
-        $defaultPipelineStageId = PipelineStage::query()->orderBy('position')->value('id');
+        $defaultPipelineStageId = PipelineStage::query()
+            ->where('company_id', $folder->company_id)
+            ->orderBy('position')
+            ->value('id');
 
         foreach ($rows as $row) {
             $error = $this->validateRow($row);
@@ -68,6 +73,18 @@ class ContactImportService
             if ($contact) {
                 $summary['skipped']++;
             } else {
+                // Each company needs its own stage; the seeded global stage
+                // can belong to a different company and is hidden by the scope.
+                $defaultPipelineStageId ??= PipelineStage::query()->firstOrCreate(
+                    ['id' => 'new-lead-'.($folder->company_id ?? 'global')],
+                    [
+                        'company_id' => $folder->company_id,
+                        'name' => 'New Lead',
+                        'position' => 0,
+                        'color' => '#3B82C4',
+                    ],
+                )->id;
+
                 $contact = Contact::query()->create([
                     'name' => $row->name,
                     'channel' => $row->channel,
@@ -167,9 +184,20 @@ class ContactImportService
     {
         $reader = IOFactory::createReader('Xlsx');
         $reader->setReadDataOnly(true);
-        $spreadsheet = $reader->load($file->getRealPath());
 
-        return $spreadsheet->getActiveSheet()->toArray(null, true, false, false);
+        try {
+            $spreadsheet = $reader->load($file->getRealPath());
+        } catch (SpreadsheetException) {
+            throw ValidationException::withMessages([
+                'file' => 'The Excel file could not be read. Save it as a valid .xlsx workbook and try again.',
+            ]);
+        }
+
+        try {
+            return $spreadsheet->getActiveSheet()->toArray(null, true, false, false);
+        } finally {
+            $spreadsheet->disconnectWorksheets();
+        }
     }
 
     private function validateRow(ContactImportRow $row): ?string

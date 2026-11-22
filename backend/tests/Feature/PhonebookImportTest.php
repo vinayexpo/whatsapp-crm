@@ -3,10 +3,13 @@
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\PhonebookFolder;
+use App\Models\PipelineStage;
 use App\Models\User;
 use Database\Seeders\PipelineStagesSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -68,11 +71,11 @@ function makeXlsxUpload(array $rows, string $filename = 'contacts.xlsx'): Upload
 
     foreach ($rows as $rowIndex => $row) {
         foreach ($row as $colIndex => $value) {
-            $column = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $column = Coordinate::stringFromColumnIndex($colIndex + 1);
             $sheet->setCellValueExplicit(
                 $column.($rowIndex + 1),
                 (string) $value,
-                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+                DataType::TYPE_STRING
             );
         }
     }
@@ -99,6 +102,65 @@ it('imports new contacts from an xlsx file', function () {
     $response->assertOk();
     expect($response->json('summary.created'))->toBe(1);
     $this->assertDatabaseHas('contacts', ['handle' => '15550001111']);
+});
+
+it('imports an xlsx for a company without pipeline stages', function () {
+    $company = Company::factory()->create();
+    $admin = User::factory()->create(['company_id' => $company->id]);
+    $admin->assignRole('admin');
+
+    $response = $this->actingAs($admin)->postJson('/api/v1/phonebook-folders/import', [
+        'file' => makeXlsxUpload([
+            ['name', 'channel', 'handle', 'phone', 'email'],
+            ['Ada Lovelace', 'whatsapp', '+15550001111', '', ''],
+        ]),
+        'folderName' => 'Company Leads',
+    ]);
+
+    $response->assertOk()->assertJsonPath('summary.created', 1);
+    $contact = Contact::query()->where('handle', '15550001111')->firstOrFail();
+    expect($contact->company_id)->toBe($company->id);
+    expect($contact->pipelineStage->company_id)->toBe($company->id);
+    expect($contact->pipelineStage->name)->toBe('New Lead');
+    expect(PipelineStage::withoutGlobalScopes()->find('new-lead')->company_id)->toBeNull();
+});
+
+it('uses the existing company pipeline stage when importing xlsx', function () {
+    $company = Company::factory()->create();
+    $stage = PipelineStage::query()->create([
+        'id' => 'company-stage-'.$company->id,
+        'company_id' => $company->id,
+        'name' => 'Incoming',
+        'position' => 0,
+        'color' => '#3B82C4',
+    ]);
+    $admin = User::factory()->create(['company_id' => $company->id]);
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)->postJson('/api/v1/phonebook-folders/import', [
+        'file' => makeXlsxUpload([
+            ['name', 'channel', 'handle'],
+            ['Ada Lovelace', 'whatsapp', '+15550001111'],
+        ]),
+        'folderName' => 'Company Leads',
+    ])->assertOk()->assertJsonPath('summary.created', 1);
+
+    $this->assertDatabaseHas('contacts', [
+        'handle' => '15550001111',
+        'pipeline_stage_id' => $stage->id,
+        'company_id' => $company->id,
+    ]);
+});
+
+it('returns a file validation error for an unreadable xlsx without creating a folder', function () {
+    $admin = actingAsImportRole('admin');
+
+    $this->actingAs($admin)->postJson('/api/v1/phonebook-folders/import', [
+        'file' => UploadedFile::fake()->createWithContent('contacts.xlsx', 'Not an Excel workbook'),
+        'folderName' => 'Invalid Import',
+    ])->assertUnprocessable()->assertJsonValidationErrors('file');
+
+    $this->assertDatabaseMissing('phonebook_folders', ['name' => 'Invalid Import']);
 });
 
 it('imports contacts into an existing folder', function () {

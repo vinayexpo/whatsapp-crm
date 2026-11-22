@@ -13,6 +13,7 @@ use App\Services\Phonebook\ContactSpreadsheetExporter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -132,22 +133,26 @@ class PhonebookFolderController extends Controller
             ]);
         }
 
-        if (! empty($data['folderId'])) {
-            $folder = PhonebookFolder::query()->where('uuid', $data['folderId'])->first();
+        [$folder, $summary] = DB::transaction(function () use ($data, $request, $importer): array {
+            if (! empty($data['folderId'])) {
+                $folder = PhonebookFolder::query()->where('uuid', $data['folderId'])->first();
 
-            if (! $folder) {
-                throw ValidationException::withMessages([
-                    'folderId' => 'The selected folder was not found.',
-                ]);
+                if (! $folder) {
+                    throw ValidationException::withMessages([
+                        'folderId' => 'The selected folder was not found.',
+                    ]);
+                }
+
+                $this->authorize('manageContacts', $folder);
+            } else {
+                $this->authorize('create', PhonebookFolder::class);
+                $folder = PhonebookFolder::query()->firstOrCreate(['name' => $data['folderName']]);
             }
 
-            $this->authorize('manageContacts', $folder);
-        } else {
-            $this->authorize('create', PhonebookFolder::class);
-            $folder = PhonebookFolder::query()->firstOrCreate(['name' => $data['folderName']]);
-        }
+            $summary = $importer->import($request->file('file'), $folder);
 
-        $summary = $importer->import($request->file('file'), $folder);
+            return [$folder, $summary];
+        });
 
         return response()->json([
             'data' => new PhonebookFolderResource($folder->loadCount('contacts')),
