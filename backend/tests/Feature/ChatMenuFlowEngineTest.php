@@ -1,11 +1,13 @@
 <?php
 
+use App\Models\ApiConnection;
 use App\Models\ChatMenuFlow;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Services\ChatFlow\ChatMenuFlowEngine;
 use Database\Seeders\PipelineStagesSeeder;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -152,4 +154,78 @@ it('does nothing when no flow is active and the inbound text does not match any 
     $handled = app(ChatMenuFlowEngine::class)->handle($conversation, $inbound);
 
     expect($handled)->toBeFalse();
+});
+
+it('restarts the flow when the trigger keyword is sent while already inside a flow', function () {
+    $flow = makeChatMenuFlow();
+    $secondNodeId = $flow->nodes[1]['id'];
+
+    $contact = Contact::factory()->create(['channel' => 'whatsapp']);
+    $conversation = Conversation::factory()->create([
+        'contact_id' => $contact->id,
+        'channel' => 'whatsapp',
+        'company_id' => $flow->company_id,
+        'current_chat_flow_id' => $flow->id,
+        'current_chat_flow_node_id' => $secondNodeId,
+    ]);
+    $inbound = Message::factory()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'text' => 'services',
+    ]);
+
+    $handled = app(ChatMenuFlowEngine::class)->handle($conversation, $inbound);
+
+    expect($handled)->toBeTrue();
+
+    $conversation->refresh();
+    expect($conversation->current_chat_flow_node_id)->toBe($flow->entry_node_id);
+
+    $reply = Message::query()
+        ->where('conversation_id', $conversation->id)
+        ->where('direction', 'outbound')
+        ->latest('id')
+        ->first();
+    expect($reply->text)->toBe('What are you looking for?');
+});
+
+it('clears the flow position and marks the reply failed when the provider rejects the node', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['error' => ['message' => 'provider down']], 500),
+    ]);
+
+    $flow = makeChatMenuFlow();
+    $connection = ApiConnection::factory()->create([
+        'company_id' => $flow->company_id,
+        'channel' => 'whatsapp',
+        'access_token' => 'test-token',
+        'phone_number_id' => '1234567890',
+    ]);
+
+    $contact = Contact::factory()->create(['channel' => 'whatsapp']);
+    $conversation = Conversation::factory()->create([
+        'contact_id' => $contact->id,
+        'channel' => 'whatsapp',
+        'company_id' => $flow->company_id,
+        'api_connection_id' => $connection->id,
+    ]);
+    $inbound = Message::factory()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'text' => 'services',
+    ]);
+
+    expect(fn () => app(ChatMenuFlowEngine::class)->handle($conversation, $inbound))
+        ->toThrow(Illuminate\Http\Client\RequestException::class);
+
+    $conversation->refresh();
+    expect($conversation->current_chat_flow_id)->toBeNull();
+    expect($conversation->current_chat_flow_node_id)->toBeNull();
+
+    $reply = Message::query()
+        ->where('conversation_id', $conversation->id)
+        ->where('direction', 'outbound')
+        ->latest('id')
+        ->first();
+    expect($reply->status)->toBe('failed');
 });

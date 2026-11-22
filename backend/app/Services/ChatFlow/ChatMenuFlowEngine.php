@@ -9,6 +9,7 @@ use App\Models\ChatMenuFlow;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Services\Messaging\MessagingDriverResolver;
+use Throwable;
 
 class ChatMenuFlowEngine
 {
@@ -27,25 +28,29 @@ class ChatMenuFlowEngine
     {
         $channel = $conversation->channel === 'whatsapp' ? 'whatsapp' : 'web';
 
+        // A trigger keyword always (re)starts its flow, even when the
+        // conversation is already sitting inside a flow. Without this check an
+        // active flow swallowed every later "hi"-style keyword, so a customer
+        // who abandoned the menu (or whose menu message failed to send) could
+        // never get it back -- the message fell through to AI/automation and
+        // the menu looked broken.
+        $triggerFlow = $this->matchTriggerFlow($conversation, $inboundMessage, $channel);
+
+        if ($triggerFlow) {
+            $entryNode = $this->findNode($triggerFlow, $triggerFlow->entry_node_id);
+
+            if ($entryNode) {
+                $this->enterNode($conversation, $triggerFlow, $entryNode);
+
+                return true;
+            }
+        }
+
         if ($conversation->current_chat_flow_id) {
             return $this->handleWithinActiveFlow($conversation, $inboundMessage);
         }
 
-        $flow = $this->matchTriggerFlow($conversation, $inboundMessage, $channel);
-
-        if (! $flow) {
-            return false;
-        }
-
-        $node = $this->findNode($flow, $flow->entry_node_id);
-
-        if (! $node) {
-            return false;
-        }
-
-        $this->enterNode($conversation, $flow, $node);
-
-        return true;
+        return false;
     }
 
     private function handleWithinActiveFlow(Conversation $conversation, Message $inboundMessage): bool
@@ -186,9 +191,26 @@ class ChatMenuFlowEngine
         if ($conversation->channel === 'whatsapp') {
             $connection = $conversation->api_connection_id
                 ? ApiConnection::find($conversation->api_connection_id)
-                : ApiConnection::query()->where('channel', 'whatsapp')->first();
-            $externalId = $this->resolver->forConnection($connection)->send($outboundMessage, $connection ?? new ApiConnection);
-            $outboundMessage->update(['external_message_id' => $externalId]);
+                : ApiConnection::query()
+                    ->where('company_id', $conversation->company_id)
+                    ->where('channel', 'whatsapp')
+                    ->first();
+
+            try {
+                $externalId = $this->resolver->forConnection($connection)->send($outboundMessage, $connection ?? new ApiConnection);
+                $outboundMessage->update(['external_message_id' => $externalId]);
+            } catch (Throwable $exception) {
+                // Clear the flow position and flag the message so a queue
+                // retry can actually re-send the node instead of treating the
+                // conversation as "already inside the flow".
+                $outboundMessage->update(['status' => 'failed']);
+                $conversation->update([
+                    'current_chat_flow_id' => null,
+                    'current_chat_flow_node_id' => null,
+                ]);
+
+                throw $exception;
+            }
         }
 
         MessageReceived::dispatch($outboundMessage->load('conversation'));
