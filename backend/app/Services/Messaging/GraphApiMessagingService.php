@@ -27,6 +27,18 @@ class GraphApiMessagingService implements OutboundMessageServiceInterface
             'to' => $recipient,
         ];
 
+        // Meta's Messaging-accounts model: a business phone number can be
+        // attached to more than one Messaging account (e.g. the client's own
+        // WABA plus a partner/system-user account), and each has its own
+        // isolated template library. The send resolves the account from the
+        // access token, so when the token can reach several accounts Meta may
+        // pick one that has no templates and answer 132001 even though the
+        // template is approved on the number's WABA. Naming the account
+        // explicitly removes that ambiguity.
+        if ($conversation->channel === 'whatsapp' && $connection->waba_id) {
+            $payload['messaging_account_id'] = (string) $connection->waba_id;
+        }
+
         if ($template) {
             // Only a real Meta template message (not free-form text) is
             // allowed to reach a contact outside the 24-hour customer

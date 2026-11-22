@@ -105,3 +105,27 @@ it('sends a list-type interactive message when the message has more than 3 butto
             && $body['interactive']['action']['sections'][0]['rows'][0] === ['id' => 'btn-1', 'title' => 'Option 1'];
     });
 });
+
+it('names the messaging account on WhatsApp sends so template lookup cannot resolve to another account', function () {
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.acct']]], 200),
+    ]);
+
+    $connection = ApiConnection::factory()->create([
+        'channel' => 'whatsapp',
+        'access_token' => 'test-token',
+        'phone_number_id' => '1234567890',
+        'waba_id' => '1362102952773775',
+    ]);
+    $contact = Contact::factory()->create(['channel' => 'whatsapp', 'handle' => '15551234567']);
+    $conversation = Conversation::factory()->create(['contact_id' => $contact->id, 'channel' => 'whatsapp']);
+    $message = Message::factory()->create([
+        'conversation_id' => $conversation->id,
+        'direction' => 'outbound',
+        'text' => 'Hello',
+    ]);
+
+    (new GraphApiMessagingService())->send($message, $connection);
+
+    Http::assertSent(fn ($request) => $request->data()['messaging_account_id'] === '1362102952773775');
+});
