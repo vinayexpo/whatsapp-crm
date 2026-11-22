@@ -20,6 +20,7 @@ import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import MenuItem from "@mui/material/MenuItem";
 import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
@@ -74,6 +75,9 @@ export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiCo
   const [audienceMode, setAudienceMode] = useState<"tag" | "folder">("tag");
   const [audienceTag, setAudienceTag] = useState("VIP");
   const [folders, setFolders] = useState<PhonebookFolder[]>([]);
+  const [foldersLoading, setFoldersLoading] = useState(false);
+  const [foldersError, setFoldersError] = useState<string | null>(null);
+  const [foldersRetry, setFoldersRetry] = useState(0);
   const [phonebookFolderId, setPhonebookFolderId] = useState("");
   const [messageMode, setMessageMode] = useState<"custom" | "template">("custom");
   const [message, setMessage] = useState("");
@@ -123,11 +127,35 @@ export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiCo
 
   useEffect(() => {
     if (!open) return;
-    apiClient
-      .listPhonebookFolders({ perPage: 100 })
-      .then(({ data }) => setFolders(data))
-      .catch(() => setFolders([]));
-  }, [open]);
+    let cancelled = false;
+    setFoldersLoading(true);
+    setFoldersError(null);
+
+    async function loadFolders() {
+      try {
+        const allFolders: PhonebookFolder[] = [];
+        let page = 1;
+        let lastPage = 1;
+        do {
+          const { data, meta } = await apiClient.listPhonebookFolders({ page, perPage: 100 });
+          if (cancelled) return;
+          allFolders.push(...data);
+          lastPage = meta.lastPage;
+          page++;
+        } while (page <= lastPage);
+        setFolders(allFolders);
+      } catch {
+        if (!cancelled) setFoldersError("Could not load phonebook folders. Please try again.");
+      } finally {
+        if (!cancelled) setFoldersLoading(false);
+      }
+    }
+
+    void loadFolders();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, foldersRetry]);
 
   useEffect(() => {
     if (!open) return;
@@ -224,7 +252,9 @@ export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiCo
 
   const canProceedStep0 =
     name.trim().length > 0 &&
-    (audienceMode === "tag" ? audienceTag.length > 0 : phonebookFolderId.length > 0) &&
+    (audienceMode === "tag"
+      ? audienceTag.length > 0
+      : !foldersLoading && !foldersError && Boolean(selectedFolderSummary)) &&
     (campaignMode === "voiceCall"
       ? selectedVoiceAgentId.length > 0
       : campaignMode === "whatsappCall"
@@ -392,6 +422,17 @@ export function CampaignBuilderDialog({ open, onClose, onCreate, contacts, apiCo
                     />
                   ))}
                 </Stack>
+              ) : foldersLoading ? (
+                <Typography role="status" variant="body2" sx={{ color: "text.secondary" }}>
+                  Loading phonebook folders…
+                </Typography>
+              ) : foldersError ? (
+                <Alert
+                  severity="error"
+                  action={<Button color="inherit" onClick={() => setFoldersRetry((value) => value + 1)}>Retry</Button>}
+                >
+                  {foldersError}
+                </Alert>
               ) : folders.length === 0 ? (
                 <Typography variant="body2" sx={{ color: "text.secondary" }}>
                   No phonebook folders yet. Create one in the Phonebook section first.
