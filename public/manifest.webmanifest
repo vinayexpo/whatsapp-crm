@@ -2,7 +2,7 @@
   "name": "Creative Connects",
   "short_name": "Creative Connects",
   "description": "WhatsApp, Instagram, and voice CRM for managing conversations, campaigns, and automations.",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

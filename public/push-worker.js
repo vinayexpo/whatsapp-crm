@@ -1,5 +1,5 @@
-const CACHE_NAME = "creative-connects-shell-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/favicon.svg"];
+const CACHE_NAME = "creative-connects-shell-v2";
+const APP_SHELL = ["/", "/dashboard", "/manifest.webmanifest", "/favicon.svg"];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -77,7 +77,7 @@ self.addEventListener("notificationclick", (event) => {
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow(url);
+        return self.clients.openWindow(`${url}/dashboard`);
       }
     }),
   );

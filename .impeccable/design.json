@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-24T00:00:00Z",
+  "title": "Design System: Creative Connects",
+  "extensions": {
+    "typographyMeta": {
+      "display": { "displayName": "Workspace headings", "purpose": "Incumbent Space Grotesk heading family and weight." },
+      "landing-display": { "displayName": "Public landing display", "purpose": "Landing-only responsive hero scale; not a workspace default." }
+    },
+    "shadows": [
+      { "name": "landing-mobile-navigation", "value": "0 16px 24px -20px #174b3933", "purpose": "Expanded public mobile navigation only." }
+    ],
+    "motion": [
+      { "name": "landing-panel", "value": "0.4s cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Demo panel change from opacity 0.7 and translateY(7px); disabled for reduced motion." },
+      { "name": "landing-control", "value": "0.2s", "purpose": "Background and transform transitions; primary action shifts up 1px on hover." }
+    ],
+    "breakpoints": [
+      { "name": "landing-compact", "value": "600px" },
+      { "name": "landing-stacked", "value": "900px" },
+      { "name": "landing-medium", "value": "1199px" },
+      { "name": "landing-wide", "value": "1600px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Landing primary action",
+      "kind": "button",
+      "refersTo": "landing-button-primary",
+      "description": "Public sign-in action; application MUI buttons retain their own theme.",
+      "html": "<button class=\"ds-landing-primary\">Open your workspace</button>",
+      "css": ".ds-landing-primary{background:#00785f;color:white;border:0;border-radius:8px;padding:12px 22px;min-height:52px;font:700 14px Manrope,sans-serif;cursor:pointer;transition:background .2s,transform .2s}.ds-landing-primary:hover{background:#00624d;transform:translateY(-1px)}.ds-landing-primary:focus-visible{outline:3px solid #00785f;outline-offset:5px}@media(prefers-reduced-motion:reduce){.ds-landing-primary{transition:none}}"
+    },
+    {
+      "name": "Landing text action",
+      "kind": "button",
+      "description": "Secondary public anchor treatment.",
+      "html": "<a class=\"ds-landing-text\" href=\"#automation\">See automation in action</a>",
+      "css": ".ds-landing-text{display:inline-flex;align-items:center;min-height:48px;color:#1b2b29;font:700 14px Manrope,sans-serif;text-decoration:none}.ds-landing-text:hover{color:#00785f}.ds-landing-text:focus-visible{outline:3px solid #00785f;outline-offset:5px;border-radius:6px}"
+    },
+    {
+      "name": "Landing navigation link",
+      "kind": "nav",
+      "description": "Public anchor navigation; separate from the authenticated app shell.",
+      "html": "<nav aria-label=\"Example navigation\"><a class=\"ds-landing-nav\" href=\"#product\">Product</a></nav>",
+      "css": ".ds-landing-nav{display:inline-flex;align-items:center;min-width:44px;min-height:44px;color:#1b2b29;font:600 14px Manrope,sans-serif;text-decoration:none}.ds-landing-nav:hover{color:#00785f}.ds-landing-nav:focus-visible{outline:3px solid #00785f;outline-offset:5px;border-radius:6px}"
+    },
+    {
+      "name": "Landing sample tag",
+      "kind": "chip",
+      "description": "Static preview label, not an interactive chip.",
+      "html": "<span class=\"ds-landing-tag\">Sample order</span>",
+      "css": ".ds-landing-tag{display:inline-block;background:#e7f2eb;color:#496856;border-radius:4px;padding:4px 7px;white-space:nowrap;font:400 8px Manrope,sans-serif}"
+    },
+    {
+      "name": "Landing preview container",
+      "kind": "card",
+      "refersTo": "landing-preview",
+      "description": "Bordered product demonstration surface; does not replace MUI Paper.",
+      "html": "<div class=\"ds-landing-preview\">Team inbox demonstration</div>",
+      "css": ".ds-landing-preview{background:#f7faf8;color:#1b2b29;border:1px solid #dce7e3;border-radius:12px;overflow:hidden;padding:17px 18px;font:400 12px Manrope,sans-serif}"
+    }
+  ]
+}

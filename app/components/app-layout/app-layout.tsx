@@ -50,7 +50,7 @@ import { useIncomingCallListener } from "~/hooks/use-incoming-call-listener";
 const DRAWER_WIDTH = 248;
 
 const NAV_ITEMS = [
-  { label: "Home", to: "/", icon: DashboardRoundedIcon },
+  { label: "Home", to: "/dashboard", icon: DashboardRoundedIcon },
   { label: "Inbox", to: "/inbox", icon: ChatBubbleRoundedIcon, commerceOnly: true },
   { label: "Contacts", to: "/contacts", icon: ContactsRoundedIcon, commerceOnly: true },
   { label: "Phonebook", to: "/phonebook", icon: ContactPhoneRoundedIcon, hideForAgent: true, commerceOnly: true },
@@ -129,7 +129,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             !(item.hideForStaff && currentUser?.role === "staff") &&
             !(item.commerceOnly && (currentUser?.role === "branch_manager" || currentUser?.role === "staff")),
         ).map((item) => {
-          const isActive = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+          const isActive = location.pathname.startsWith(item.to);
           const Icon = item.icon;
           return (
             <ListItemButton

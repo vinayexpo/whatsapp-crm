@@ -48,7 +48,7 @@ export default function Superadmin() {
       return;
     }
     if (status === "authenticated" && user && user.role !== "superadmin") {
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [status, user, navigate, setUser, setStatus]);
 

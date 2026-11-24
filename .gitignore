@@ -26,6 +26,7 @@ backend/storage/framework/views/*
 backend/storage/logs/*
 backend/bootstrap/cache/*
 .playwright-mcp/
+.impeccable/review/
 
 # Secrets / local artifacts
 *.pem

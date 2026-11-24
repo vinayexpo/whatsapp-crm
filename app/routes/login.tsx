@@ -46,7 +46,7 @@ export default function Login() {
       return;
     }
     if (status === "authenticated" && user) {
-      navigate(user.role === "superadmin" ? "/superadmin" : "/", { replace: true });
+      navigate(user.role === "superadmin" ? "/superadmin" : "/dashboard", { replace: true });
     }
   }, [status, user, navigate, setUser, setStatus]);
 
@@ -58,7 +58,7 @@ export default function Login() {
       const user = await apiClient.login(email, password);
       setUser(user);
       setStatus("authenticated");
-      navigate(user.role === "superadmin" ? "/superadmin" : "/", { replace: true });
+      navigate(user.role === "superadmin" ? "/superadmin" : "/dashboard", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.errors?.email?.[0] ?? err.message);
