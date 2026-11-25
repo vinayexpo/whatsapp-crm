@@ -58,29 +58,6 @@
 .motionHeader > strong {
   font-size: 0.8125rem;
 }
-.motionControls {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.motionControls > button {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: #edf6f1;
-  color: var(--teal);
-  cursor: pointer;
-}
-.motionControls > button:hover {
-  background: #dcefe3;
-}
-.motionControls > button:active {
-  background: #cde6d8;
-}
 .motionQuestion {
   margin: 0 20px 12px;
   padding: 16px;
@@ -166,7 +143,7 @@
   background: #f4faf7;
 }
 .motionCompact .motionHeader {
-  padding: 8px 24px 0;
+  padding: 8px var(--workflow-inset, 24px) 0;
 }
 .motionCompact .motionSvg {
   max-height: 110px;
@@ -175,16 +152,17 @@
 .motionCompact .motionCaption {
   min-height: 84px;
   padding-block: 0 16px;
+  padding-inline: var(--workflow-inset, 24px);
 }
 @media (prefers-reduced-motion: no-preference) {
   .motionConnection {
-    animation: connectionFlow 1.8s linear infinite paused;
+    animation: connectionFlow 1.4s linear 3 forwards paused;
   }
   .packetFirst {
-    animation: firstPacket 7.2s linear infinite paused;
+    animation: firstPacket 4.2s linear 1 forwards paused;
   }
   .packetSecond {
-    animation: secondPacket 7.2s linear infinite paused;
+    animation: secondPacket 4.2s linear 1 forwards paused;
   }
   .workflowMotion[data-running="true"] :is(.motionConnection, .packetFirst, .packetSecond) {
     animation-play-state: running;
@@ -196,9 +174,6 @@
   }
   .messageTransition {
     animation: replyArrives 280ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .motionControls > button {
-    transition: background 150ms ease;
   }
 }
 @keyframes connectionFlow {
@@ -275,10 +250,10 @@
     font-size: 0.75rem;
   }
   .motionCompact .motionHeader {
-    padding-inline: 16px;
+    padding-inline: var(--workflow-inset, 16px);
   }
   .motionCompact .motionCaption {
-    padding-inline: 16px;
+    padding-inline: var(--workflow-inset, 16px);
   }
 }
 .page em {

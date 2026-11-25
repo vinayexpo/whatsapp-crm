@@ -16,12 +16,11 @@ import BarChartRounded from "@mui/icons-material/BarChartRounded";
 import GraphicEqRounded from "@mui/icons-material/GraphicEqRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
 import ShieldOutlined from "@mui/icons-material/ShieldOutlined";
-import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
-import PauseRounded from "@mui/icons-material/PauseRounded";
 import s from "./landing.module.css";
 import i from "./industries.module.css";
 import { PublicHeader, PublicFooter } from "~/components/public/public-shell";
 import { industries } from "~/data/industries";
+import { WorkflowGraphic } from "~/components/public/workflow-motion";
 
 export function meta() {
   return [
@@ -37,6 +36,11 @@ export function meta() {
 }
 
 const heroModes = ["AI replies", "Voice agents", "Human handoff"] as const;
+const heroWorkflows = [
+  ["A customer sends a question", "AI uses your business knowledge", "Your team can continue the conversation"],
+  ["A customer makes an enquiry", "Your configured agent guides the call", "Your team reviews the conversation"],
+  ["A customer asks for help", "AI keeps the conversation context", "A team member takes it from here"],
+] as const;
 const examples = [
   {
     question: "What are your opening hours?",
@@ -176,7 +180,6 @@ const faqs = [
 function HeroDemo() {
   const [mode, setMode] = useState(0);
   const [example, setExample] = useState(0);
-  const [playing, setPlaying] = useState(false);
   const chosen = examples[example];
   function moveTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const next =
@@ -192,7 +195,6 @@ function HeroDemo() {
     if (next === null) return;
     event.preventDefault();
     setMode(next);
-    setPlaying(false);
     document.getElementById(`ai-tab-${next}`)?.focus();
   }
   return (
@@ -219,7 +221,6 @@ function HeroDemo() {
               onKeyDown={(e) => moveTab(e, i)}
               onClick={() => {
                 setMode(i);
-                setPlaying(false);
               }}
             >
               {name}
@@ -287,20 +288,15 @@ function HeroDemo() {
               </span>
               <h3>A voice for your business.</h3>
               <p>AI voice agents, call workflows and conversation transcripts.</p>
-              <div className={`${s.wave} ${playing ? s.wavePlaying : ""}`} aria-hidden="true">
+              <div className={s.wave} aria-hidden="true">
                 {Array.from({ length: 29 }, (_, i) => (
                   <i key={i} style={{ height: `${14 + ((i * 17) % 49)}px`, animationDelay: `${i * 0.045}s` }} />
                 ))}
               </div>
-              <button className={s.voicePlay} onClick={() => setPlaying(!playing)} aria-pressed={playing}>
-                {playing ? <PauseRounded /> : <PlayArrowRounded />}
-                {playing ? "Pause walkthrough" : "Play visual walkthrough"}
-              </button>
-              <p className={s.voiceTranscript} aria-live="polite">
-                {playing
-                  ? "“Hi, thanks for calling. I can help with your enquiry and connect you to our team.”"
-                  : "Preview a sample agent greeting. This visual demo has no audio and places no calls."}
+              <p className={s.voiceTranscript}>
+                “Hi, thanks for calling. I can help with your enquiry and connect you to our team.”
               </p>
+              <p>This visual demo has no audio and places no calls.</p>
             </div>
           ) : (
             <div className={s.handoffDemo}>
@@ -329,6 +325,13 @@ function HeroDemo() {
             </div>
           )}
         </div>
+        <WorkflowGraphic
+          key={`${mode}-${example}`}
+          label="Connected workspace illustrative workflow"
+          title="From the first question to the next step."
+          steps={heroWorkflows[mode]}
+          compact
+        />
         <div className={s.demoFooter}>
           <span>
             <i /> Connected by design
@@ -549,7 +552,7 @@ export default function Landing() {
                 Open your workspace <ArrowForwardRounded />
               </Link>
               <a className={s.textButton} href="#automation">
-                <PlayArrowRounded /> See automation in action
+                <AccountTreeRounded /> See automation in action
               </a>
             </div>
             <div className={s.heroChannels}>

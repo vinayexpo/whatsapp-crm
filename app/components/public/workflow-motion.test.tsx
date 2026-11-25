@@ -16,7 +16,9 @@ beforeEach(() => {
       constructor(callback: IntersectionObserverCallback) {
         intersect = callback;
       }
-      observe() {}
+      observe() {
+        intersect([{ isIntersecting: true }] as IntersectionObserverEntry[], {} as IntersectionObserver);
+      }
       disconnect() {}
     },
   );
@@ -30,29 +32,30 @@ afterEach(() => {
 });
 
 describe("illustrative workflow motion", () => {
-  it("advances the preview and pauses both timing and animation state", () => {
-    render(<WorkflowMotion industry={industries[0]} />);
+  it("runs once, settles within five seconds and restarts only for a different sample", () => {
+    const view = render(<WorkflowMotion industry={industries[0]} />);
     const figure = screen.getByRole("figure");
     expect(figure.getAttribute("data-running")).toBe("true");
-    act(() => vi.advanceTimersByTime(2400));
+    act(() => vi.advanceTimersByTime(1400));
     expect(screen.getByText(industries[0].scenarios[0].steps[1])).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Pause workflow animation" }));
-    act(() => vi.advanceTimersByTime(7200));
+    act(() => vi.advanceTimersByTime(2800));
     expect(figure.getAttribute("data-running")).toBe("false");
-    expect(screen.getByText(industries[0].scenarios[0].steps[1])).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Replay workflow preview" }));
-    expect(screen.getByText(industries[0].scenarios[0].steps[0])).toBeTruthy();
-    expect(figure.getAttribute("data-running")).toBe("true");
+    expect(figure.getAttribute("data-complete")).toBe("true");
+    expect(screen.getByText(industries[0].scenarios[0].steps[2])).toBeTruthy();
+    act(() => vi.advanceTimersByTime(10000));
+    expect(figure.getAttribute("data-running")).toBe("false");
+    expect(screen.queryByRole("button")).toBeNull();
+    view.rerender(<WorkflowMotion industry={industries[0]} scenario={industries[0].scenarios[1]} />);
+    expect(screen.getByRole("figure").getAttribute("data-running")).toBe("true");
+    expect(screen.getByText(industries[0].scenarios[1].steps[0])).toBeTruthy();
   });
-  it("keeps reduced-motion previews still and lets the user step through", () => {
+  it("shows the final state without motion or playback controls for reduced motion", () => {
     reduced = true;
     render(<WorkflowMotion industry={industries[0]} />);
     act(() => vi.advanceTimersByTime(10000));
     expect(screen.getByRole("figure").getAttribute("data-running")).toBe("false");
-    expect(screen.getByText(industries[0].scenarios[0].steps[0])).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Show next workflow step" }));
-    expect(screen.getByText(industries[0].scenarios[0].steps[1])).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Replay workflow preview" }));
+    expect(screen.getByText(industries[0].scenarios[0].steps[2])).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
     expect(screen.getByRole("figure").getAttribute("data-running")).toBe("false");
   });
   it("stops when offscreen or the document is hidden", () => {

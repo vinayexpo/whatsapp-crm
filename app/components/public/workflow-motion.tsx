@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import ChatBubbleOutlineRounded from "@mui/icons-material/ChatBubbleOutlineRounded";
 import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
 import SupportAgentRounded from "@mui/icons-material/SupportAgentRounded";
-import PauseRounded from "@mui/icons-material/PauseRounded";
-import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
-import ReplayRounded from "@mui/icons-material/ReplayRounded";
 import { industries, type Industry, type IndustryScenario } from "~/data/industries";
 import s from "~/routes/industries.module.css";
 
@@ -17,14 +14,38 @@ export function WorkflowMotion({
   scenario?: IndustryScenario;
   compact?: boolean;
 }) {
+  return (
+    <WorkflowGraphic
+      key={`${industry.slug}-${scenario.label}`}
+      label={`${industry.name} illustrative workflow`}
+      title={compact ? "An enquiry, connected." : industry.name}
+      question={compact ? undefined : scenario.question}
+      steps={scenario.steps}
+      compact={compact}
+    />
+  );
+}
+
+export function WorkflowGraphic({
+  label,
+  title,
+  question,
+  steps,
+  compact = false,
+}: {
+  label: string;
+  title: string;
+  question?: string;
+  steps: readonly [string, string, string];
+  compact?: boolean;
+}) {
   const figure = useRef<HTMLElement>(null);
-  const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(true);
-  const [inView, setInView] = useState(true);
+  const [inView, setInView] = useState(false);
   const [visible, setVisible] = useState(true);
-  const [stage, setStage] = useState(0);
-  const [replay, setReplay] = useState(0);
-  const running = !paused && !reduced && inView && visible;
+  const [phase, setPhase] = useState(0);
+  const stage = reduced ? 2 : Math.min(phase, 2);
+  const running = phase < 3 && !reduced && inView && visible;
 
   useEffect(() => {
     const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -42,6 +63,7 @@ export function WorkflowMotion({
       typeof IntersectionObserver === "undefined"
         ? null
         : new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { threshold: 0.1 });
+    if (!observer) setInView(true);
     if (figure.current) observer?.observe(figure.current);
     return () => {
       document.removeEventListener("visibilitychange", update);
@@ -49,13 +71,10 @@ export function WorkflowMotion({
     };
   }, []);
   useEffect(() => {
-    setStage(0);
-  }, [industry.slug, scenario.label, replay]);
-  useEffect(() => {
     if (!running) return;
-    const timer = setInterval(() => setStage((current) => (current + 1) % 3), 2400);
+    const timer = setInterval(() => setPhase((current) => Math.min(current + 1, 3)), 1400);
     return () => clearInterval(timer);
-  }, [running, industry.slug, scenario.label, replay]);
+  }, [running]);
 
   return (
     <figure
@@ -63,37 +82,14 @@ export function WorkflowMotion({
       className={`${s.workflowMotion} ${compact ? s.motionCompact : ""}`}
       data-running={running}
       data-reduced-motion={reduced}
-      aria-label={`${industry.name} illustrative workflow`}
+      data-complete={phase === 3 || reduced}
+      aria-label={label}
     >
       <div className={s.motionHeader}>
-        <strong>{compact ? "An enquiry, connected." : industry.name}</strong>
-        <div className={s.motionControls}>
-          <button
-            type="button"
-            aria-label={
-              reduced ? "Show next workflow step" : paused ? "Play workflow animation" : "Pause workflow animation"
-            }
-            onClick={() => (reduced ? setStage((current) => (current + 1) % 3) : setPaused(!paused))}
-            title={reduced ? "Next step" : paused ? "Play animation" : "Pause animation"}
-          >
-            {reduced ? <PlayArrowRounded /> : paused ? <PlayArrowRounded /> : <PauseRounded />}
-          </button>
-          <button
-            type="button"
-            aria-label="Replay workflow preview"
-            title="Replay preview"
-            onClick={() => {
-              setReplay((current) => current + 1);
-              setPaused(false);
-            }}
-          >
-            <ReplayRounded />
-          </button>
-        </div>
+        <strong>{title}</strong>
       </div>
-      {!compact && <p className={s.motionQuestion}>{scenario.question}</p>}
+      {question && <p className={s.motionQuestion}>{question}</p>}
       <svg
-        key={`${industry.slug}-${scenario.label}-${replay}`}
         viewBox="0 0 400 110"
         className={s.motionSvg}
         aria-hidden="true"
@@ -125,12 +121,12 @@ export function WorkflowMotion({
       </svg>
       <figcaption className={s.motionCaption}>
         <div aria-hidden="true" className={s.motionSteps}>
-          {scenario.steps.map((step, index) => (
+          {steps.map((step, index) => (
             <span key={step} data-active={stage === index} />
           ))}
         </div>
-        <span>{scenario.steps[stage]}</span>
-        <small>Illustrative workflow · {reduced ? "Step-through preview" : paused ? "Paused" : "Motion preview"}</small>
+        <span>{steps[stage]}</span>
+        <small>Illustrative workflow</small>
       </figcaption>
     </figure>
   );

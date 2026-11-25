@@ -246,6 +246,7 @@
   background: radial-gradient(ellipse at 70% 30%, #d7f4e7 0%, #eaf6ed88 45%, transparent 72%);
 }
 .demoWindow {
+  --workflow-inset: 20px;
   position: relative;
   background: white;
   border-radius: 14px;
@@ -587,19 +588,10 @@
   background: var(--mint);
   border-radius: 5px;
 }
-.wavePlaying i {
-  animation: wave 0.8s ease-in-out infinite alternate;
-}
-.voicePlay {
-  min-height: 44px;
-  padding: 8px 14px;
-  background: var(--teal);
-  color: white;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  border-radius: 6px;
-  font-size: 0.75rem;
+@media (prefers-reduced-motion: no-preference) {
+  .wave i {
+    animation: wave 0.8s ease-in-out 4 alternate;
+  }
 }
 .voiceDemo .voiceTranscript {
   min-height: 50px;
@@ -1524,6 +1516,9 @@
   }
 }
 @media (max-width: 1199px) {
+  .demoWindow {
+    --workflow-inset: 12px;
+  }
   .container,
   .navWrap {
     width: calc(100% - 64px);
@@ -1844,6 +1839,9 @@
   }
 }
 @media (max-width: 600px) {
+  .demoWindow {
+    --workflow-inset: 10px;
+  }
   .container,
   .navWrap {
     width: calc(100% - 40px);

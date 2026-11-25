@@ -22,8 +22,9 @@ describe("public landing page", () => {
     fireEvent.keyDown(screen.getByRole("tab", { name: "AI replies" }), { key: "ArrowRight" });
     expect(screen.getByRole("tab", { name: "Voice agents" }).getAttribute("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Voice agents" }));
-    fireEvent.click(screen.getByRole("button", { name: "Play visual walkthrough" }));
-    expect(screen.getByRole("button", { name: "Pause walkthrough" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("This visual demo has no audio and places no calls.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /pause|replay|play visual/i })).toBeNull();
+    expect(screen.getByRole("figure", { name: "Connected workspace illustrative workflow" })).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Human handoff" }));
     expect(screen.getByText("Conversation history available")).toBeTruthy();
   });
