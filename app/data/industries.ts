@@ -21,77 +21,77 @@ export type Industry = {
   faq: [string, string];
 };
 
-export const industries: Industry[] = [
+const existingIndustries: Industry[] = [
   {
-    slug: "schools",
-    name: "Schools",
-    audience: "Admissions & school office teams",
-    headline: "Give every parent a helpful first reply.",
+    slug: "education-edtech",
+    name: "Education & Edtech",
+    audience: "Schools, colleges, course providers & edtech teams",
+    headline: "Help every learner find their next step.",
     description:
-      "Answer admissions questions with AI, guide enquiries with chat menus and keep parent communication with your school team in one inbox.",
-    summary: "Admissions enquiries, parent questions and school updates.",
-    contact: "Parent enquiry",
+      "Answer course and admissions questions with AI, guide learner enquiries and keep your education team connected in one inbox.",
+    summary: "Admissions, course enquiries and learner communication.",
+    contact: "Learner enquiry",
     team: "Admissions team",
     scenarios: [
       {
         label: "Admissions questions",
-        question: "How do I apply for Grade 6?",
+        question: "How do I apply for your next course intake?",
         answer:
-          "I can help with the application process. Which academic year are you interested in? Our admissions team can confirm availability and next steps.",
-        steps: ["Answer from school information", "Identify the admission enquiry", "Continue with admissions"],
+          "I can help with the application process. Which course or programme interests you? Our admissions team can confirm eligibility, availability and next steps.",
+        steps: ["Answer from course information", "Identify the admission enquiry", "Continue with admissions"],
         feature: "AI assistant & shared inbox",
         detail:
-          "Teach the assistant your admissions process, age requirements and office hours. Let the admissions team handle availability and individual decisions.",
+          "Teach the assistant your course details, admissions process and office hours. Let your team confirm eligibility, availability and individual decisions.",
       },
       {
-        label: "Parent enquiries",
-        question: "Where can I ask about the school bus?",
+        label: "Learner support",
+        question: "Where can I ask about joining my online class?",
         answer:
-          "Please choose the information you need: routes, pickup points or speaking to the school office. The office can confirm transport arrangements.",
-        steps: ["Open a parent help menu", "Choose the enquiry topic", "Connect with the school office"],
+          "Please choose the help you need: course information, joining instructions or speaking with learner support. The team can help with your specific access question.",
+        steps: ["Open a learner help menu", "Choose the enquiry topic", "Connect with learner support"],
         feature: "Chat menus & team assignments",
         detail:
-          "Give parents a clear path to common information, and let staff continue the conversation when an answer needs personal attention.",
+          "Give students and parents a clear path to common information, and let staff continue the conversation when an answer needs personal attention.",
       },
       {
-        label: "School updates",
+        label: "Course updates",
         question: "Can you share information about the open day?",
         answer:
-          "The school office can share the open-day details and answer your questions here. Would you like information about the programme or the admissions process?",
+          "The education team can share open-day details and answer your questions here. Would you like information about the programme or the admissions process?",
         steps: ["Organize interested contacts", "Prepare an approved template", "Schedule an open-day campaign"],
         feature: "Phonebooks & campaigns",
         detail:
-          "Organize interested parents into phonebooks and schedule template-based open-day updates for eligible, opted-in recipients.",
+          "Organize interested learners and parents into phonebooks and schedule template-based course or open-day updates for eligible, opted-in recipients.",
       },
     ],
     setup: [
-      "Add school FAQs and admissions information.",
-      "Build menus for admissions and parent enquiries.",
-      "Connect your team and organize parent audiences.",
+      "Add course FAQs and admissions information.",
+      "Build menus for admissions and learner support.",
+      "Connect your team and organize learner audiences.",
     ],
     boundary:
-      "School information and messaging workflows are configured by your team. Student records, attendance and fee collection are not a built-in school management system.",
+      "Your team configures course information and messaging workflows. Learning-platform access, student records, attendance and fee collection remain part of your existing education systems.",
     faq: [
       "Can AI make admissions decisions?",
-      "The assistant can explain information you provide and help with common questions. Your school team confirms availability, eligibility and admissions decisions.",
+      "The assistant can explain information you provide and help with common questions. Your education team confirms availability, eligibility and admissions decisions.",
     ],
   },
   {
-    slug: "clinics",
-    name: "Clinics",
-    audience: "Reception & patient support teams",
+    slug: "healthcare",
+    name: "Healthcare",
+    audience: "Clinics, hospitals & patient support teams",
     headline: "Let reception focus on the people in front of them.",
     description:
-      "Use AI for clinic information, guide appointment enquiries and bring your reception team into conversations that need a personal reply.",
-    summary: "Clinic FAQs, appointment enquiries and reception handoff.",
-    contact: "Clinic enquiry",
+      "Use AI for service information, guide appointment enquiries and bring your reception team into conversations that need a personal reply.",
+    summary: "Service FAQs, appointment enquiries and reception support.",
+    contact: "Patient enquiry",
     team: "Reception team",
     scenarios: [
       {
-        label: "Clinic information",
-        question: "Where is the clinic and when are you open?",
-        answer: "I can share the clinic information provided by reception. Which location would you like to visit?",
-        steps: ["Recognize an information request", "Answer from clinic FAQs", "Offer reception assistance"],
+        label: "Service information",
+        question: "Where is your centre and when is reception open?",
+        answer: "I can share the service information provided by reception. Which location would you like to visit?",
+        steps: ["Recognize an information request", "Answer from approved FAQs", "Offer reception assistance"],
         feature: "AI business knowledge",
         detail:
           "Make approved opening hours, directions and service information available in replies without asking reception to repeat them each time.",
@@ -100,7 +100,7 @@ export const industries: Industry[] = [
         label: "Appointment enquiries",
         question: "Can I request an appointment for Friday?",
         answer:
-          "Reception can help with that request. Which clinic service are you looking for? The team will confirm available times with you.",
+          "Reception can help with that request. Which service are you looking for? The team will confirm available times with you.",
         steps: [
           "Identify an appointment request",
           "Guide the enquiry with a menu",
@@ -122,14 +122,14 @@ export const industries: Industry[] = [
       },
     ],
     setup: [
-      "Add approved clinic hours, locations and service FAQs.",
+      "Add approved reception hours, locations and service FAQs.",
       "Create menus for administrative enquiries.",
       "Assign reception staff to follow up personally.",
     ],
     boundary:
       "Examples cover administrative communication, not diagnosis or medical advice. Appointment availability must be confirmed by staff; no clinical-record integration or healthcare compliance certification is implied.",
     faq: [
-      "Does this replace clinic scheduling software?",
+      "Does this replace healthcare scheduling software?",
       "These workflows help reception collect and respond to appointment enquiries. They do not imply a built-in medical scheduling system or clinical-record integration.",
     ],
   },
@@ -246,29 +246,29 @@ export const industries: Industry[] = [
     ],
   },
   {
-    slug: "salons",
-    name: "Salons",
-    audience: "Salon owners & front-desk teams",
+    slug: "spas-salons",
+    name: "Spas & Salons",
+    audience: "Spa, salon & front-desk teams",
     headline: "Welcome the next client before they walk in.",
     description:
-      "Answer service questions with AI, guide appointment requests and keep your salon team connected to clients in one shared inbox.",
-    summary: "Service questions, appointment requests and client campaigns.",
+      "Answer spa and salon service questions with AI, guide appointment requests and keep your team connected to clients in one inbox.",
+    summary: "Spa and salon services, appointment enquiries and client updates.",
     contact: "Client enquiry",
-    team: "Salon team",
+    team: "Spa and salon team",
     scenarios: [
       {
         label: "Service questions",
-        question: "What hair services do you offer?",
+        question: "What spa and salon services do you offer?",
         answer:
-          "I can share the salon's service information. Are you interested in a haircut, colour services or speaking with the team about a consultation?",
+          "I can share the service information provided by the team. Are you interested in spa treatments, hair services or speaking with someone about a consultation?",
         steps: ["Understand the service question", "Answer from salon information", "Guide the client to the team"],
         feature: "AI assistant & chat menus",
         detail:
-          "Teach your assistant service descriptions, opening hours and FAQs so clients can find a useful starting point for their enquiry.",
+          "Teach your assistant spa and salon service descriptions, opening hours and FAQs so clients can find a useful starting point for their enquiry.",
       },
       {
         label: "Appointment requests",
-        question: "Can I request a haircut on Saturday?",
+        question: "Can I request a treatment on Saturday?",
         answer:
           "The salon team can check that for you. Please share your preferred time here, and they will confirm the appointment with you.",
         steps: [
@@ -278,7 +278,7 @@ export const industries: Industry[] = [
         ],
         feature: "Shared inbox & human handoff",
         detail:
-          "Make it easy for front-desk staff to continue appointment conversations. Your team checks stylist availability and confirms the booking.",
+          "Make it easy for front-desk staff to continue appointment conversations. Your team checks practitioner availability and confirms the booking.",
       },
       {
         label: "Client updates",
@@ -292,7 +292,7 @@ export const industries: Industry[] = [
       },
     ],
     setup: [
-      "Add service details, hours and salon FAQs.",
+      "Add treatment details, hours and service FAQs.",
       "Create menus for service and appointment enquiries.",
       "Connect staff and organize opted-in client groups.",
     ],
@@ -413,6 +413,249 @@ export const industries: Industry[] = [
   },
 ];
 
+export const industries: Industry[] = [
+  ...existingIndustries,
+  {
+    slug: "events-webinars",
+    name: "Events & Webinar",
+    audience: "Event organizers, hosts & audience teams",
+    headline: "Keep your audience connected before the event begins.",
+    description:
+      "Use AI to answer event questions, guide registration enquiries and organize timely updates for your opted-in audience.",
+    summary: "Event FAQs, registration enquiries and audience updates.",
+    contact: "Attendee enquiry",
+    team: "Event team",
+    scenarios: [
+      {
+        label: "Event questions",
+        question: "What will the webinar cover?",
+        answer:
+          "I can share the agenda and speaker information provided by the event team. Would you like the session topics, event timings or help from an organizer?",
+        steps: ["Recognize an event question", "Answer from event information", "Offer organizer assistance"],
+        feature: "AI assistant & business knowledge",
+        detail:
+          "Add the agenda, venue or joining guidance to your assistant so attendees can explore the event before contacting an organizer.",
+      },
+      {
+        label: "Registration help",
+        question: "How can I register for the next session?",
+        answer:
+          "The event team can share the registration instructions. Are you looking for the registration link, session details or help with an existing enquiry?",
+        steps: ["Open a registration help menu", "Identify the attendee's question", "Continue with the event team"],
+        feature: "Chat menus & shared inbox",
+        detail:
+          "Give registration questions a consistent starting point. Let organizers confirm registration, ticket details and joining arrangements using your existing event tools.",
+      },
+      {
+        label: "Audience updates",
+        question: "How can I receive event updates?",
+        answer:
+          "The event team can explain the available updates and help you choose whether to receive them. Would you like to speak with an organizer?",
+        steps: ["Group opted-in attendees", "Prepare an event message template", "Schedule an audience campaign"],
+        feature: "Phonebooks & scheduled campaigns",
+        detail:
+          "Organize eligible attendees into phonebooks and schedule approved template messages for event information or follow-up resources.",
+      },
+    ],
+    setup: [
+      "Add your agenda, event FAQs and joining guidance.",
+      "Build menus for registration and attendee support.",
+      "Organize opted-in audiences and message templates.",
+    ],
+    boundary:
+      "Your team supplies event details and confirms registration. Ticketing, webinar hosting and attendance remain in your existing event services unless a separate integration is configured.",
+    faq: [
+      "Does this host webinars or issue tickets?",
+      "Creative Connects helps with event communication and registration enquiries. Your existing webinar or ticketing service handles sessions, tickets and attendance.",
+    ],
+  },
+  {
+    slug: "it-services-internet",
+    name: "IT Services & Internet",
+    audience: "IT service providers, ISPs & support teams",
+    headline: "Give every support enquiry a clearer starting point.",
+    description:
+      "Answer service FAQs with AI, guide connection enquiries and give your support team the conversation context to continue.",
+    summary: "Service information, connection enquiries and support routing.",
+    contact: "Service enquiry",
+    team: "Support team",
+    scenarios: [
+      {
+        label: "Service questions",
+        question: "What services do you offer for small businesses?",
+        answer:
+          "I can share the service information provided by the team. Are you interested in IT support, internet services or speaking with a service specialist?",
+        steps: [
+          "Identify the service interest",
+          "Answer from approved service FAQs",
+          "Offer a specialist conversation",
+        ],
+        feature: "AI assistant & chat menus",
+        detail:
+          "Make your approved service descriptions, hours and contact options available to prospective customers without repeating the same information in every conversation.",
+      },
+      {
+        label: "Connection enquiries",
+        question: "Can I ask about internet service at my location?",
+        answer:
+          "The service team can review your enquiry. Please continue with them to confirm coverage, installation options and current availability.",
+        steps: ["Recognize a connection enquiry", "Organize the interested contact", "Assign the service team"],
+        feature: "Contact tags & team assignments",
+        detail:
+          "Keep coverage and installation enquiries organized for your team to review. Staff confirm availability through your existing service systems.",
+      },
+      {
+        label: "Support routing",
+        question: "I need help with my internet connection.",
+        answer:
+          "I can help you reach the right support team. Is this a connection issue, a service information question or another support enquiry?",
+        steps: ["Open a support topic menu", "Keep the conversation history", "Let a support agent continue"],
+        feature: "Shared inbox & human handoff",
+        detail:
+          "Use menus to identify the enquiry topic and give agents the existing message context. Share only troubleshooting guidance approved by your service team.",
+      },
+    ],
+    setup: [
+      "Add approved service FAQs and support guidance.",
+      "Create menus for sales, connections and support.",
+      "Connect your specialists and organize contact tags.",
+    ],
+    boundary:
+      "Staff confirm coverage and service availability. Network diagnostics, provisioning, billing and ticket systems require your existing tools or separately configured integrations.",
+    faq: [
+      "Can AI diagnose or restore a network connection?",
+      "It can share approved information and guide the enquiry to your support team. Network diagnostics and service restoration remain with your operational tools and staff.",
+    ],
+  },
+  {
+    slug: "hr-recruitment",
+    name: "HR & Recruitment",
+    audience: "Recruiters, hiring teams & people operations",
+    headline: "Keep candidates informed while your team keeps hiring.",
+    description:
+      "Use AI for hiring FAQs, guide candidate enquiries and keep recruiter conversations organized from the first message.",
+    summary: "Role FAQs, application enquiries and recruiter follow-up.",
+    contact: "Candidate enquiry",
+    team: "Recruitment team",
+    scenarios: [
+      {
+        label: "Role questions",
+        question: "Where can I learn more about the open role?",
+        answer:
+          "I can share the role information provided by the recruitment team. Would you like to know about responsibilities, the application process or contacting a recruiter?",
+        steps: ["Recognize the role enquiry", "Answer from approved role information", "Offer recruiter assistance"],
+        feature: "AI business knowledge",
+        detail:
+          "Teach the assistant approved role descriptions, application instructions and common hiring questions. Recruiters confirm current openings and individual details.",
+      },
+      {
+        label: "Application help",
+        question: "How do I send an application?",
+        answer:
+          "The recruitment team can share the approved application instructions. Would you like the application information or help from a recruiter?",
+        steps: ["Guide the application enquiry", "Organize the contact and interest", "Continue with a recruiter"],
+        feature: "Chat menus, contacts & shared inbox",
+        detail:
+          "Provide a clear starting point for application questions, organize interested contacts and let recruiters continue individual enquiries through the shared inbox.",
+      },
+      {
+        label: "Recruiter follow-up",
+        question: "Can I speak to someone about the next step?",
+        answer:
+          "Of course. A recruiter can continue this conversation and explain the next step for your enquiry. They will confirm any interview arrangements personally.",
+        steps: ["Recognize a follow-up request", "Keep the candidate's message context", "Assign the recruitment team"],
+        feature: "Team assignments & human handoff",
+        detail:
+          "Keep candidate messages in one place and assign follow-up to your team. Recruiters confirm interview times and hiring decisions using their existing process.",
+      },
+    ],
+    setup: [
+      "Add approved role information and hiring FAQs.",
+      "Create menus and tags for candidate enquiries.",
+      "Connect recruiters to follow up personally.",
+    ],
+    boundary:
+      "Your team controls hiring decisions and candidate communication. Applicant tracking, background checks, payroll and interview calendars remain in your existing HR systems.",
+    faq: [
+      "Does AI screen candidates or make hiring decisions?",
+      "These examples cover information and communication. Recruiters review applications and make hiring decisions; automated candidate scoring or an applicant-tracking integration is not implied.",
+    ],
+  },
+  {
+    slug: "banking-fintech",
+    name: "Banking & Fintech",
+    audience: "Customer service, onboarding & support teams",
+    headline: "Guide service questions to the right team.",
+    description:
+      "Answer approved service FAQs with AI, guide application enquiries and connect customers with your support team for individual help.",
+    summary: "Approved FAQs, application guidance and customer support.",
+    contact: "Customer enquiry",
+    team: "Customer support team",
+    scenarios: [
+      {
+        label: "Service information",
+        question: "Where can I learn about your services?",
+        answer:
+          "I can share the general service information approved by the team. Are you looking for product information, application guidance or customer support?",
+        steps: [
+          "Identify the service question",
+          "Answer from approved public FAQs",
+          "Offer customer service assistance",
+        ],
+        feature: "AI business knowledge & menus",
+        detail:
+          "Give customers a clear path to approved public information, opening hours and contact options. Keep account-specific requests with authorized staff.",
+      },
+      {
+        label: "Application guidance",
+        question: "How can I ask about the application process?",
+        answer:
+          "The team can explain the approved application steps. Would you like general process information or a conversation with customer support?",
+        steps: [
+          "Open an application information menu",
+          "Share approved general guidance",
+          "Refer individual questions to staff",
+        ],
+        feature: "Chat menus & human handoff",
+        detail:
+          "Use menus and approved information to explain where customers can begin. Staff confirm eligibility, documentation and application progress through your existing secure systems.",
+      },
+      {
+        label: "Customer support",
+        question: "I need help from the customer service team.",
+        answer:
+          "I can help you reach the team. Please do not share passwords, PINs or one-time codes here. Authorized staff can guide you to the appropriate support channel.",
+        steps: [
+          "Recognize a request for support",
+          "Identify the general enquiry topic",
+          "Assign the customer support team",
+        ],
+        feature: "Shared inbox & team assignments",
+        detail:
+          "Organize general support enquiries and keep conversation context available to authorized staff. Direct sensitive account requests to your established secure channels.",
+      },
+    ],
+    setup: [
+      "Add approved public service FAQs.",
+      "Define menus and boundaries for general enquiries.",
+      "Assign authorized staff and secure support routes.",
+    ],
+    boundary:
+      "Examples cover general communication, not financial advice or account transactions. Core banking, identity checks and payment execution require approved systems and integrations; no financial-services compliance certification is implied.",
+    faq: [
+      "Can the assistant access accounts or move money?",
+      "These examples do not access account balances or execute transactions. Authorized staff use your established secure systems for account-specific requests and regulated operations.",
+    ],
+  },
+];
+
+export const industryAliases: Record<string, string> = {
+  schools: "education-edtech",
+  clinics: "healthcare",
+  salons: "spas-salons",
+};
+
 export function findIndustry(slug: string | undefined) {
-  return industries.find((industry) => industry.slug === slug);
+  const canonical = slug ? (industryAliases[slug] ?? slug) : undefined;
+  return industries.find((industry) => industry.slug === canonical);
 }

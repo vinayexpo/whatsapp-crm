@@ -9,7 +9,7 @@ export function IndustryGrid({ items = industries }: { items?: Industry[] }) {
       {items.map((industry) => (
         <Link to={`/industries/${industry.slug}`} key={industry.slug} className={s.industryLink}>
           <span className={s.cardIndex} aria-hidden="true">
-            0{industries.indexOf(industry) + 1}
+            {String(industries.indexOf(industry) + 1).padStart(2, "0")}
           </span>
           <div>
             <h3>{industry.name}</h3>

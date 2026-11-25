@@ -26,12 +26,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://creativeconnects.web.id/industries/schools</loc>
+    <loc>https://creativeconnects.web.id/industries/education-edtech</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://creativeconnects.web.id/industries/clinics</loc>
+    <loc>https://creativeconnects.web.id/industries/healthcare</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -46,7 +46,7 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://creativeconnects.web.id/industries/salons</loc>
+    <loc>https://creativeconnects.web.id/industries/spas-salons</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -57,6 +57,26 @@
   </url>
   <url>
     <loc>https://creativeconnects.web.id/industries/ecommerce</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://creativeconnects.web.id/industries/events-webinars</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://creativeconnects.web.id/industries/it-services-internet</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://creativeconnects.web.id/industries/hr-recruitment</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://creativeconnects.web.id/industries/banking-fintech</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

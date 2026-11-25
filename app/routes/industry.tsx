@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import { Link, useParams } from "react-router";
+import { Link, Navigate, useLocation, useParams } from "react-router";
 import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
 import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
 import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
@@ -8,6 +8,7 @@ import CheckRounded from "@mui/icons-material/CheckRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
 import { PublicHeader, PublicFooter } from "~/components/public/public-shell";
 import { IndustryGrid } from "~/components/public/industry-grid";
+import { WorkflowMotion } from "~/components/public/workflow-motion";
 import { findIndustry, industries, type Industry } from "~/data/industries";
 import type { Route } from "./+types/industry";
 import p from "./landing.module.css";
@@ -101,13 +102,14 @@ function SectorPage({ industry }: { industry: Industry }) {
                 {scenario.question}
                 <span>Customer</span>
               </div>
-              <div className={s.answer}>
+              <div key={active} className={`${s.answer} ${s.messageTransition}`}>
                 <span>
                   <AutoAwesomeRounded /> AI assistant
                 </span>
                 {scenario.answer}
               </div>
             </div>
+            <WorkflowMotion industry={industry} scenario={scenario} compact />
             <div className={s.demoFlow}>
               <span>EXAMPLE WORKFLOW</span>
               <ol>
@@ -227,7 +229,9 @@ function SectorPage({ industry }: { industry: Industry }) {
 
 export default function IndustryPage() {
   const { sector } = useParams();
+  const { hash } = useLocation();
   const industry = findIndustry(sector);
+  if (industry && sector !== industry.slug) return <Navigate replace to={`/industries/${industry.slug}${hash}`} />;
   return (
     <div className={`${p.page} ${s.page}`}>
       <a className={p.skipLink} href="#main">

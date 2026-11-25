@@ -1,6 +1,286 @@
 .page {
   --sector-line: #dce7e3;
 }
+.directoryMotionHero {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  align-items: center;
+  gap: 64px;
+}
+.directoryMotionHero h1 {
+  font-size: clamp(2.5rem, 3.8vw, 3.75rem);
+}
+.directoryMotionHero > div > p {
+  margin-block: 24px;
+  max-width: 620px;
+}
+.motionShowcase {
+  min-width: 0;
+}
+.motionShowcase > label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.motionShowcase > select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--ink);
+  background: white;
+  border: 1px solid var(--sector-line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+.motionShowcase > select:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+.workflowMotion {
+  margin: 0;
+  border: 1px solid var(--sector-line);
+  border-radius: 12px;
+  background: white;
+  overflow: hidden;
+}
+.motionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+}
+.motionHeader > strong {
+  font-size: 0.8125rem;
+}
+.motionControls {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.motionControls > button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #edf6f1;
+  color: var(--teal);
+  cursor: pointer;
+}
+.motionControls > button:hover {
+  background: #dcefe3;
+}
+.motionControls > button:active {
+  background: #cde6d8;
+}
+.motionQuestion {
+  margin: 0 20px 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f4f7f6;
+  font-size: 0.875rem;
+}
+.motionSvg {
+  display: block;
+  width: calc(100% - 24px);
+  height: auto;
+  margin: 16px 12px 0;
+  overflow: visible;
+}
+.motionSvg g rect {
+  fill: #f7faf8;
+  stroke: #dce7e3;
+  stroke-width: 1;
+}
+.motionSvg g[data-active="true"] rect {
+  fill: #e3f3e9;
+  stroke: #00785f;
+}
+.motionSvg g > svg {
+  width: 24px;
+  height: 24px;
+  color: #00785f;
+  fill: currentColor;
+}
+.motionSvg text {
+  fill: #1b2b29;
+  font-family: "Manrope", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+}
+.motionConnection {
+  fill: none;
+  stroke: #00785f;
+  stroke-width: 2;
+  stroke-dasharray: 4 5;
+}
+.packetFirst,
+.packetSecond {
+  fill: #00785f;
+  opacity: 0;
+}
+.motionCaption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 24px 24px;
+  min-height: 100px;
+}
+.motionCaption > span {
+  font-size: 0.8125rem;
+  color: var(--ink);
+  font-weight: 700;
+}
+.motionCaption > small {
+  font-size: 0.625rem;
+  color: var(--muted);
+}
+.motionSteps {
+  display: flex;
+  gap: 6px;
+}
+.motionSteps > span {
+  display: block;
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+  background: #dce7e3;
+}
+.motionSteps > span[data-active="true"] {
+  background: #00785f;
+}
+.motionCompact {
+  border: 0;
+  border-top: 1px solid var(--sector-line);
+  border-bottom: 1px solid var(--sector-line);
+  border-radius: 0;
+  background: #f4faf7;
+}
+.motionCompact .motionHeader {
+  padding: 8px 24px 0;
+}
+.motionCompact .motionSvg {
+  max-height: 110px;
+  margin-top: 4px;
+}
+.motionCompact .motionCaption {
+  min-height: 84px;
+  padding-block: 0 16px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .motionConnection {
+    animation: connectionFlow 1.8s linear infinite paused;
+  }
+  .packetFirst {
+    animation: firstPacket 7.2s linear infinite paused;
+  }
+  .packetSecond {
+    animation: secondPacket 7.2s linear infinite paused;
+  }
+  .workflowMotion[data-running="true"] :is(.motionConnection, .packetFirst, .packetSecond) {
+    animation-play-state: running;
+  }
+  .motionSvg g rect {
+    transition:
+      fill 180ms ease,
+      stroke 180ms ease;
+  }
+  .messageTransition {
+    animation: replyArrives 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .motionControls > button {
+    transition: background 150ms ease;
+  }
+}
+@keyframes connectionFlow {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+@keyframes firstPacket {
+  0%,
+  4% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  5% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  28% {
+    opacity: 1;
+    transform: translateX(36px);
+  }
+  30%,
+  100% {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+}
+@keyframes secondPacket {
+  0%,
+  36% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  37% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  62% {
+    opacity: 1;
+    transform: translateX(36px);
+  }
+  64%,
+  100% {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+}
+@keyframes replyArrives {
+  from {
+    opacity: 0.55;
+    transform: translateY(6px);
+    clip-path: inset(0 0 12% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0);
+  }
+}
+@media (max-width: 900px) {
+  .directoryMotionHero {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .motionShowcase {
+    max-width: 680px;
+  }
+}
+@media (max-width: 600px) {
+  .motionHeader {
+    padding-inline: 16px;
+  }
+  .motionHeader > strong {
+    font-size: 0.75rem;
+  }
+  .motionCompact .motionHeader {
+    padding-inline: 16px;
+  }
+  .motionCompact .motionCaption {
+    padding-inline: 16px;
+  }
+}
 .page em {
   color: var(--teal);
   font-style: normal;
