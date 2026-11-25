@@ -10,3 +10,4 @@
 - Render evidence: `.impeccable/review/desktop.png` (1440), `mobile.png` (390), `wide.png` (1728), and `mobile-hero.png`.
 - Finish review: `ship` at the supplied source/render scope; no material fixes. Formal concept artifacts and QUALITY BAR comparison inputs were absent and outside that approval scope. Builder reported interaction checks, typecheck, build, 29 frontend tests, and rendered spacing checks with zero critical or serious findings; the reviewer did not rerun those checks.
 - Durable product truth remains in `PRODUCT.md`; global visual authority is documented in `DESIGN.md`.
+- Industry extension: the shared public header/footer now link to `/industries`, and a landing section links directly to seven sector use-case pages. AI-first sample conversations, capability boundaries, responsive behavior, and current review evidence are documented in `industries.md`; this extends the existing public theme.

@@ -14,13 +14,14 @@ import PeopleOutlineRounded from "@mui/icons-material/PeopleOutlineRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import BarChartRounded from "@mui/icons-material/BarChartRounded";
 import GraphicEqRounded from "@mui/icons-material/GraphicEqRounded";
-import MenuRounded from "@mui/icons-material/MenuRounded";
-import CloseRounded from "@mui/icons-material/CloseRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
 import ShieldOutlined from "@mui/icons-material/ShieldOutlined";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import PauseRounded from "@mui/icons-material/PauseRounded";
 import s from "./landing.module.css";
+import i from "./industries.module.css";
+import { PublicHeader, PublicFooter } from "~/components/public/public-shell";
+import { industries } from "~/data/industries";
 
 export function meta() {
   return [
@@ -171,20 +172,6 @@ const faqs = [
     "If you already have an account, sign in to your workspace. Your administrator manages account access, team roles, channel connections and AI settings. AI, voice and messaging features require their respective integrations.",
   ],
 ];
-
-function Brand() {
-  return (
-    <span className={s.brand}>
-      <span className={s.brandMark}>
-        <WhatsApp />
-      </span>
-      <span>
-        creative<span className={s.brandLight}>connects</span>
-        <span className={s.brandDot}>.</span>
-      </span>
-    </span>
-  );
-}
 
 function HeroDemo() {
   const [mode, setMode] = useState(0);
@@ -517,7 +504,6 @@ function FeaturePreview({ active }: { active: number }) {
 }
 
 export default function Landing() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [feature, setFeature] = useState(0);
   const [journey, setJourney] = useState(0);
   const current = features[feature];
@@ -543,46 +529,7 @@ export default function Landing() {
       <a className={s.skipLink} href="#main">
         Skip to content
       </a>
-      <header
-        className={s.header}
-        onKeyDown={(e) => {
-          if (e.key === "Escape" && menuOpen) {
-            setMenuOpen(false);
-            document.getElementById("landing-menu-toggle")?.focus();
-          }
-        }}
-      >
-        <div className={s.navWrap}>
-          <Link to="/" aria-label="Creative Connects home">
-            <Brand />
-          </Link>
-          <nav aria-label="Main navigation" className={`${s.nav} ${menuOpen ? s.navOpen : ""}`} id="landing-navigation">
-            {[
-              ["Product", "#product"],
-              ["Automation", "#automation"],
-              ["Platform", "#platform"],
-              ["FAQs", "#faqs"],
-            ].map(([label, url]) => (
-              <a key={url} href={url} onClick={() => setMenuOpen(false)}>
-                {label}
-              </a>
-            ))}
-          </nav>
-          <Link className={s.navCta} to="/login">
-            Sign in <ArrowOutwardRounded />
-          </Link>
-          <button
-            className={s.menuToggle}
-            id="landing-menu-toggle"
-            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-            aria-expanded={menuOpen}
-            aria-controls="landing-navigation"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            {menuOpen ? <CloseRounded /> : <MenuRounded />}
-          </button>
-        </div>
-      </header>
+      <PublicHeader />
       <main id="main">
         <section className={`${s.hero} ${s.container}`} aria-labelledby="hero-title">
           <div className={s.heroCopy}>
@@ -838,6 +785,26 @@ export default function Landing() {
           </div>
         </section>
 
+        <section className={`${s.container} ${i.landingSectors}`} aria-labelledby="industries-title">
+          <div className={i.sectionIntro}>
+            <div>
+              <h2 id="industries-title">Your business. Your conversations.</h2>
+              <p>Explore practical ways to put AI and automation to work for your team.</p>
+            </div>
+            <Link to="/industries" className={s.textButton}>
+              Explore all industries <ArrowForwardRounded />
+            </Link>
+          </div>
+          <div className={i.landingLinks}>
+            {industries.map((industry) => (
+              <Link key={industry.slug} to={`/industries/${industry.slug}`}>
+                {industry.name}
+                <ArrowOutwardRounded />
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <section className={s.faqSection} id="faqs" aria-labelledby="faq-title">
           <div className={`${s.container} ${s.faqLayout}`}>
             <div>
@@ -881,25 +848,7 @@ export default function Landing() {
           </div>
         </section>
       </main>
-      <footer className={`${s.footer} ${s.container}`}>
-        <div>
-          <Link to="/" aria-label="Creative Connects home">
-            <Brand />
-          </Link>
-          <p>
-            Conversations, AI and automation.
-            <br />
-            Working together.
-          </p>
-        </div>
-        <nav aria-label="Footer navigation">
-          <a href="#product">Product</a>
-          <a href="#automation">Automation</a>
-          <Link to="/privacy-policy">Privacy policy</Link>
-          <Link to="/terms">Terms of service</Link>
-        </nav>
-        <span>© {new Date().getFullYear()} Creative Connects</span>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

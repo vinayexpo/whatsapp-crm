@@ -128,6 +128,19 @@
   display: flex;
   align-items: center;
 }
+.nav a[aria-current="page"] {
+  color: var(--teal);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+@media (min-width: 901px) and (max-width: 1199px) {
+  .navWrap {
+    gap: 24px;
+  }
+  .nav {
+    gap: 16px;
+  }
+}
 .navCta,
 .primaryButton,
 .lightButton {

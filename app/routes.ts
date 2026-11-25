@@ -9,6 +9,8 @@ export default [
   route("terms", "routes/terms.tsx"),
   route("superadmin", "routes/superadmin.tsx"),
   index("routes/landing.tsx"),
+  route("industries", "routes/industries.tsx"),
+  route("industries/:sector", "routes/industry.tsx"),
   route("dashboard", "routes/home.tsx"),
   route("inbox", "routes/inbox.tsx"),
   route("contacts", "routes/contacts.tsx"),
