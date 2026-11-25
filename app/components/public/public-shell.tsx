@@ -14,7 +14,6 @@ export function Brand() {
       </span>
       <span>
         creative<span className={s.brandLight}>connects</span>
-        <span className={s.brandDot}>.</span>
       </span>
     </span>
   );
