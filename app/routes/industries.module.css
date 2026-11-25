@@ -156,13 +156,13 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .motionConnection {
-    animation: connectionFlow 1.4s linear 3 forwards paused;
+    animation: connectionFlow 1.4s linear infinite paused;
   }
   .packetFirst {
-    animation: firstPacket 4.2s linear 1 forwards paused;
+    animation: firstPacket 4.2s linear infinite paused;
   }
   .packetSecond {
-    animation: secondPacket 4.2s linear 1 forwards paused;
+    animation: secondPacket 4.2s linear infinite paused;
   }
   .workflowMotion[data-running="true"] :is(.motionConnection, .packetFirst, .packetSecond) {
     animation-play-state: running;

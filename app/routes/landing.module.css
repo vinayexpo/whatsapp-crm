@@ -590,7 +590,7 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .wave i {
-    animation: wave 0.8s ease-in-out 4 alternate;
+    animation: wave 0.8s ease-in-out infinite alternate;
   }
 }
 .voiceDemo .voiceTranscript {

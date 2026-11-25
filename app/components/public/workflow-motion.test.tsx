@@ -32,18 +32,19 @@ afterEach(() => {
 });
 
 describe("illustrative workflow motion", () => {
-  it("runs once, settles within five seconds and restarts only for a different sample", () => {
+  it("keeps cycling through workflow stages without playback controls", () => {
     const view = render(<WorkflowMotion industry={industries[0]} />);
     const figure = screen.getByRole("figure");
     expect(figure.getAttribute("data-running")).toBe("true");
     act(() => vi.advanceTimersByTime(1400));
     expect(screen.getByText(industries[0].scenarios[0].steps[1])).toBeTruthy();
-    act(() => vi.advanceTimersByTime(2800));
-    expect(figure.getAttribute("data-running")).toBe("false");
-    expect(figure.getAttribute("data-complete")).toBe("true");
+    act(() => vi.advanceTimersByTime(1400));
     expect(screen.getByText(industries[0].scenarios[0].steps[2])).toBeTruthy();
-    act(() => vi.advanceTimersByTime(10000));
-    expect(figure.getAttribute("data-running")).toBe("false");
+    act(() => vi.advanceTimersByTime(1400));
+    expect(screen.getByText(industries[0].scenarios[0].steps[0])).toBeTruthy();
+    act(() => vi.advanceTimersByTime(42000));
+    expect(figure.getAttribute("data-running")).toBe("true");
+    expect(screen.getByText(industries[0].scenarios[0].steps[0])).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
     view.rerender(<WorkflowMotion industry={industries[0]} scenario={industries[0].scenarios[1]} />);
     expect(screen.getByRole("figure").getAttribute("data-running")).toBe("true");

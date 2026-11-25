@@ -44,8 +44,8 @@ export function WorkflowGraphic({
   const [inView, setInView] = useState(false);
   const [visible, setVisible] = useState(true);
   const [phase, setPhase] = useState(0);
-  const stage = reduced ? 2 : Math.min(phase, 2);
-  const running = phase < 3 && !reduced && inView && visible;
+  const stage = reduced ? 2 : phase;
+  const running = !reduced && inView && visible;
 
   useEffect(() => {
     const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -72,7 +72,7 @@ export function WorkflowGraphic({
   }, []);
   useEffect(() => {
     if (!running) return;
-    const timer = setInterval(() => setPhase((current) => Math.min(current + 1, 3)), 1400);
+    const timer = setInterval(() => setPhase((current) => (current + 1) % 3), 1400);
     return () => clearInterval(timer);
   }, [running]);
 
@@ -82,7 +82,6 @@ export function WorkflowGraphic({
       className={`${s.workflowMotion} ${compact ? s.motionCompact : ""}`}
       data-running={running}
       data-reduced-motion={reduced}
-      data-complete={phase === 3 || reduced}
       aria-label={label}
     >
       <div className={s.motionHeader}>
