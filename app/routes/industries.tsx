@@ -12,7 +12,7 @@ export function meta() {
     {
       name: "description",
       content:
-        "Explore AI replies and automation for education, healthcare, events, IT services, recruitment, fintech, spas, restaurants, real estate, gyms and ecommerce.",
+        "Explore AI replies and automation for 15 industries, including automobile, travel, government, marketing agencies, education, healthcare and ecommerce.",
     },
     { tagName: "link", rel: "canonical", href: "https://creativeconnects.web.id/industries" },
   ];

@@ -413,8 +413,7 @@ const existingIndustries: Industry[] = [
   },
 ];
 
-export const industries: Industry[] = [
-  ...existingIndustries,
+const serviceIndustries: Industry[] = [
   {
     slug: "events-webinars",
     name: "Events & Webinar",
@@ -648,6 +647,167 @@ export const industries: Industry[] = [
     ],
   },
 ];
+
+const additionalIndustries: Industry[] = [
+  {
+    slug: "automobile",
+    name: "Automobile",
+    audience: "Dealerships, vehicle service centres & sales teams",
+    headline: "Keep the next vehicle enquiry moving.",
+    description: "Answer vehicle and service questions with AI, guide test-drive enquiries and help your team follow up in one shared inbox.",
+    summary: "Vehicle FAQs, test-drive enquiries and service support.",
+    contact: "Vehicle enquiry",
+    team: "Dealership team",
+    scenarios: [
+      {
+        label: "Vehicle questions",
+        question: "Can you tell me about your electric vehicles?",
+        answer: "I can share the model information provided by the dealership. Would you like to explore features, ask about a test drive or speak with the sales team?",
+        steps: ["Identify the vehicle interest", "Answer from approved model FAQs", "Offer sales assistance"],
+        feature: "AI business knowledge & chat menus",
+        detail: "Add approved model information and dealership FAQs to your assistant. Sales staff confirm current stock, specifications and pricing.",
+      },
+      {
+        label: "Test-drive enquiries",
+        question: "Can I arrange a test drive this weekend?",
+        answer: "The dealership team can help with that request. Which model interests you? A team member will confirm vehicle availability and a suitable time.",
+        steps: ["Guide the test-drive enquiry", "Tag the contact's model interest", "Assign a sales follow-up"],
+        feature: "Chat menus, CRM & assignments",
+        detail: "Organize interested contacts with tags and lead stages, and give sales staff the conversation context to confirm test-drive arrangements.",
+      },
+      {
+        label: "Service enquiries",
+        question: "Who can help me arrange a vehicle service?",
+        answer: "I can connect you with the service team. They can review your request and confirm service options, availability and any estimate personally.",
+        steps: ["Identify a service enquiry", "Keep the conversation context", "Connect the service team"],
+        feature: "Shared inbox & human handoff",
+        detail: "Give service questions a clear starting point and let staff continue the enquiry in the same thread using your existing workshop process.",
+      },
+    ],
+    setup: ["Add approved vehicle and service FAQs.", "Create menus and tags for sales and service enquiries.", "Connect dealership staff to confirm arrangements."],
+    boundary: "Your team confirms stock, prices, test drives and service appointments. Workshop scheduling, vehicle diagnostics, finance decisions and dealer-management systems remain in your existing tools.",
+    faq: ["Does this automatically book a test drive or workshop visit?", "It helps guide and organize enquiries. Your dealership staff confirm availability and appointments through your existing scheduling process."],
+  },
+  {
+    slug: "travel-tourism",
+    name: "Travel & Tourism",
+    audience: "Travel agencies, tour operators & guest support teams",
+    headline: "Turn travel questions into a clearer next step.",
+    description: "Use AI to explain your travel offerings, guide trip enquiries and keep your travel team ready to continue the conversation.",
+    summary: "Destination FAQs, trip enquiries and traveller support.",
+    contact: "Traveller enquiry",
+    team: "Travel team",
+    scenarios: [
+      {
+        label: "Trip discovery",
+        question: "What kinds of family tours do you offer?",
+        answer: "I can share the tour information provided by the travel team. Which destination or type of trip interests you? A travel specialist can confirm current options.",
+        steps: ["Understand the trip interest", "Answer from tour information", "Offer a travel specialist"],
+        feature: "AI assistant & business knowledge",
+        detail: "Make your configured destination descriptions, tour information and common travel-service questions available before a specialist takes over.",
+      },
+      {
+        label: "Trip enquiries",
+        question: "Can someone help plan a trip for next month?",
+        answer: "The travel team can help review your plans. Share your preferred destination and dates, and a specialist can confirm available options and pricing.",
+        steps: ["Guide the travel enquiry", "Organize the contact's interests", "Assign a specialist follow-up"],
+        feature: "Chat menus, contact tags & shared inbox",
+        detail: "Keep destination and trip enquiries organized for staff to review. Your travel team checks availability and prepares individual quotations in its existing booking tools.",
+      },
+      {
+        label: "Traveller updates",
+        question: "How can I hear about your upcoming tours?",
+        answer: "The travel team can explain the available tour updates and how to opt in. Would you like to speak with them about your travel interests?",
+        steps: ["Group opted-in travellers", "Prepare an approved tour template", "Schedule a tour update campaign"],
+        feature: "Phonebooks & scheduled campaigns",
+        detail: "Organize eligible audiences by travel interests and schedule approved template messages for tour announcements and follow-up information.",
+      },
+    ],
+    setup: ["Add approved destination information and tour FAQs.", "Create enquiry menus and travel-interest tags.", "Connect specialists and organize opted-in audiences."],
+    boundary: "Staff confirm availability, fares, itineraries and booking terms. Flight or hotel reservations, live inventory, payments and visa decisions require your existing providers and processes.",
+    faq: ["Can the assistant confirm a flight, hotel or visa?", "It can explain information you provide and guide enquiries to your team. Travel providers and authorized staff confirm reservations, prices and official requirements through the appropriate services."],
+  },
+  {
+    slug: "government",
+    name: "Government",
+    audience: "Public service offices & citizen support teams",
+    headline: "Make public service information easier to find.",
+    description: "Answer approved public FAQs with AI, guide service enquiries and help staff continue citizen conversations with context.",
+    summary: "Public FAQs, service guidance and citizen enquiry routing.",
+    contact: "Citizen enquiry",
+    team: "Public service team",
+    scenarios: [
+      {
+        label: "Public information",
+        question: "Where can I find your office hours and address?",
+        answer: "I can share the public information provided by the office. Which location or service are you looking for? Staff can help with individual enquiries.",
+        steps: ["Identify the public information request", "Answer from approved office FAQs", "Offer staff assistance"],
+        feature: "AI business knowledge",
+        detail: "Add approved opening hours, office locations and public service information so people can find common answers before contacting staff.",
+      },
+      {
+        label: "Service guidance",
+        question: "How can I find the instructions for a permit application?",
+        answer: "I can help you find the general instructions provided by the office. Which permit are you asking about? Staff can direct you to the official application channel.",
+        steps: ["Choose a service topic", "Share approved process information", "Direct the enquiry to staff"],
+        feature: "Chat menus & human handoff",
+        detail: "Use service menus to guide general questions. Staff confirm requirements and direct people to official forms and application channels.",
+      },
+      {
+        label: "Citizen support",
+        question: "I need to speak to someone about a service enquiry.",
+        answer: "The public service team can help. Please choose the general topic of your enquiry and avoid sharing sensitive identity documents here. Staff can guide you to the appropriate channel.",
+        steps: ["Identify the general enquiry topic", "Keep the conversation history", "Assign the appropriate staff team"],
+        feature: "Shared inbox & team assignments",
+        detail: "Organize general citizen enquiries and keep message context available to authorized staff, with sensitive requests handled through established official channels.",
+      },
+    ],
+    setup: ["Add approved public information and service FAQs.", "Build menus that point to official service channels.", "Assign authorized staff to review individual enquiries."],
+    boundary: "Examples cover public information and enquiry routing. Eligibility decisions, official applications, identity verification, case records and emergency response remain with authorized services; no government integration or certification is implied.",
+    faq: ["Does this approve applications or replace an official service portal?", "No. It helps explain approved public information and connect people with staff. Official submissions, decisions and case tracking stay in your established public service systems."],
+  },
+  {
+    slug: "marketing-agencies",
+    name: "Marketing Agencies",
+    audience: "Agency owners, business development & account teams",
+    headline: "Give every new brief a better first response.",
+    description: "Use AI for agency service questions, guide project enquiries and keep account conversations and campaign audiences organized.",
+    summary: "Service FAQs, project enquiries and client communication.",
+    contact: "Project enquiry",
+    team: "Agency team",
+    scenarios: [
+      {
+        label: "Agency services",
+        question: "Can you help with our brand's marketing?",
+        answer: "I can explain the services shared by the agency. Are you interested in creative work, campaign support or speaking with the team about a project?",
+        steps: ["Identify the service interest", "Answer from agency FAQs", "Offer an agency conversation"],
+        feature: "AI assistant & chat menus",
+        detail: "Teach the assistant your service descriptions, working process and common questions so prospective clients can find a clear starting point.",
+      },
+      {
+        label: "Project enquiries",
+        question: "Who can I speak with about a new campaign brief?",
+        answer: "The agency team can review your brief. Share the kind of project you have in mind, and a team member can discuss scope, timing and a proposal with you.",
+        steps: ["Guide the project enquiry", "Organize the lead and interests", "Assign the business development team"],
+        feature: "CRM, contact tags & assignments",
+        detail: "Keep project enquiries organized with contact details, tags and lead stages. Assign follow-up so the team can review scope and prepare proposals through its existing process.",
+      },
+      {
+        label: "Audience outreach",
+        question: "How can we keep interested contacts informed?",
+        answer: "Your team can organize eligible, opted-in contacts and prepare approved message templates. Campaigns can then be scheduled through the configured messaging channel.",
+        steps: ["Organize an opted-in phonebook", "Prepare an approved message template", "Schedule a messaging campaign"],
+        feature: "Phonebooks & scheduled campaigns",
+        detail: "Plan template-based messaging for eligible audiences in your workspace. Use conversation history and team assignments to continue replies personally.",
+      },
+    ],
+    setup: ["Add agency service information and project FAQs.", "Configure enquiry menus, lead stages and assignments.", "Organize opted-in audiences and approved templates."],
+    boundary: "Examples cover messaging, lead organization and team follow-up. Ad buying, social publishing, attribution and project management require your existing tools; separate client workspaces and permissions must be configured appropriately.",
+    faq: ["Does this manage ads across every marketing platform?", "These workflows use Creative Connects messaging and CRM features. They do not imply automatic ad-platform integration, campaign optimization or cross-platform attribution."],
+  },
+];
+
+export const industries: Industry[] = [...existingIndustries, ...serviceIndustries, ...additionalIndustries];
 
 export const industryAliases: Record<string, string> = {
   schools: "education-edtech",
