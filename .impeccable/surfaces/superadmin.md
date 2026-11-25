@@ -1,0 +1,39 @@
+# Superadmin platform management
+
+- Route: `/superadmin`; sections use `?view=overview|companies|users|activity|account`. A company-scoped user list adds `company=<uuid>`; the overview's administrator warning opens companies with `needsAdmin=1`.
+- Scope: platform administration for Creative Connects: actual workspace usage, company and user management, role assignment, access suspension, password resets, an audit trail, and the operator's own account. Billing, subscriptions, revenue, and payment management are outside this surface.
+- Authority: ordinary extension of the incumbent system in `DESIGN.md` and `app/mui-theme.ts`. Preserve the teal palette, Manrope body text, Space Grotesk headings, Material UI components and icons, pale workspace background, white bordered panels, and restrained elevation. `PRODUCT.md`, `DESIGN.md`, and `.impeccable/design.json` remain unchanged.
+
+## Layout
+
+The dedicated platform shell contains persistent navigation, account identity, sign-out, a public-site link, a top breadcrumb, refresh, and a modest application title. Desktop uses a 248px sidebar and a centered content area capped at 1616px with 40px gutters (48px from 1600px). Below 900px the sidebar becomes a 280px temporary drawer; below 600px the main gutters are 16px, filters stack, and the primary page action fills the available width.
+
+Overview groups company, user, connection, and missing-administrator counts above recent companies, workspace usage, and recent activity. Tables become individually actionable record cards below 1200px; summary metrics become two columns. Users and activity filters become two columns below 1200px and one below 600px. Long names and email addresses wrap within their record. Touch actions and autocomplete controls use 44px targets. Navigation includes a skip link; labelled icon actions and standard MUI dialog/focus behavior are retained. Reduced-motion preferences suppress shell animations and transitions.
+
+## Scoped visual extensions
+
+The platform ThemeProvider darkens primary to `#00785F` (hover/dark `#00614D`) and success to `#167347` to improve contrast. These values apply within this route, including its MUI dialogs, and do not redefine the global theme or public landing styles. Selected navigation uses a pale teal fill; statuses carry explicit text as well as color. Page titles stay at application scale (30px desktop, 25.6px mobile); large figures belong to overview metrics.
+
+## Behavior and access
+
+- Authentication resolves through the existing auth store and `/me`. Unauthenticated visitors return to `/login`; authenticated non-superadmins return to `/dashboard`. Platform API routes additionally use `EnsureSuperadmin`; client navigation is not the authorization boundary. A failed access check exposes retry rather than silently showing protected content.
+- Overview retrieves real counts from the platform summary API, including active/suspended companies, users with active access, connected/unconnected channels, contacts, conversations, campaigns, branches, and orders. It shows retrieval time and offers refresh. Companies without an active company admin have a direct review path.
+- Companies support search, status and missing-admin filters, pagination, creation, rename, detail inspection, user management, suspension, reactivation, and deletion. Details show actual usage and configured channel status. New companies start active and require an administrator to be added.
+- Users support name/email search, company/role/access filters, pagination, creation, editing, role and branch assignment, deletion, and password reset. Roles are Superadmin, Company admin, Manager, Agent, Branch manager, and Staff. Company assignment is fixed after creation; platform and company accounts cannot be converted into one another. Branch manager and Staff require a branch belonging to the selected company. Superadmins have no company assignment.
+- Access changes revoke affected sessions and tokens. Company suspension blocks its users while retaining its data; reactivation permits active users to sign in and retains individual suspensions. Invited users cannot sign in until made active, and no invitation email is sent. Existing company and platform administrator guards prevent removal of the final active administrator where required. Own-profile changes use Account settings; own deletion and administrative password reset through another-user actions are blocked.
+- Activity is an append-only, read-only audit trail with search, action/date filters, pagination, actor, target context, and local timestamps. Deleted company names remain in stored audit context. Inverted date ranges produce validation guidance before a query is sent. There are no edit/delete audit controls.
+- Account settings update the operator's name, email, and optional password after current-password verification. Password changes revoke other sessions while retaining the current session. Sign-out clears local access even if the remote logout request fails.
+
+## States and confirmations
+
+Lists and overview panels provide loading placeholders, explicit retryable errors, and contextual empty states. Filtered empty results explain how to recover; initial company/user emptiness offers creation. Company lookup reports loading, no matching options, and retry guidance after failure. Branch lookup reports loading or a missing branch prerequisite and offers retry on failure. Save errors remain inside their dialog/form; pending saves disable submission and dismissal. Successful mutations refresh affected data and announce success.
+
+Suspension/reactivation dialogs identify the company and explain access consequences before applying the change. Company deletion requires prior suspension, the exact company name, and the operator's current password; it explains permanent removal of users and database records. User deletion requires the exact email and current password and explains that company/customer records remain. Password reset requires the operator's current password and matching new passwords of at least eight characters; it explicitly states that existing sessions end and no email is sent. These guards are validated by the backend as well as the form.
+
+## Evidence and review status
+
+Source evidence checked: `app/routes/superadmin.tsx`, `app/routes/superadmin.module.css`, `app/components/superadmin/platform-dialogs.tsx`, `app/data/platform-types.ts`, the platform controllers, `PlatformManagement`, the platform route middleware, and the incumbent theme. Existing root design tokens match the incumbent theme; no pre-existing global design drift was identified in this source scope. The darker route palette is an intentional scoped extension.
+
+Final production-build render artifacts exist at `.impeccable/review/superadmin-{overview,companies,users,activity,account}-{390,1440,1728}.png`, with company dialog and detail drawer captures. All fifteen page captures have zero horizontal overflow and no browser errors. An independent reviewer inspected source and captures and returned `ship`; this is not public HTTPS dashboard certification. Better Design's measured overview spacing has no serious or critical findings; its remaining density/spacing suggestions are moderate. Copy comprehension passes for the management screens and deletion dialog.
+
+Verification: full backend suite passed 711 tests (1,951 assertions); expanded platform coverage passed 15 tests (97 assertions). Final frontend suite passed 37 tests, including the superadmin tenant-data isolation case. Typecheck and production build passed. A browser exercised real local API company creation and user creation, editing, password reset and deletion against isolated SQLite fixtures. All mutations used local sample data. Production deployment is recorded separately by GitHub Actions.

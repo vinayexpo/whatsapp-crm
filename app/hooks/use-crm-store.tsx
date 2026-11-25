@@ -219,7 +219,9 @@ export function CrmStoreProvider({ children }: { children: ReactNode }) {
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(
     DEFAULT_NOTIFICATION_PREFERENCES,
   );
-  const { user: currentUser, status: authStatus } = useAuth();
+  const { user: currentUser, status: sessionStatus } = useAuth();
+  // Platform administrators use their own API and must not load tenant CRM data.
+  const authStatus = currentUser?.role === "superadmin" ? "unauthenticated" : sessionStatus;
   const [inboxRevision, refreshInbox] = useBatchedRefresh(currentUser?.id);
   const [campaignsRevision, refreshCampaigns] = useBatchedRefresh(currentUser?.id);
   const [templatesRevision, refreshTemplates] = useBatchedRefresh(currentUser?.id);

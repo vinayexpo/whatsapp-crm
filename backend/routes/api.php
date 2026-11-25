@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\InstagramWebhookController;
+use App\Http\Controllers\Api\Internal\SidecarCallController;
+use App\Http\Controllers\Api\TwilioVoiceWebhookController;
 use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AddonDefinitionController;
 use App\Http\Controllers\Api\V1\AiAssistantSettingController;
@@ -9,10 +12,11 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationFlowController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\CampaignController;
+use App\Http\Controllers\Api\V1\CatalogSyncController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatbotController;
-use App\Http\Controllers\Api\V1\ChatMenuFlowController;
 use App\Http\Controllers\Api\V1\ChatbotTrainingEntryController;
+use App\Http\Controllers\Api\V1\ChatMenuFlowController;
 use App\Http\Controllers\Api\V1\CommerceReportController;
 use App\Http\Controllers\Api\V1\CommerceSettingController;
 use App\Http\Controllers\Api\V1\CompanyAdminController;
@@ -20,33 +24,34 @@ use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ConversationController;
 use App\Http\Controllers\Api\V1\DailyMetricController;
+use App\Http\Controllers\Api\V1\DeliveryZoneController;
 use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
-use App\Http\Controllers\Api\V1\DeliveryZoneController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\OrderSessionController;
 use App\Http\Controllers\Api\V1\OrderStatusController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhonebookFolderController;
 use App\Http\Controllers\Api\V1\PipelineStageController;
-use App\Http\Controllers\Api\V1\CatalogSyncController;
+use App\Http\Controllers\Api\V1\PlatformCompanyController;
+use App\Http\Controllers\Api\V1\PlatformController;
+use App\Http\Controllers\Api\V1\PlatformUserController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PushSubscriptionController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
 use App\Http\Controllers\Api\V1\VoiceAgentController;
 use App\Http\Controllers\Api\V1\VoiceCallController;
-use App\Http\Controllers\Api\V1\WhatsappFlowController;
-use App\Http\Controllers\Api\V1\WhatsappTemplateController;
-use App\Http\Controllers\Api\InstagramWebhookController;
-use App\Http\Controllers\Api\TwilioVoiceWebhookController;
-use App\Http\Controllers\Api\V1\WhatsAppEmbeddedSignupController;
 use App\Http\Controllers\Api\V1\WhatsappCallController;
 use App\Http\Controllers\Api\V1\WhatsappCallFlowController;
-use App\Http\Controllers\Api\WhatsAppWebhookController;
+use App\Http\Controllers\Api\V1\WhatsAppEmbeddedSignupController;
+use App\Http\Controllers\Api\V1\WhatsappFlowController;
+use App\Http\Controllers\Api\V1\WhatsappTemplateController;
 use App\Http\Controllers\Api\WhatsappCallWebhookController;
-use App\Http\Controllers\Api\Internal\SidecarCallController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
 use App\Http\Controllers\Api\Widget\WidgetController;
+use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsureSuperadmin;
 use App\Http\Middleware\EnsureValidWidgetKey;
 use App\Http\Middleware\VerifyInternalServiceSecret;
 use Illuminate\Support\Facades\Route;
@@ -100,7 +105,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/auth/bootstrap-status', [AuthController::class, 'bootstrapStatus']);
     Route::post('/auth/setup-superadmin', [AuthController::class, 'setupSuperadmin']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', EnsureActiveAccount::class])->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/profile', [AuthController::class, 'updateProfile']);
@@ -311,5 +316,23 @@ Route::prefix('v1')->group(function () {
         Route::post('/companies', [CompanyController::class, 'store']);
         Route::get('/companies/{company}/admins', [CompanyAdminController::class, 'index']);
         Route::post('/companies/{company}/admins', [CompanyAdminController::class, 'store']);
+
+        Route::prefix('platform')->middleware(EnsureSuperadmin::class)->group(function () {
+            Route::get('/summary', [PlatformController::class, 'summary']);
+            Route::get('/activity', [PlatformController::class, 'activity']);
+            Route::patch('/profile', [PlatformController::class, 'profile']);
+            Route::get('/companies', [PlatformCompanyController::class, 'index']);
+            Route::post('/companies', [PlatformCompanyController::class, 'store']);
+            Route::get('/companies/{company}', [PlatformCompanyController::class, 'show']);
+            Route::patch('/companies/{company}', [PlatformCompanyController::class, 'update']);
+            Route::delete('/companies/{company}', [PlatformCompanyController::class, 'destroy']);
+            Route::get('/companies/{company}/branches', [PlatformCompanyController::class, 'branches']);
+            Route::get('/users', [PlatformUserController::class, 'index']);
+            Route::post('/users', [PlatformUserController::class, 'store']);
+            Route::get('/users/{platformUser}', [PlatformUserController::class, 'show']);
+            Route::patch('/users/{platformUser}', [PlatformUserController::class, 'update']);
+            Route::delete('/users/{platformUser}', [PlatformUserController::class, 'destroy']);
+            Route::post('/users/{platformUser}/password', [PlatformUserController::class, 'password']);
+        });
     });
 });

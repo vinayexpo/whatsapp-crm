@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -40,12 +41,12 @@ class AuthController extends Controller
             ]);
         }
 
-        if (Auth::user()->company?->status === 'suspended') {
+        if (Auth::user()->company?->status === 'suspended' || Auth::user()->suspended_at || Auth::user()->status !== 'active') {
             Auth::logout();
             RateLimiter::hit($throttleKey, 60);
 
             throw ValidationException::withMessages([
-                'email' => 'This company account has been suspended.',
+                'email' => 'This account is not active. Contact your administrator.',
             ]);
         }
 
@@ -104,7 +105,7 @@ class AuthController extends Controller
     {
         $token = $request->user()->currentAccessToken();
 
-        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+        if ($token instanceof PersonalAccessToken) {
             $token->delete();
         }
 

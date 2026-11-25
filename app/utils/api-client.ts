@@ -88,6 +88,16 @@ class ApiError extends Error {
   }
 }
 
+import type {
+  PlatformCompany,
+  PlatformCompanyDetail,
+  PlatformUser,
+  PlatformUserInput,
+  PlatformAuditEntry,
+  PlatformSummary,
+  PlatformFilters,
+} from "~/data/platform-types";
+
 const AUTH_TOKEN_STORAGE_KEY = "auth_token";
 
 function getAuthToken(): string | null {
@@ -473,7 +483,8 @@ async function downloadMessageAttachment(messageId: string, fileName?: string): 
   URL.revokeObjectURL(objectUrl);
 }
 
-async function markConversationRead(conversationId: string): Promise<Conversation> {  const { data } = await apiRequest<{ data: Conversation }>(`/api/v1/conversations/${conversationId}/read`, {
+async function markConversationRead(conversationId: string): Promise<Conversation> {
+  const { data } = await apiRequest<{ data: Conversation }>(`/api/v1/conversations/${conversationId}/read`, {
     method: "POST",
   });
   return data;
@@ -1010,7 +1021,11 @@ async function listChatbots(params?: {
   return unwrapPaginated(body);
 }
 
-async function createChatbot(chatbot: { name: string; welcomeMessage?: string | null; apiConnectionId?: string | null }): Promise<Chatbot> {
+async function createChatbot(chatbot: {
+  name: string;
+  welcomeMessage?: string | null;
+  apiConnectionId?: string | null;
+}): Promise<Chatbot> {
   const { data } = await apiRequest<{ data: Chatbot }>("/api/v1/chatbots", {
     method: "POST",
     body: JSON.stringify(chatbot),
@@ -1457,7 +1472,12 @@ async function syncProductAddons(productId: string, addonDefinitionIds: string[]
   return data;
 }
 
-async function syncMetaCatalogProducts(): Promise<{ created: number; updated: number; skipped: number; total: number }> {
+async function syncMetaCatalogProducts(): Promise<{
+  created: number;
+  updated: number;
+  skipped: number;
+  total: number;
+}> {
   const { data } = await apiRequest<{ data: { created: number; updated: number; skipped: number; total: number } }>(
     "/api/v1/commerce/products/sync-meta",
     { method: "POST" },
@@ -1466,10 +1486,9 @@ async function syncMetaCatalogProducts(): Promise<{ created: number; updated: nu
 }
 
 async function pushProductToMeta(productId: string): Promise<{ pushed: boolean }> {
-  const { data } = await apiRequest<{ data: { pushed: boolean } }>(
-    `/api/v1/commerce/products/${productId}/push-meta`,
-    { method: "POST" },
-  );
+  const { data } = await apiRequest<{ data: { pushed: boolean } }>(`/api/v1/commerce/products/${productId}/push-meta`, {
+    method: "POST",
+  });
   return data;
 }
 
@@ -1480,15 +1499,17 @@ async function getCommerceSettings(): Promise<CommerceSetting> {
   return data;
 }
 
-async function updateCommerceSettings(updates: Partial<{
-  businessTypeId: number | null;
-  metaCatalogId: string | null;
-  currency: string;
-  defaultTaxRateBp: number;
-  orderNumberPrefix: string | null;
-  sessionTimeoutMinutes: number;
-  settings: Record<string, unknown>;
-}>): Promise<CommerceSetting> {
+async function updateCommerceSettings(
+  updates: Partial<{
+    businessTypeId: number | null;
+    metaCatalogId: string | null;
+    currency: string;
+    defaultTaxRateBp: number;
+    orderNumberPrefix: string | null;
+    sessionTimeoutMinutes: number;
+    settings: Record<string, unknown>;
+  }>,
+): Promise<CommerceSetting> {
   const { data } = await apiRequest<{ data: CommerceSetting }>("/api/v1/commerce/settings", {
     method: "PATCH",
     body: JSON.stringify(updates),
@@ -1777,9 +1798,7 @@ async function getCommerceTopProductsReport(params?: {
     to: params?.to,
     limit: params?.limit,
   });
-  const { data } = await apiRequest<{ data: CommerceTopProductRow[] }>(
-    `/api/v1/commerce/reports/top-products${query}`,
-  );
+  const { data } = await apiRequest<{ data: CommerceTopProductRow[] }>(`/api/v1/commerce/reports/top-products${query}`);
   return data;
 }
 
@@ -2127,7 +2146,88 @@ async function unsubscribeFromPush(endpoint: string): Promise<void> {
   });
 }
 
+function platformQuery(filters: PlatformFilters): string {
+  const { perPage, needsAdmin, ...rest } = filters;
+  return buildQuery({ ...rest, per_page: perPage, needsAdmin: needsAdmin ? 1 : undefined });
+}
+
 export const apiClient = {
+  async platformSummary(): Promise<PlatformSummary> {
+    return (await apiRequest<{ data: PlatformSummary }>("/api/v1/platform/summary")).data;
+  },
+  async platformCompanies(filters: PlatformFilters = {}) {
+    return unwrapPaginated(
+      await apiRequest<RawPaginatedResponse<PlatformCompany>>(`/api/v1/platform/companies${platformQuery(filters)}`),
+    );
+  },
+  async platformCompany(id: string): Promise<PlatformCompanyDetail> {
+    return (await apiRequest<{ data: PlatformCompanyDetail }>(`/api/v1/platform/companies/${id}`)).data;
+  },
+  async platformSaveCompany(id: string | null, data: { name?: string; status?: string }): Promise<PlatformCompany> {
+    return (
+      await apiRequest<{ data: PlatformCompany }>(`/api/v1/platform/companies${id ? `/${id}` : ""}`, {
+        method: id ? "PATCH" : "POST",
+        body: JSON.stringify(data),
+      })
+    ).data;
+  },
+  async platformDeleteCompany(id: string, data: { confirmation: string; currentPassword: string }): Promise<void> {
+    return apiRequest(`/api/v1/platform/companies/${id}`, { method: "DELETE", body: JSON.stringify(data) });
+  },
+  async platformUsers(filters: PlatformFilters = {}) {
+    return unwrapPaginated(
+      await apiRequest<RawPaginatedResponse<PlatformUser>>(`/api/v1/platform/users${platformQuery(filters)}`),
+    );
+  },
+  async platformSaveUser(id: string | null, data: PlatformUserInput): Promise<PlatformUser> {
+    return (
+      await apiRequest<{ data: PlatformUser }>(`/api/v1/platform/users${id ? `/${id}` : ""}`, {
+        method: id ? "PATCH" : "POST",
+        body: JSON.stringify(data),
+      })
+    ).data;
+  },
+  async platformDeleteUser(id: string, data: { confirmation: string; currentPassword: string }): Promise<void> {
+    return apiRequest(`/api/v1/platform/users/${id}`, { method: "DELETE", body: JSON.stringify(data) });
+  },
+  async platformResetPassword(
+    id: string,
+    data: { currentPassword: string; password: string; password_confirmation: string },
+  ): Promise<void> {
+    return apiRequest(`/api/v1/platform/users/${id}/password`, { method: "POST", body: JSON.stringify(data) });
+  },
+  async platformBranches(companyId: string): Promise<{ id: string; name: string }[]> {
+    return (
+      await apiRequest<{ data: { id: string; name: string }[] }>(`/api/v1/platform/companies/${companyId}/branches`)
+    ).data;
+  },
+  async platformActivity(filters: PlatformFilters = {}) {
+    const data = await apiRequest<{
+      data: PlatformAuditEntry[];
+      current_page: number;
+      last_page: number;
+      total: number;
+      per_page: number;
+    }>(`/api/v1/platform/activity${platformQuery(filters)}`);
+    return {
+      data: data.data,
+      meta: { currentPage: data.current_page, lastPage: data.last_page, total: data.total, perPage: data.per_page },
+    };
+  },
+  async platformProfile(data: {
+    name: string;
+    email: string;
+    currentPassword: string;
+    password?: string;
+    password_confirmation?: string;
+  }): Promise<TeamMember> {
+    return (
+      await apiRequest<{ data: TeamMember }>("/api/v1/platform/profile", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      })
+    ).data;
+  },
   login,
   logout,
   me,

@@ -37,6 +37,7 @@ const newest = conversation("newest", "2026-11-22T10:00:00Z");
 const older = conversation("older", "2026-11-22T09:00:00Z");
 
 beforeEach(() => {
+  auth.user.role = "admin";
   channels.clear();
   echo.private.mockClear();
   echo.leave.mockClear();
@@ -62,6 +63,15 @@ async function setup() {
 }
 
 describe("CRM realtime subscriptions", () => {
+  it("does not load tenant data or subscribe to tenant channels for a superadmin", async () => {
+    auth.user.role = "superadmin";
+    renderHook(() => useCrmStore(), { wrapper: CrmStoreProvider });
+    await act(async () => {});
+    expect(api.listContacts).not.toHaveBeenCalled();
+    expect(api.listConversations).not.toHaveBeenCalled();
+    expect(api.listCampaigns).not.toHaveBeenCalled();
+    expect(echo.private).not.toHaveBeenCalled();
+  });
   it("receives a first message over the company channel before subscribing to its conversation", async () => {
     const { result } = await setup();
     const message: Message = { id: "first", conversationId: "new", text: "Hello", direction: "inbound", status: "delivered", timestamp: "2026-11-22T11:00:00Z" };
