@@ -38,6 +38,7 @@ Creative Connects is an AI-powered customer communication and business managemen
 - Travel & Tourism
 - Government
 - Marketing Agencies
+- Photography & Studios
 
 Industry pages show practical AI and automation examples for answering questions, guiding enquiries and connecting customers with the right team.
 

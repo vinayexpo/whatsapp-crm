@@ -807,7 +807,62 @@ const additionalIndustries: Industry[] = [
   },
 ];
 
-export const industries: Industry[] = [...existingIndustries, ...serviceIndustries, ...additionalIndustries];
+const photographyIndustry: Industry = {
+  slug: "photography-studios",
+  name: "Photography & Studios",
+  audience: "Photographers, creative studios & production teams",
+  headline: "Spend more time behind the camera.",
+  description:
+    "Answer photography package questions with AI, guide shoot enquiries and automate client updates while your studio team handles the creative details.",
+  summary: "Package FAQs, shoot enquiries and client updates.",
+  contact: "Shoot enquiry",
+  team: "Studio team",
+  scenarios: [
+    {
+      label: "Photography packages",
+      question: "Do you offer family portrait sessions?",
+      answer:
+        "I can share the session information provided by the studio. Are you looking for family portraits, an event shoot or product photography? The team can confirm the right package for you.",
+      steps: ["Understand the photography interest", "Answer from studio FAQs", "Offer help from the studio"],
+      feature: "AI assistant & business knowledge",
+      detail:
+        "Add your session types, package descriptions, studio location and preparation FAQs so clients can find common answers while you focus on a shoot.",
+    },
+    {
+      label: "Shoot enquiries",
+      question: "Can I arrange a product shoot next month?",
+      answer:
+        "The studio team can help. Share your preferred dates and the kind of products you want photographed, and they can discuss the brief, availability and a quote with you.",
+      steps: ["Guide the shoot enquiry", "Organize the lead and interests", "Assign a studio follow-up"],
+      feature: "Chat menus, CRM & team assignments",
+      detail:
+        "Guide new enquiries with chat menus, organize contacts by shoot type and track follow-up in your CRM. Your studio confirms dates, scope and pricing personally.",
+    },
+    {
+      label: "Client updates",
+      question: "How can I hear about your upcoming mini sessions?",
+      answer:
+        "The studio can share details about upcoming sessions and explain how to opt in to updates. Would you like the team to help with that?",
+      steps: ["Group opted-in studio contacts", "Prepare an approved session template", "Schedule a client update campaign"],
+      feature: "Phonebooks & scheduled campaigns",
+      detail:
+        "Organize eligible, opted-in clients in phonebooks and schedule approved template messages for session announcements or studio updates. Continue their replies in the shared inbox.",
+    },
+  ],
+  setup: [
+    "Add photography packages and studio FAQs.",
+    "Create enquiry menus, shoot-type tags and lead stages.",
+    "Connect your studio team and organize opted-in clients.",
+  ],
+  boundary:
+    "Your team confirms shoot availability, quotes and bookings. Studio calendars, contracts, payments, photo editing and gallery delivery remain in your existing tools unless separately integrated.",
+  faq: [
+    "Does the assistant book shoots or deliver photo galleries?",
+    "It answers from the studio information you provide and helps organize enquiries and follow-up. Your team confirms bookings, and your existing photography tools handle editing and gallery delivery.",
+  ],
+};
+
+export const industries: Industry[] = [...existingIndustries, ...serviceIndustries, ...additionalIndustries, photographyIndustry];
 
 export const industryAliases: Record<string, string> = {
   schools: "education-edtech",
