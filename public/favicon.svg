@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><title>Creative Connects</title><rect width="192" height="192" rx="40" fill="#F4F7F6"/><g transform="translate(-10 30) scale(.78)">  <path d="M158 38a67 67 0 1 0 0 94l-20-21a39 39 0 1 1 0-52z" fill="#00785F"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none"><title>Creative Connects</title><rect width="192" height="192" rx="40" fill="#F4F7F6"/><g transform="translate(14.1 50.1) scale(.536)">  <g stroke="#00785F" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 85h44M43 51h36M43 119h36"/>
+    <circle cx="15" cy="85" r="8"/><circle cx="34" cy="51" r="8"/><circle cx="34" cy="119" r="8"/>
+  </g>
+  <path d="M158 38a67 67 0 1 0 0 94l-20-21a39 39 0 1 1 0-52z" fill="#00785F"/>
   <path d="M243 38a67 67 0 1 0 0 94l-20-21a39 39 0 1 1 0-52z" fill="#00A884"/>
   <path d="M159 132a67 67 0 0 1-98-5l22-19a39 39 0 0 0 55 3z" fill="#00A884"/>
   <path d="M188 66h27a17 17 0 0 1 17 17v4a17 17 0 0 1-17 17h-10l-15 11v-12a17 17 0 0 1-19-16v-4a17 17 0 0 1 17-17z" fill="#00785F"/>
   <g fill="#FFFFFF"><circle cx="187" cy="85" r="3"/><circle cx="201" cy="85" r="3"/><circle cx="215" cy="85" r="3"/></g>
+  <g stroke="#00785F" stroke-width="7" stroke-linecap="round">
+    <path d="M255 72a24 24 0 0 1 0 26M270 59a44 44 0 0 1 0 52M285 46a64 64 0 0 1 0 78"/>
+  </g>
 </g></svg>
