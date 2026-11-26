@@ -30,7 +30,7 @@ import PhoneInTalkRoundedIcon from "@mui/icons-material/PhoneInTalkRounded";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import { BrandLogo } from "~/components/brand-logo/brand-logo";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
@@ -105,22 +105,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const drawerContent = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Stack direction="row" sx={{ alignItems: "center", gap: 1.25, px: 2.5, py: 2.75 }}>
-        <Box
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: "10px",
-            bgcolor: "primary.main",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <WhatsAppIcon sx={{ color: "primary.contrastText", fontSize: 20 }} />
-        </Box>
-        <Typography variant="h6" sx={{ fontSize: "1.1rem", letterSpacing: "-0.02em" }}>
-          Creative Connects
-        </Typography>
+        <BrandLogo compact />
       </Stack>
       <List sx={{ px: 1.5, flex: 1 }}>
         {NAV_ITEMS.filter(

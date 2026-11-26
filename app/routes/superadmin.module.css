@@ -56,23 +56,6 @@
   gap: 10px;
   padding: 20px 24px;
 }
-.brand > span {
-  display: grid;
-  place-items: center;
-  background: #00a884;
-  color: white;
-  border-radius: 9px;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
-.brand > span > svg {
-  font-size: 20px;
-}
-.brand > p {
-  font-size: 0.875rem;
-  white-space: nowrap;
-}
 .brand .sidebarClose {
   display: none;
 }

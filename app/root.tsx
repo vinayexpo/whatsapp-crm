@@ -17,16 +17,16 @@ import favicon from "/favicon.svg";
 export const links: Route.LinksFunction = () => [
   {
     rel: "icon",
-    href: favicon,
+    href: `${favicon}?v=cc-20261126`,
     type: "image/svg+xml",
   },
   {
     rel: "apple-touch-icon",
-    href: "/icons/apple-touch-icon.png",
+    href: "/icons/apple-touch-icon.png?v=cc-20261126",
   },
   {
     rel: "manifest",
-    href: "/manifest.webmanifest",
+    href: "/manifest.webmanifest?v=cc-20261126",
   },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {

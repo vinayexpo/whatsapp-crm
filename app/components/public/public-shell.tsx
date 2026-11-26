@@ -1,22 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import WhatsApp from "@mui/icons-material/WhatsApp";
+import { BrandLogo } from "~/components/brand-logo/brand-logo";
 import ArrowOutwardRounded from "@mui/icons-material/ArrowOutwardRounded";
 import MenuRounded from "@mui/icons-material/MenuRounded";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import s from "~/routes/landing.module.css";
 
 export function Brand() {
-  return (
-    <span className={s.brand}>
-      <span className={s.brandMark}>
-        <WhatsApp />
-      </span>
-      <span>
-        creative<span className={s.brandLight}>connects</span>
-      </span>
-    </span>
-  );
+  return <BrandLogo />;
 }
 
 export function PublicHeader() {

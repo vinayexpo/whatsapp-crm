@@ -36,7 +36,7 @@ import {
   createTheme,
 } from "@mui/material";
 import { theme as muiTheme } from "~/mui-theme";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import { BrandLogo } from "~/components/brand-logo/brand-logo";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import PeopleOutlineIcon from "@mui/icons-material/PeopleOutlineRounded";
@@ -1567,16 +1567,7 @@ export default function Superadmin() {
   const sidebar = (
     <div className={s.sidebar}>
       <div className={s.brand}>
-        <span>
-          <WhatsAppIcon />
-        </span>
-        <Typography
-          sx={{
-            fontWeight: 700,
-          }}
-        >
-          Creative Connects
-        </Typography>
+        <BrandLogo compact />
         <IconButton aria-label="Close navigation" onClick={() => setMobileOpen(false)} className={s.sidebarClose}>
           <CloseRoundedIcon />
         </IconButton>

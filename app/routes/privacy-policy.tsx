@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import { BrandLogo } from "~/components/brand-logo/brand-logo";
 import type { Route } from "./+types/privacy-policy";
 
 export function meta({}: Route.MetaArgs) {
@@ -17,24 +17,7 @@ export default function PrivacyPolicy() {
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: 6, px: 2 }}>
       <Paper elevation={3} sx={{ p: { xs: 3, sm: 5 }, maxWidth: 820, mx: "auto" }}>
         <Stack spacing={3}>
-          <Stack direction="row" spacing={1.25} sx={{ alignItems: "center" }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: "10px",
-                bgcolor: "primary.main",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <WhatsAppIcon sx={{ color: "primary.contrastText", fontSize: 20 }} />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Creative Connects
-            </Typography>
-          </Stack>
+          <BrandLogo />
 
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700 }}>

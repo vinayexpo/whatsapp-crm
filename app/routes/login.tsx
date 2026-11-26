@@ -7,7 +7,7 @@ import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import { BrandLogo } from "~/components/brand-logo/brand-logo";
 import { apiClient, ApiError } from "~/utils/api-client";
 import { useAuth } from "~/hooks/use-auth";
 import { useBootstrapStatus } from "~/hooks/use-bootstrap-status";
@@ -87,24 +87,7 @@ export default function Login() {
     >
       <Paper elevation={3} sx={{ p: 4, width: "100%", maxWidth: 400 }}>
         <Stack spacing={3} component="form" onSubmit={handleSubmit}>
-          <Stack direction="row" spacing={1.25} sx={{ alignItems: "center" }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: "10px",
-                bgcolor: "primary.main",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <WhatsAppIcon sx={{ color: "primary.contrastText", fontSize: 20 }} />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Creative Connects
-            </Typography>
-          </Stack>
+          <BrandLogo />
 
           <Typography variant="body2" color="text.secondary">
             Sign in to your account to continue.
@@ -131,7 +114,7 @@ export default function Login() {
             fullWidth
           />
 
-          <Button type="submit" variant="contained" size="large" disabled={submitting} fullWidth>
+          <Button type="submit" variant="contained" size="large" disableElevation disabled={submitting} fullWidth>
             {submitting ? "Signing in…" : "Sign in"}
           </Button>
 

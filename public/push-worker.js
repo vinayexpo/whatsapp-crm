@@ -1,4 +1,4 @@
-const CACHE_NAME = "creative-connects-shell-v2";
+const CACHE_NAME = "creative-connects-shell-v3-brand";
 const APP_SHELL = ["/", "/dashboard", "/manifest.webmanifest", "/favicon.svg"];
 
 self.addEventListener("install", (event) => {
