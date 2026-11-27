@@ -42,20 +42,34 @@ class MetaAdsService
     public function sync(PaidAdAccount $account): void
     {
         Cache::lock('ads-account:'.$account->id, 600)->block(1, function () use ($account) {
-            $campaigns = $this->client->pages($account, 'act_'.$account->meta_account_id.'/campaigns', ['fields' => 'id,name,objective,status,effective_status']);
+            $campaigns = $this->client->pages($account, 'act_'.$account->meta_account_id.'/campaigns', ['fields' => MetaAdsSync::CAMPAIGN_FIELDS]);
+            $adsets = collect($this->client->pages($account, 'act_'.$account->meta_account_id.'/adsets', ['fields' => MetaAdsSync::ADSET_FIELDS]))->groupBy('campaign_id');
+            $ads = collect($this->client->pages($account, 'act_'.$account->meta_account_id.'/ads', ['fields' => MetaAdsSync::AD_FIELDS]))->groupBy('campaign_id');
             $insights = collect($this->client->pages($account, 'act_'.$account->meta_account_id.'/insights', ['level' => 'campaign', 'date_preset' => 'last_7d', 'fields' => 'campaign_id,spend,impressions,clicks,reach,ctr,cpc,actions,date_start,date_stop']))->keyBy('campaign_id');
-            DB::transaction(function () use ($account, $campaigns, $insights) {
+            DB::transaction(function () use ($account, $campaigns, $insights, $adsets, $ads) {
                 foreach ($campaigns as $remote) {
                     $local = PaidAdCampaign::firstOrCreate(['company_id' => $account->company_id, 'paid_ad_account_id' => $account->id, 'remote_id' => $remote['id']], ['name' => $remote['name'], 'objective' => $remote['objective'], 'state' => 'IMPORTED']);
-                    $local->update(['name' => $remote['name'], 'objective' => $remote['objective'], 'remote_status' => $remote['effective_status'] ?? $remote['status'], 'insights' => $insights->get($remote['id']) ?? ['spend' => '0', 'impressions' => '0', 'clicks' => '0', 'reach' => '0', 'date_start' => now()->subDays(7)->toDateString(), 'date_stop' => now()->subDay()->toDateString()], 'synced_at' => now()]);
+                    Cache::lock('ads-campaign:'.$local->id, 180)->get(function () use ($local, $remote, $insights, $adsets, $ads) {
+                        $local->refresh();
+                        if (in_array($local->sync_state, ['QUEUED', 'APPLYING'])) {
+                            return;
+                        }
+                        app(MetaAdsSync::class)->receive($local, ['campaign' => $remote, 'adsets' => $adsets->get($remote['id'], collect())->values()->all(), 'ads' => $ads->get($remote['id'], collect())->values()->all()]);
+                        $local->update(['insights' => $insights->get($remote['id']) ?? ['spend' => '0', 'impressions' => '0', 'clicks' => '0', 'reach' => '0', 'date_start' => now()->subDays(7)->toDateString(), 'date_stop' => now()->subDay()->toDateString()]]);
+                    });
                 }
-                PaidAdCampaign::where('company_id', $account->company_id)->where('paid_ad_account_id', $account->id)->whereNotNull('remote_id')->whereNotIn('remote_id', array_column($campaigns, 'id'))->update(['insights' => null]);
+                PaidAdCampaign::where('company_id', $account->company_id)->where('paid_ad_account_id', $account->id)->whereNotNull('remote_id')->whereNotIn('remote_id', array_column($campaigns, 'id'))->whereNotIn('sync_state', ['QUEUED', 'APPLYING'])->update(['insights' => null, 'sync_state' => 'MISSING', 'sync_error' => 'This campaign was not returned by Meta. It may be archived, deleted or inaccessible. Review it in Ads Manager before editing.']);
                 $account->update(['synced_at' => now(), 'sync_error' => null]);
             });
         });
     }
 
     public function publish(PaidAdCampaign $campaign): void
+    {
+        Cache::lock('ads-account:'.$campaign->paid_ad_account_id, 600)->block(1, fn () => $this->publishLocked($campaign));
+    }
+
+    private function publishLocked(PaidAdCampaign $campaign): void
     {
         Cache::lock('ads-campaign:'.$campaign->id, 180)->block(1, function () use ($campaign) {
             $campaign->refresh();

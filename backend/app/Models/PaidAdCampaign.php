@@ -11,11 +11,11 @@ class PaidAdCampaign extends Model
 {
     use BelongsToCompany, HasUuid;
 
-    protected $fillable = ['company_id', 'paid_ad_account_id', 'name', 'objective', 'state', 'remote_id', 'adset_id', 'creative_id', 'ad_id', 'remote_status', 'specification', 'insights', 'last_error', 'synced_at'];
+    protected $fillable = ['company_id', 'paid_ad_account_id', 'name', 'objective', 'state', 'remote_id', 'adset_id', 'creative_id', 'ad_id', 'remote_status', 'specification', 'insights', 'last_error', 'synced_at', 'meta_snapshot', 'pending_changes', 'sync_conflicts', 'sync_state', 'sync_error'];
 
     protected function casts(): array
     {
-        return ['specification' => 'array', 'insights' => 'array', 'synced_at' => 'datetime'];
+        return ['specification' => 'array', 'insights' => 'array', 'synced_at' => 'datetime', 'meta_snapshot' => 'array', 'pending_changes' => 'array', 'sync_conflicts' => 'array'];
     }
 
     public function account(): BelongsTo

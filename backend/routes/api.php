@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\V1\DailyMetricController;
 use App\Http\Controllers\Api\V1\DeliveryZoneController;
 use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\Api\V1\MetaAdsController;
+use App\Http\Controllers\Api\V1\MetaAdsSyncController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\OrderController;
@@ -112,6 +113,12 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::prefix('ads')->middleware('throttle:30,1')->group(function () {
+            Route::post('/ai/draft', [MetaAdsSyncController::class, 'ai'])->middleware('throttle:6,1');
+            Route::patch('/accounts/{id}/sync-settings', [MetaAdsSyncController::class, 'settings']);
+            Route::post('/campaigns/{id}/pull', [MetaAdsSyncController::class, 'pull']);
+            Route::patch('/campaigns/{id}/changes', [MetaAdsSyncController::class, 'stage']);
+            Route::post('/campaigns/{id}/resolve', [MetaAdsSyncController::class, 'resolve']);
+            Route::post('/campaigns/{id}/push', [MetaAdsSyncController::class, 'push']);
             Route::get('/accounts', [MetaAdsController::class, 'accounts']);
             Route::post('/accounts', [MetaAdsController::class, 'saveAccount']);
             Route::patch('/accounts/{id}', [MetaAdsController::class, 'saveAccount']);

@@ -29,10 +29,10 @@ it('uses fixed host cursor pagination and retains reports after a failed read', 
                 return Http::response(['data' => []]);
             }
 
-return Http::response(['data' => [], 'paging' => ['next' => 'https://untrusted.example/private', 'cursors' => ['after' => 'cursor2']]]);
+            return Http::response(['data' => [], 'paging' => ['next' => 'https://untrusted.example/private', 'cursors' => ['after' => 'cursor2']]]);
         }
 
-return Http::response(['error' => ['code' => 190]], 400);
+        return Http::response(['error' => ['code' => 190]], 400);
     });
     expect(fn () => app(MetaAdsService::class)->sync($this->account))->toThrow(ValidationException::class);
     expect($c->fresh()->insights['spend'])->toBe('95.00');
@@ -63,8 +63,11 @@ function adsFake(?callable $extra = null): void
         }if (str_contains($r->url(), '/23456')) {
             return Http::response(['id' => '23456', 'name' => 'Studio Page', 'instagram_business_account' => ['id' => '34567'], 'whatsapp_number' => '+91 98765 43210']);
         }
+        if ($r->method() === 'GET' && preg_match('~/act_12345/(adsets|ads)(?:\?|$)~', $r->url())) {
+            return Http::response(['data' => []]);
+        }
 
-return Http::response(['error' => ['code' => 100]], 400);
+        return Http::response(['error' => ['code' => 100]], 400);
     });
 }
 function savedAdsDraft(PaidAdAccount $a): PaidAdCampaign
@@ -131,7 +134,7 @@ it('publishes campaign ad set and ad paused with account currency minor units', 
             return Http::response(['id' => (string) ++$n]);
         }
 
-return null;
+        return null;
     });
     app(MetaAdsService::class)->publish($c);
     expect($c->fresh()->state)->toBe('PUBLISHED');
@@ -158,7 +161,7 @@ it('builds click to whatsapp engagement payloads', function () {
             return Http::response(['id' => (string) ++$n]);
         }
 
-return null;
+        return null;
     });
     app(MetaAdsService::class)->publish($c);
     Http::assertSent(fn ($r) => str_ends_with($r->url(), '/adsets') && $r['destination_type'] === 'WHATSAPP' && $r['optimization_goal'] === 'CONVERSATIONS');
@@ -174,7 +177,7 @@ it('preserves partial provider ids and blocks blind retry after publishing failu
             return Http::response(['error' => ['code' => 100]], 400);
         }
 
-return null;
+        return null;
     });
     expect(fn () => app(MetaAdsService::class)->publish($c))->toThrow(ValidationException::class);
     expect($c->fresh()->state)->toBe('NEEDS_REVIEW');
@@ -202,7 +205,7 @@ it('does not allow ad ids outside the selected campaign to be mutated', function
             return Http::response(['data' => []]);
         }
 
-return null;
+        return null;
     });
     $this->patchJson('/api/v1/ads/campaigns/'.$c->uuid.'/objects/status', ['kind' => 'ad', 'objectId' => '999', 'status' => 'ACTIVE', 'confirm' => true])->assertNotFound();
     expect(Http::recorded(fn ($r) => $r->method() === 'POST'))->toHaveCount(0);
@@ -215,9 +218,9 @@ it('imports real campaign results and reports across pagination without fabricat
             return Http::response(['data' => [['id' => '777', 'name' => 'Existing Meta ad', 'objective' => 'OUTCOME_TRAFFIC', 'status' => 'ACTIVE']]]);
         }
 
-return null;
+        return null;
     });
     app(MetaAdsService::class)->sync($this->account);
-    $r = $this->getJson('/api/v1/ads/campaigns?accountId='.$this->account->uuid)->assertOk()->assertJsonPath('summary.spend',123.45)->assertJsonPath('summary.impressions',1000)->assertJsonPath('data.0.state','IMPORTED');
+    $r = $this->getJson('/api/v1/ads/campaigns?accountId='.$this->account->uuid)->assertOk()->assertJsonPath('summary.spend', 123.45)->assertJsonPath('summary.impressions', 1000)->assertJsonPath('data.0.state', 'IMPORTED');
     expect($this->account->fresh()->synced_at)->not->toBeNull();
 });

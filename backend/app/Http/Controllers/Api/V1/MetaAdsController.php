@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SavePaidAdCampaignRequest;
+use App\Http\Resources\PaidAdCampaignResource;
 use App\Jobs\RunMetaAdsTask;
 use App\Models\ActivityLog;
 use App\Models\PaidAdAccount;
@@ -44,12 +45,12 @@ class MetaAdsController extends Controller
 
     private function accountData(PaidAdAccount $a): array
     {
-        return ['id' => $a->uuid, 'name' => $a->name, 'metaAccountId' => $a->meta_account_id, 'pageId' => $a->page_id, 'instagramId' => $a->instagram_id, 'whatsappNumber' => $a->whatsapp_number, 'currency' => $a->currency, 'timezone' => $a->timezone, 'verifiedAt' => $a->verified_at, 'syncedAt' => $a->synced_at, 'syncError' => $a->sync_error];
+        return ['id' => $a->uuid, 'name' => $a->name, 'metaAccountId' => $a->meta_account_id, 'pageId' => $a->page_id, 'instagramId' => $a->instagram_id, 'whatsappNumber' => $a->whatsapp_number, 'currency' => $a->currency, 'timezone' => $a->timezone, 'verifiedAt' => $a->verified_at, 'syncedAt' => $a->synced_at, 'syncError' => $a->sync_error, 'autoSync' => $a->auto_sync ?? true];
     }
 
     private function campaignData(PaidAdCampaign $c): array
     {
-        return ['id' => $c->uuid, 'accountId' => $c->account->uuid, 'name' => $c->name, 'objective' => $c->objective, 'state' => $c->state, 'remoteId' => $c->remote_id, 'adsetId' => $c->adset_id, 'adId' => $c->ad_id, 'creativeId' => $c->creative_id, 'status' => $c->remote_status, 'specification' => $c->specification, 'insights' => $c->insights, 'lastError' => $c->last_error, 'syncedAt' => $c->synced_at];
+        return (new PaidAdCampaignResource($c))->resolve();
     }
 
     public function accounts(Request $r)
@@ -182,6 +183,11 @@ class MetaAdsController extends Controller
         }$copy = $c->replicate(['uuid', 'remote_id', 'adset_id', 'creative_id', 'ad_id', 'insights', 'synced_at', 'last_error', 'remote_status']);
         $copy->name = mb_substr($c->name.' (copy)', 0, 150);
         $copy->state = 'DRAFT';
+        $copy->meta_snapshot = null;
+        $copy->pending_changes = null;
+        $copy->sync_conflicts = null;
+        $copy->sync_state = 'NOT_SYNCED';
+        $copy->sync_error = null;
         $copy->save();
 
         return response()->json(['data' => $this->campaignData($copy->load('account'))]);

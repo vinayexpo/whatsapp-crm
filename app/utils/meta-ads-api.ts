@@ -11,6 +11,7 @@ export type AdAccount = {
   verifiedAt: string | null;
   syncedAt: string | null;
   syncError: string | null;
+  autoSync?: boolean;
 };
 export type AdSpec = {
   accountId: string;
@@ -56,6 +57,30 @@ export type AdCampaign = {
   insights: AdInsights | null;
   lastError: string | null;
   syncedAt: string | null;
+  metaSnapshot?: { campaign: MetaObject; adsets: MetaObject[]; ads: MetaObject[] } | null;
+  pendingChanges?: Record<string, Record<string, { base: unknown; value: unknown }>>;
+  syncConflicts?: { key: string; field: string; base: unknown; meta: unknown; local: unknown; missing: boolean }[];
+  syncState?: string;
+  syncError?: string | null;
+  syncRevision?: string;
+};
+export type MetaObject = {
+  id: string;
+  name: string;
+  status?: string;
+  objective?: string;
+  daily_budget?: string;
+  lifetime_budget?: string;
+  end_time?: string;
+  start_time?: string;
+  special_ad_categories?: string[];
+  targeting?: {
+    geo_locations?: { countries?: string[]; [key: string]: unknown };
+    age_min?: number;
+    age_max?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
 };
 export type AdObject = {
   id: string;
@@ -78,6 +103,13 @@ const request = async <T>(path: string, method = "GET", body?: object) =>
   (await apiRequest<{ data: T }>(`/api/v1/ads/${path}`, { method, ...(body ? { body: JSON.stringify(body) } : {}) }))
     .data;
 export const metaAdsApi = {
+  aiDraft: (body: object) =>
+    request<{ proposal: AdSpec; rationale: string; warnings: string[] }>("ai/draft", "POST", body),
+  syncSettings: (id: string, autoSync: boolean) => request(`accounts/${id}/sync-settings`, "PATCH", { autoSync }),
+  pull: (id: string) => request<AdCampaign>(`campaigns/${id}/pull`, "POST"),
+  stage: (id: string, body: object) => request<AdCampaign>(`campaigns/${id}/changes`, "PATCH", body),
+  resolve: (id: string, body: object) => request<AdCampaign>(`campaigns/${id}/resolve`, "POST", body),
+  push: (id: string, revision: string) => request(`campaigns/${id}/push`, "POST", { revision, confirm: true }),
   accounts: () => request<AdAccount[]>("accounts"),
   saveAccount: (body: object, id?: string) =>
     request<AdAccount>(id ? `accounts/${id}` : "accounts", id ? "PATCH" : "POST", body),

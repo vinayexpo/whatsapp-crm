@@ -27,6 +27,9 @@ import AddRounded from "@mui/icons-material/AddRounded";
 import SyncRounded from "@mui/icons-material/SyncRounded";
 import OpenInNewRounded from "@mui/icons-material/OpenInNewRounded";
 import AdsClickRounded from "@mui/icons-material/AdsClickRounded";
+import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
+import { AdsAiDialog } from "~/components/meta-ads/ads-ai-dialog";
+import { MetaSyncPanel } from "~/components/meta-ads/meta-sync-panel";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import {
@@ -98,6 +101,8 @@ export default function MetaAds() {
   );
 }
 function AdsWorkspace() {
+  const [aiOpen, setAiOpen] = useState(false),
+    [proposal, setProposal] = useState<AdSpec | null>(null);
   const [accounts, setAccounts] = useState<AdAccount[]>([]),
     [accountId, setAccountId] = useState("");
   const [tab, setTab] = useState(0),
@@ -114,8 +119,7 @@ function AdsWorkspace() {
     [selected, setSelected] = useState<AdCampaign | null>(null),
     [detail, setDetail] = useState<AdHierarchy | null>(null),
     [detailBusy, setDetailBusy] = useState(false),
-    [confirm, setConfirm] = useState<Confirmation | null>(null),
-    [budget, setBudget] = useState("");
+    [confirm, setConfirm] = useState<Confirmation | null>(null);
   const account = accounts.find((a) => a.id === accountId);
   const load = useCallback(async () => {
     setLoading(true);
@@ -128,7 +132,9 @@ function AdsWorkspace() {
         setAccountId(chosen);
         return;
       }
-      setData(chosen ? await metaAdsApi.campaigns(chosen, page, query) : null);
+      const loaded = chosen ? await metaAdsApi.campaigns(chosen, page, query) : null;
+      setData(loaded);
+      setSelected((previous) => (previous ? (loaded?.data.find((c) => c.id === previous.id) ?? previous) : null));
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -139,7 +145,12 @@ function AdsWorkspace() {
     void load();
   }, [load]);
   useEffect(() => {
-    if (!data?.data.some((c) => ["QUEUED", "PUBLISHING"].includes(c.state))) return;
+    if (
+      !data?.data.some(
+        (c) => ["QUEUED", "PUBLISHING"].includes(c.state) || ["QUEUED", "APPLYING"].includes(c.syncState ?? ""),
+      )
+    )
+      return;
     const t = setInterval(() => void load(), 10000);
     return () => clearInterval(t);
   }, [data, load]);
@@ -163,7 +174,6 @@ function AdsWorkspace() {
   async function show(c: AdCampaign) {
     setSelected(c);
     setDetail(null);
-    setBudget(String((c.specification?.dailyBudget ?? 0) / 100));
     setDetailBusy(true);
     try {
       setDetail(await metaAdsApi.details(c.id));
@@ -200,15 +210,28 @@ function AdsWorkspace() {
             Facebook and Instagram ads. Website visits and WhatsApp conversations.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          disableElevation
-          startIcon={<AddRounded />}
-          onClick={() => setDraft(null)}
-          disabled={!account?.verifiedAt || busy}
-        >
-          Create campaign
-        </Button>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<AutoAwesomeRounded />}
+            disabled={!account?.verifiedAt || busy}
+            onClick={() => setAiOpen(true)}
+          >
+            Create with AI
+          </Button>
+          <Button
+            variant="contained"
+            disableElevation
+            startIcon={<AddRounded />}
+            onClick={() => {
+              setProposal(null);
+              setDraft(null);
+            }}
+            disabled={!account?.verifiedAt || busy}
+          >
+            Create campaign
+          </Button>
+        </Stack>
       </Stack>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
@@ -273,6 +296,24 @@ function AdsWorkspace() {
             Last sync: {when(account.syncedAt)} · Reporting: last 7 complete days ·{" "}
             {account.timezone || "Account timezone pending verification"}
           </Typography>
+        )}
+        {account && (
+          <FormControlLabel
+            sx={{ mt: 1, ml: 0 }}
+            control={
+              <Checkbox
+                checked={account.autoSync ?? true}
+                disabled={busy}
+                onChange={(_, checked) =>
+                  void action(
+                    () => metaAdsApi.syncSettings(account.id, checked),
+                    checked ? "Automatic Meta pulls enabled every five minutes." : "Automatic Meta pulls paused.",
+                  )
+                }
+              />
+            }
+            label="Pull Meta changes every 5 minutes"
+          />
         )}
       </Paper>
       {account?.syncError && (
@@ -440,6 +481,14 @@ function AdsWorkspace() {
                         ? ` · ${money(c.specification.dailyBudget / 100, account.currency ?? "INR")}/day`
                         : ""}
                     </Typography>
+                    {c.pendingChanges && Object.keys(c.pendingChanges).length > 0 && (
+                      <Chip
+                        size="small"
+                        sx={{ mt: 1 }}
+                        color={c.syncConflicts?.length ? "warning" : "default"}
+                        label={c.syncConflicts?.length ? "Sync conflict" : "Pending app edits"}
+                      />
+                    )}
                     {c.lastError && (
                       <Alert severity="warning" sx={{ mt: 2 }}>
                         {c.lastError}
@@ -471,7 +520,14 @@ function AdsWorkspace() {
                     </Button>
                     {c.state === "DRAFT" ? (
                       <>
-                        <Button onClick={() => setDraft(c)}>Edit</Button>
+                        <Button
+                          onClick={() => {
+                            setProposal(null);
+                            setDraft(c);
+                          }}
+                        >
+                          Edit
+                        </Button>
                         <Button
                           variant="outlined"
                           disabled={busy}
@@ -558,13 +614,29 @@ function AdsWorkspace() {
           }}
         />
       )}
+      {aiOpen && account && (
+        <AdsAiDialog
+          account={account}
+          onClose={() => setAiOpen(false)}
+          onDraft={(value) => {
+            setProposal(value);
+            setAiOpen(false);
+            setDraft(null);
+          }}
+        />
+      )}
       {draft !== undefined && account && (
         <CampaignEditor
           account={account}
           initial={draft}
-          onClose={() => setDraft(undefined)}
+          proposal={proposal}
+          onClose={() => {
+            setDraft(undefined);
+            setProposal(null);
+          }}
           onSaved={() => {
             setDraft(undefined);
+            setProposal(null);
             setTab(0);
             void load();
           }}
@@ -615,6 +687,18 @@ function AdsWorkspace() {
                 Review campaign in Meta
               </Button>
             )}
+            {selected?.remoteId && account && (
+              <MetaSyncPanel
+                campaign={selected}
+                currency={account.currency ?? "INR"}
+                onUpdate={(value) => {
+                  setSelected(value);
+                  setData((old) =>
+                    old ? { ...old, data: old.data.map((c) => (c.id === value.id ? value : c)) } : old,
+                  );
+                }}
+              />
+            )}
             {selected?.specification && (
               <Box>
                 <Typography variant="h6">Saved campaign settings</Typography>
@@ -627,35 +711,6 @@ function AdsWorkspace() {
                 <Typography sx={{ mt: 2 }}>{selected.specification.message}</Typography>
                 <Typography sx={{ fontWeight: 700 }}>{selected.specification.headline}</Typography>
               </Box>
-            )}
-            {selected?.state === "PUBLISHED" && (
-              <Stack sx={{ gap: 2 }} direction={{ xs: "column", sm: "row" }}>
-                <TextField
-                  label={`Daily ad-set budget (${account?.currency})`}
-                  type="number"
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                  slotProps={{ htmlInput: { min: 1, step: 0.01 } }}
-                />
-                <Button
-                  disabled={busy}
-                  onClick={() => {
-                    if (!selected || !Number.isFinite(Number(budget)) || Number(budget) <= 0) {
-                      setError("Enter a positive budget.");
-                      return;
-                    }
-                    const c = selected;
-                    setConfirm({
-                      title: "Change daily budget?",
-                      body: `Set the daily ad-set budget for “${c.name}” to ${money(Number(budget), account?.currency ?? "INR")}. Active delivery can incur charges.`,
-                      label: "Change budget",
-                      run: () => metaAdsApi.budget(c.id, Math.round(Number(budget) * 100)),
-                    });
-                  }}
-                >
-                  Change budget
-                </Button>
-              </Stack>
             )}
             {detailBusy ? (
               <CircularProgress aria-label="Loading ad sets and ads" />
@@ -832,11 +887,13 @@ function AccountEditor({
 function CampaignEditor({
   account,
   initial,
+  proposal,
   onClose,
   onSaved,
 }: {
   account: AdAccount;
   initial: AdCampaign | null;
+  proposal?: AdSpec | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -844,26 +901,28 @@ function CampaignEditor({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [spec, setSpec] = useState<AdSpec>(
-    initial?.specification
-      ? { ...initial.specification, name: initial.name }
-      : {
-          accountId: account.id,
-          name: "",
-          destination: "website",
-          dailyBudget: 50000,
-          countries: ["IN"],
-          ageMin: 18,
-          ageMax: 65,
-          placements: ["facebook"],
-          startAt: null,
-          endAt: new Date(Date.now() + 7 * 86400000).toISOString(),
-          headline: "",
-          message: "",
-          imageUrl: "",
-          websiteUrl: "",
-          cta: "LEARN_MORE",
-          specialCategories: [],
-        },
+    proposal
+      ? { ...proposal }
+      : initial?.specification
+        ? { ...initial.specification, name: initial.name }
+        : {
+            accountId: account.id,
+            name: "",
+            destination: "website",
+            dailyBudget: 50000,
+            countries: ["IN"],
+            ageMin: 18,
+            ageMax: 65,
+            placements: ["facebook"],
+            startAt: null,
+            endAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+            headline: "",
+            message: "",
+            imageUrl: "",
+            websiteUrl: "",
+            cta: "LEARN_MORE",
+            specialCategories: [],
+          },
   );
   const [countries, setCountries] = useState(spec.countries.join(", ")),
     [budget, setBudget] = useState(String(spec.dailyBudget / 100));
