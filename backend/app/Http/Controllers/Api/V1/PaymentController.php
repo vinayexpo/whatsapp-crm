@@ -5,15 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Concerns\PaginatesRequests;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PaymentResource;
-use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Commerce\OrderStatusTransitionService;
 use App\Services\Commerce\Payments\RazorpayPaymentService;
 use App\Services\Commerce\Payments\WhatsAppPayPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
@@ -39,6 +38,10 @@ class PaymentController extends Controller
 
         if (! in_array($payment->method, ['cod', 'upi'], true)) {
             return response()->json(['message' => 'Only cod/upi payments can be manually confirmed.'], 422);
+        }
+
+        if ($payment->status !== 'paid' && $payment->order->payment_status === 'paid') {
+            return response()->json(['message' => 'This order already has a confirmed payment.'], 422);
         }
 
         $payment->update(['status' => 'paid', 'paid_at' => now()]);

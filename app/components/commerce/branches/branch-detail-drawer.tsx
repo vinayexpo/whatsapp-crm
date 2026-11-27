@@ -30,19 +30,19 @@ export function BranchDetailDrawer({ branch, onClose, onUpdated, onDelete }: Bra
                   width: 36,
                   height: 36,
                   borderRadius: 2,
-                  bgcolor: "rgba(91, 110, 245, 0.12)",
+                  bgcolor: "rgba(0, 120, 95, 0.08)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <StorefrontRoundedIcon sx={{ color: "#5B6EF5" }} fontSize="small" />
+                <StorefrontRoundedIcon sx={{ color: "#00785F" }} fontSize="small" />
               </Box>
               <Typography variant="h6" sx={{ fontSize: "1.1rem" }}>
                 {branch.name}
               </Typography>
             </Stack>
-            <IconButton onClick={onClose} size="small">
+            <IconButton onClick={onClose} size="small" aria-label="Close details">
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
           </Stack>

@@ -93,7 +93,12 @@ export function CreateBranchDialog({ open, onClose, onCreate }: CreateBranchDial
             }}
             helperText="Used in URLs and integrations, must be unique."
           />
-          <TextField fullWidth label="Address (optional)" value={address} onChange={(e) => setAddress(e.target.value)} />
+          <TextField
+            fullWidth
+            label="Address (optional)"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
           <TextField fullWidth label="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Stack>
       </DialogContent>

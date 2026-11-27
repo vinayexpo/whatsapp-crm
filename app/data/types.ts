@@ -633,6 +633,8 @@ export interface Product {
   sku: string | null;
   metaRetailerId: string | null;
   metaSyncedAt: string | null;
+  metaSyncState?: "local" | "pending" | "synced" | "conflict" | "error" | "remote_deleted";
+  metaSyncError?: string | null;
   description: string | null;
   images: string[];
   basePrice: number;
@@ -656,6 +658,14 @@ export interface Product {
 }
 
 export interface CommerceSetting {
+  apiConnectionId?: string | null;
+  syncEnabled?: boolean;
+  lastSyncAt?: string | null;
+  syncError?: string | null;
+  paymentConfigurationName?: string | null;
+  whatsappPayEnabled?: boolean;
+  razorpayConfigured?: boolean;
+  razorpayWebhookConfigured?: boolean;
   businessTypeId: number | null;
   metaCatalogId: string | null;
   currency: string;

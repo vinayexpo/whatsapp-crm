@@ -25,7 +25,14 @@ interface ProductDetailDrawerProps {
   onPushed?: (message: string) => void;
 }
 
-export function ProductDetailDrawer({ product, categories, onClose, onUpdated, onDelete, onPushed }: ProductDetailDrawerProps) {
+export function ProductDetailDrawer({
+  product,
+  categories,
+  onClose,
+  onUpdated,
+  onDelete,
+  onPushed,
+}: ProductDetailDrawerProps) {
   const [tab, setTab] = useState<"settings" | "variants" | "addons">("settings");
   const [pushing, setPushing] = useState(false);
 
@@ -34,7 +41,8 @@ export function ProductDetailDrawer({ product, categories, onClose, onUpdated, o
     setPushing(true);
     try {
       await apiClient.pushProductToMeta(product.id);
-      onPushed?.(`Pushed "${product.name}" to Meta.`);
+      onUpdated({ ...product, metaSyncState: "pending", metaSyncError: null });
+      onPushed?.(`Submitted "${product.name}" to Meta. Sync again to confirm the result.`);
     } catch {
       onPushed?.(`Could not push "${product.name}" to Meta.`);
     } finally {
@@ -57,13 +65,13 @@ export function ProductDetailDrawer({ product, categories, onClose, onUpdated, o
                   width: 36,
                   height: 36,
                   borderRadius: 2,
-                  bgcolor: "rgba(91, 110, 245, 0.12)",
+                  bgcolor: "rgba(0, 120, 95, 0.08)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Inventory2RoundedIcon sx={{ color: "#5B6EF5" }} fontSize="small" />
+                <Inventory2RoundedIcon sx={{ color: "#00785F" }} fontSize="small" />
               </Box>
               <Typography variant="h6" sx={{ fontSize: "1.1rem" }}>
                 {product.name}
@@ -81,7 +89,7 @@ export function ProductDetailDrawer({ product, categories, onClose, onUpdated, o
                   {pushing ? "Pushing…" : "Push to Meta"}
                 </Button>
               )}
-              <IconButton onClick={onClose} size="small">
+              <IconButton onClick={onClose} size="small" aria-label="Close details">
                 <CloseRoundedIcon fontSize="small" />
               </IconButton>
             </Stack>
@@ -102,7 +110,12 @@ export function ProductDetailDrawer({ product, categories, onClose, onUpdated, o
 
           <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
             {tab === "settings" && (
-              <ProductSettingsPanel product={product} categories={categories} onUpdated={onUpdated} onDelete={onDelete} />
+              <ProductSettingsPanel
+                product={product}
+                categories={categories}
+                onUpdated={onUpdated}
+                onDelete={onDelete}
+              />
             )}
             {tab === "variants" && <ProductVariantsPanel product={product} onUpdated={onUpdated} />}
             {tab === "addons" && <ProductAddonsPanel product={product} onUpdated={onUpdated} />}

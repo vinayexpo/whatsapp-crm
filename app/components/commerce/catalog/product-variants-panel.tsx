@@ -29,7 +29,7 @@ export function ProductVariantsPanel({ product, onUpdated }: ProductVariantsPane
     try {
       await apiClient.createProductVariant(product.id, {
         name: name.trim(),
-        priceDelta: priceDelta.trim() ? Number(priceDelta) : 0,
+        priceDelta: priceDelta.trim() ? Math.round(Number(priceDelta) * 100) : 0,
       });
       const refreshed = await apiClient.getProduct(product.id);
       onUpdated(refreshed);
@@ -72,7 +72,7 @@ export function ProductVariantsPanel({ product, onUpdated }: ProductVariantsPane
                 {variant.name}
               </Typography>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                Price delta: {variant.priceDelta}
+                Price adjustment: ₹{(variant.priceDelta / 100).toFixed(2)}
               </Typography>
             </Stack>
             <IconButton size="small" onClick={() => handleDelete(variant.id)}>
@@ -93,7 +93,7 @@ export function ProductVariantsPanel({ product, onUpdated }: ProductVariantsPane
         <TextField
           size="small"
           type="number"
-          label="Price delta"
+          label="Price adjustment (₹)"
           value={priceDelta}
           onChange={(e) => setPriceDelta(e.target.value)}
           sx={{ flex: 1 }}

@@ -24,7 +24,7 @@ class PaymentMethodStepHandler implements StepHandlerInterface
         $selection = $inboundMessage->interactive_reply_id ?? trim($inboundMessage->text ?? '');
         $method = str_starts_with($selection, 'payment:') ? substr($selection, strlen('payment:')) : null;
 
-        if (! $method || ! in_array($method, $this->resolver->availableMethods(), true)) {
+        if (! $method || ! in_array($method, $this->resolver->availableMethods($session->company_id), true)) {
             return $this->enter($session);
         }
 
@@ -40,7 +40,7 @@ class PaymentMethodStepHandler implements StepHandlerInterface
         $cart = new CartContext($session);
         $cart->persist('payment_method');
 
-        $methods = $this->resolver->availableMethods();
+        $methods = $this->resolver->availableMethods($session->company_id);
 
         $buttons = array_map(
             fn (string $method) => ['id' => 'payment:'.$method, 'label' => self::LABELS[$method] ?? $method],

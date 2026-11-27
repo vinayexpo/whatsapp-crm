@@ -26,6 +26,8 @@ export default [
   route("voice-agents", "routes/voice-agents.tsx"),
   route("whatsapp-calling", "routes/whatsapp-calling.tsx"),
   route("commerce-branches", "routes/commerce-branches.tsx"),
+  route("commerce", "routes/commerce.tsx"),
+  route("commerce-payments", "routes/commerce-payments.tsx"),
   route("commerce-catalog", "routes/commerce-catalog.tsx"),
   route("commerce-orders", "routes/commerce-orders.tsx"),
   route("commerce-reports", "routes/commerce-reports.tsx"),

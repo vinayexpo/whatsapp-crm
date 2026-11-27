@@ -4,7 +4,7 @@ namespace App\Services\Commerce\Payments;
 
 class PaymentDriverResolver
 {
-    public function forMethod(string $method): PaymentServiceInterface
+    public function forMethod(string $method, ?int $companyId = null): PaymentServiceInterface
     {
         return match ($method) {
             'cod' => app(CodPaymentService::class),
@@ -12,7 +12,7 @@ class PaymentDriverResolver
             'gateway:razorpay' => RazorpayPaymentService::isConfigured()
                 ? app(RazorpayPaymentService::class)
                 : throw new \InvalidArgumentException('Razorpay is not configured.'),
-            'gateway:whatsapp' => WhatsAppPayPaymentService::isConfigured()
+            'gateway:whatsapp' => WhatsAppPayPaymentService::isConfigured($companyId)
                 ? app(WhatsAppPayPaymentService::class)
                 : throw new \InvalidArgumentException('WhatsApp Pay is not configured.'),
             default => throw new \InvalidArgumentException("Unknown payment method: {$method}"),
@@ -26,15 +26,11 @@ class PaymentDriverResolver
      *
      * @return array<int, string>
      */
-    public function availableMethods(): array
+    public function availableMethods(?int $companyId = null): array
     {
         $methods = ['cod', 'upi'];
 
-        if (RazorpayPaymentService::isConfigured()) {
-            $methods[] = 'gateway:razorpay';
-        }
-
-        if (WhatsAppPayPaymentService::isConfigured()) {
+        if (WhatsAppPayPaymentService::isConfigured($companyId)) {
             $methods[] = 'gateway:whatsapp';
         }
 

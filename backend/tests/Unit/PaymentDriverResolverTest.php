@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\ApiConnection;
+use App\Models\CommerceSetting;
+use App\Models\Company;
 use App\Services\Commerce\Payments\CodPaymentService;
 use App\Services\Commerce\Payments\PaymentDriverResolver;
 use App\Services\Commerce\Payments\UpiManualPaymentService;
@@ -20,20 +23,22 @@ it('only offers cod and upi when razorpay and whatsapp pay are unconfigured', fu
     expect($resolver->availableMethods())->toBe(['cod', 'upi']);
 });
 
-it('offers gateway:razorpay once razorpay credentials are configured', function () {
+it('does not expose platform Razorpay credentials to tenant checkout', function () {
     config(['services.razorpay.key_id' => 'rzp_test_key', 'services.razorpay.key_secret' => 'secret']);
 
     $resolver = app(PaymentDriverResolver::class);
 
-    expect($resolver->availableMethods())->toBe(['cod', 'upi', 'gateway:razorpay']);
+    expect($resolver->availableMethods())->toBe(['cod', 'upi']);
 });
 
 it('offers gateway:whatsapp once whatsapp pay is enabled and configured', function () {
-    config(['services.whatsapp_pay.enabled' => true, 'services.whatsapp_pay.payment_configuration_name' => 'default']);
+    $company = Company::factory()->create();
+    $connection = ApiConnection::factory()->connected()->create(['company_id' => $company->id]);
+    CommerceSetting::factory()->create(['company_id' => $company->id, 'api_connection_id' => $connection->id, 'currency' => 'INR', 'whatsapp_pay_enabled' => true, 'payment_configuration_name' => 'store', 'razorpay_key_id' => 'rzp_test_key', 'razorpay_key_secret' => 'secret']);
 
     $resolver = app(PaymentDriverResolver::class);
 
-    expect($resolver->availableMethods())->toBe(['cod', 'upi', 'gateway:whatsapp']);
+    expect($resolver->availableMethods($company->id))->toBe(['cod', 'upi', 'gateway:whatsapp']);
 });
 
 it('resolves cod and upi drivers regardless of gateway configuration', function () {
@@ -57,9 +62,11 @@ it('throws for an unknown payment method', function () {
 });
 
 it('resolves whatsapp pay once configured', function () {
-    config(['services.whatsapp_pay.enabled' => true, 'services.whatsapp_pay.payment_configuration_name' => 'default']);
+    $company = Company::factory()->create();
+    $connection = ApiConnection::factory()->connected()->create(['company_id' => $company->id]);
+    CommerceSetting::factory()->create(['company_id' => $company->id, 'api_connection_id' => $connection->id, 'currency' => 'INR', 'whatsapp_pay_enabled' => true, 'payment_configuration_name' => 'store', 'razorpay_key_id' => 'rzp_test_key', 'razorpay_key_secret' => 'secret']);
 
     $resolver = app(PaymentDriverResolver::class);
 
-    expect($resolver->forMethod('gateway:whatsapp'))->toBeInstanceOf(WhatsAppPayPaymentService::class);
+    expect($resolver->forMethod('gateway:whatsapp', $company->id))->toBeInstanceOf(WhatsAppPayPaymentService::class);
 });

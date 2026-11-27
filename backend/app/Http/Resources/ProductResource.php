@@ -19,6 +19,8 @@ class ProductResource extends JsonResource
             'name' => $this->name,
             'sku' => $this->sku,
             'metaRetailerId' => $this->meta_retailer_id,
+            'metaSyncState' => $this->meta_sync_state,
+            'metaSyncError' => $this->meta_sync_error,
             'metaSyncedAt' => $this->meta_synced_at?->toIso8601String(),
             'description' => $this->description,
             'images' => $this->images ?? [],

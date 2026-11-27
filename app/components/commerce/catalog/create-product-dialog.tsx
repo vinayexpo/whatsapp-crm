@@ -41,7 +41,11 @@ export function CreateProductDialog({ open, categories, onClose, onCreate }: Cre
     setSubmitting(true);
     setError(null);
     try {
-      await onCreate({ name: name.trim(), basePrice: Number(basePrice), categoryId: categoryId || null });
+      await onCreate({
+        name: name.trim(),
+        basePrice: Math.round(Number(basePrice) * 100),
+        categoryId: categoryId || null,
+      });
       handleClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to create product.");
@@ -64,10 +68,10 @@ export function CreateProductDialog({ open, categories, onClose, onCreate }: Cre
           <TextField
             fullWidth
             type="number"
-            label="Base price"
+            label="Base price (₹)"
             value={basePrice}
             onChange={(e) => setBasePrice(e.target.value)}
-            helperText="In your smallest currency unit (e.g. paise/cents)."
+            helperText="Enter the price in rupees."
           />
           <FormControl fullWidth size="small">
             <InputLabel>Category (optional)</InputLabel>
@@ -84,11 +88,7 @@ export function CreateProductDialog({ open, categories, onClose, onCreate }: Cre
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
         <Button onClick={handleClose}>Cancel</Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={submitting || !name.trim() || !basePrice.trim()}
-        >
+        <Button variant="contained" disableElevation onClick={handleSubmit} disabled={submitting || !name.trim() || !basePrice.trim()}>
           Create
         </Button>
       </DialogActions>

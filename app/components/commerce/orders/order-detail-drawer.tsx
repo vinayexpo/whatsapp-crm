@@ -89,13 +89,13 @@ export function OrderDetailDrawer({ order, onClose, onUpdated }: OrderDetailDraw
                 width: 36,
                 height: 36,
                 borderRadius: 2,
-                bgcolor: "rgba(91, 110, 245, 0.12)",
+                bgcolor: "rgba(0, 120, 95, 0.08)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <ReceiptLongRoundedIcon sx={{ color: "#5B6EF5" }} fontSize="small" />
+              <ReceiptLongRoundedIcon sx={{ color: "#00785F" }} fontSize="small" />
             </Box>
             <Stack>
               <Typography variant="h6" sx={{ fontSize: "1.05rem" }}>
@@ -106,7 +106,7 @@ export function OrderDetailDrawer({ order, onClose, onUpdated }: OrderDetailDraw
               </Typography>
             </Stack>
           </Stack>
-          <IconButton onClick={onClose} size="small">
+          <IconButton onClick={onClose} size="small" aria-label="Close details">
             <CloseRoundedIcon fontSize="small" />
           </IconButton>
         </Stack>

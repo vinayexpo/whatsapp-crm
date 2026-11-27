@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\Commerce\CartContext;
 use App\Services\Commerce\CommerceMessageSender;
+use App\Services\Commerce\CommerceMoney;
 use App\Services\Commerce\ProductPricingResolver;
 
 /**
@@ -83,7 +84,7 @@ class VariantAddonSelectionStepHandler implements StepHandlerInterface
 
         $buttons = $addons->map(fn (AddonDefinition $a) => [
             'id' => 'addon:'.$a->id,
-            'label' => "{$a->name} (+{$a->price})",
+            'label' => $a->name.' (+'.CommerceMoney::format($a->price).')',
         ])->push(['id' => 'addons:done', 'label' => 'Done'])->values()->all();
 
         $this->sender->send($session->conversation, 'Would you like to add any extras?', $buttons);

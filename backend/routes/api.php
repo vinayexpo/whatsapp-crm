@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatbotController;
 use App\Http\Controllers\Api\V1\ChatbotTrainingEntryController;
 use App\Http\Controllers\Api\V1\ChatMenuFlowController;
+use App\Http\Controllers\Api\V1\CommerceIntegrationController;
 use App\Http\Controllers\Api\V1\CommerceReportController;
 use App\Http\Controllers\Api\V1\CommerceSettingController;
 use App\Http\Controllers\Api\V1\CompanyAdminController;
@@ -64,6 +65,7 @@ Route::prefix('webhooks')->group(function () {
     Route::post('/whatsapp-call', [WhatsappCallWebhookController::class, 'handle']);
     Route::post('/whatsapp-call/action', [WhatsappCallWebhookController::class, 'action']);
     Route::post('/commerce-payment/razorpay', [PaymentController::class, 'razorpayWebhook']);
+    Route::post('/commerce-payment/razorpay/{company:uuid}', [CommerceIntegrationController::class, 'razorpayWebhook']);
 
     Route::prefix('twilio')->group(function () {
         Route::post('/voice', [TwilioVoiceWebhookController::class, 'handle']);
@@ -268,6 +270,7 @@ Route::prefix('v1')->group(function () {
         Route::patch('/commerce/products/{product}', [ProductController::class, 'update']);
         Route::delete('/commerce/products/{product}', [ProductController::class, 'destroy']);
         Route::post('/commerce/products/{product}/push-meta', [CatalogSyncController::class, 'push']);
+        Route::post('/commerce/products/{product}/resolve-meta', [CatalogSyncController::class, 'resolve']);
         Route::post('/commerce/products/{product}/variants', [ProductController::class, 'storeVariant']);
         Route::patch('/commerce/products/{product}/variants/{variant}', [ProductController::class, 'updateVariant']);
         Route::delete('/commerce/products/{product}/variants/{variant}', [ProductController::class, 'destroyVariant']);
@@ -284,6 +287,10 @@ Route::prefix('v1')->group(function () {
         Route::put('/commerce/inventory/{inventory}', [InventoryController::class, 'update']);
 
         Route::get('/commerce/settings', [CommerceSettingController::class, 'show']);
+        Route::get('/commerce/overview', [CommerceIntegrationController::class, 'overview']);
+        Route::post('/commerce/integrations/check', [CommerceIntegrationController::class, 'check']);
+        Route::post('/commerce/orders/{order}/request-payment', [CommerceIntegrationController::class, 'requestPayment']);
+        Route::post('/commerce/payments/{payment}/verify', [CommerceIntegrationController::class, 'verifyPayment']);
         Route::patch('/commerce/settings', [CommerceSettingController::class, 'update']);
 
         Route::get('/commerce/orders', [OrderController::class, 'index']);

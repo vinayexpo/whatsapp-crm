@@ -8,6 +8,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Commerce\OrderStatusTransitionService;
+use App\Services\Commerce\ReleaseOrderInventory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -52,11 +53,18 @@ class OrderController extends Controller
         ]);
 
         $newStatus = $transitions->resolveBySlug($order->company_id, $data['status']);
+        if (in_array($order->status, ['cancelled', 'completed'], true) && $order->status !== $data['status']) {
+            return response()->json(['message' => 'A completed or cancelled order cannot be reopened.'], 422);
+        }
 
         if ($newStatus) {
             $transitions->transition($order, $newStatus);
         } else {
             $order->update(['status' => $data['status']]);
+        }
+
+        if ($data['status'] === 'cancelled') {
+            app(ReleaseOrderInventory::class)->run($order->fresh());
         }
 
         return response()->json(['data' => new OrderResource($order->fresh()->load(['branch', 'contact', 'assignedStaff']))]);

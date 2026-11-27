@@ -64,9 +64,11 @@ const NAV_ITEMS = [
   { label: "Templates", to: "/templates", icon: ArticleRoundedIcon, hideForAgent: true, commerceOnly: true },
   { label: "Voice Agents", to: "/voice-agents", icon: PhoneInTalkRoundedIcon, hideForAgent: true, commerceOnly: true },
   { label: "WhatsApp Calling", to: "/whatsapp-calling", icon: CallRoundedIcon, hideForAgent: true, commerceOnly: true },
-  { label: "Branches", to: "/commerce-branches", icon: StorefrontRoundedIcon, hideForAgent: true, hideForStaff: true },
+  { label: "Commerce setup", to: "/commerce", icon: StorefrontRoundedIcon, hideForAgent: true, hideForStaff: true },
+  { label: "Locations", to: "/commerce-branches", icon: StorefrontRoundedIcon, hideForAgent: true, hideForStaff: true },
   { label: "Catalog", to: "/commerce-catalog", icon: Inventory2RoundedIcon, hideForAgent: true },
   { label: "Orders", to: "/commerce-orders", icon: ReceiptLongRoundedIcon, hideForAgent: true },
+  { label: "Payments", to: "/commerce-payments", icon: ReceiptLongRoundedIcon, hideForAgent: true },
   { label: "Reports", to: "/commerce-reports", icon: AssessmentRoundedIcon, hideForAgent: true, hideForStaff: true },
   { label: "Settings", to: "/settings", icon: SettingsRoundedIcon },
 ];
@@ -114,7 +116,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             !(item.hideForStaff && currentUser?.role === "staff") &&
             !(item.commerceOnly && (currentUser?.role === "branch_manager" || currentUser?.role === "staff")),
         ).map((item) => {
-          const isActive = location.pathname.startsWith(item.to);
+            const isActive = item.to === "/commerce" ? location.pathname === item.to : location.pathname.startsWith(item.to);
           const Icon = item.icon;
           return (
             <ListItemButton

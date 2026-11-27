@@ -1,15 +1,21 @@
 <?php
 
+use App\Http\Controllers\Api\V1\PaymentController;
+use App\Models\ApiConnection;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Contact;
+use App\Models\Conversation;
 use App\Models\DeliveryZone;
 use App\Models\Order;
+use App\Models\OrderSession;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Commerce\CartContext;
 use App\Services\Commerce\OrderStatusTransitionService;
 use Database\Seeders\PipelineStagesSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
@@ -291,7 +297,11 @@ it('marks a payment paid and auto-confirms the order on a captured whatsapp pay 
     ]);
     $order->update(['status' => 'pending']);
 
-    app(\App\Http\Controllers\Api\V1\PaymentController::class)->handleWhatsAppPayStatus('wapay-test-ref', [
+    $connection = ApiConnection::factory()->connected()->create(['company_id' => $company->id]);
+    $payment->update(['raw_payload' => ['connection_id' => $connection->id, 'configuration' => 'store']]);
+    Http::fake(['graph.facebook.com/*' => Http::response(['reference_id' => 'wapay-test-ref', 'currency' => 'INR', 'amount' => $payment->amount, 'status' => 'captured'])]);
+
+    app(PaymentController::class)->handleWhatsAppPayStatus('wapay-test-ref', [
         'payment_status' => ['status' => 'captured'],
     ]);
 
@@ -302,7 +312,7 @@ it('marks a payment paid and auto-confirms the order on a captured whatsapp pay 
     expect($order->payment_status)->toBe('paid');
 });
 
-it('marks a payment failed on a declined whatsapp pay status', function () {
+it('does not trust a declined whatsapp payload without a provider lookup', function () {
     $company = Company::factory()->create();
     [$order, $payment] = createOrderWithPayment($company, [
         'status' => 'pending',
@@ -310,17 +320,16 @@ it('marks a payment failed on a declined whatsapp pay status', function () {
         'provider_reference' => 'wapay-test-ref-2',
     ]);
 
-    app(\App\Http\Controllers\Api\V1\PaymentController::class)->handleWhatsAppPayStatus('wapay-test-ref-2', [
+    expect(fn () => app(PaymentController::class)->handleWhatsAppPayStatus('wapay-test-ref-2', [
         'payment_status' => ['status' => 'declined', 'description' => 'Payment declined by user'],
-    ]);
+    ]))->toThrow(RuntimeException::class);
 
     $payment->refresh();
-    expect($payment->status)->toBe('failed');
-    expect($payment->failure_reason)->toBe('Payment declined by user');
+    expect($payment->status)->toBe('pending');
 });
 
 it('does not blow up when a whatsapp pay status arrives for an unknown reference', function () {
-    app(\App\Http\Controllers\Api\V1\PaymentController::class)->handleWhatsAppPayStatus('wapay-does-not-exist', [
+    app(PaymentController::class)->handleWhatsAppPayStatus('wapay-does-not-exist', [
         'payment_status' => ['status' => 'captured'],
     ]);
 })->throwsNoExceptions();
@@ -333,12 +342,12 @@ it('recalculates cart_total from line items rather than trusting a stale stored 
     $company = Company::factory()->create();
     $branch = Branch::factory()->create(['company_id' => $company->id]);
     $contact = Contact::factory()->create(['company_id' => $company->id, 'channel' => 'whatsapp']);
-    $conversation = \App\Models\Conversation::factory()->create([
+    $conversation = Conversation::factory()->create([
         'contact_id' => $contact->id,
         'channel' => 'whatsapp',
     ]);
 
-    $session = \App\Models\OrderSession::create([
+    $session = OrderSession::create([
         'company_id' => $company->id,
         'conversation_id' => $conversation->id,
         'contact_id' => $contact->id,
@@ -351,7 +360,7 @@ it('recalculates cart_total from line items rather than trusting a stale stored 
         'last_interaction_at' => now(),
     ]);
 
-    $cart = new \App\Services\Commerce\CartContext($session);
+    $cart = new CartContext($session);
     $cart->addItem(productId: 1, variantId: null, name: 'Widget', unitPrice: 5000, quantity: 3);
 
     expect($cart->total())->toBe(15000);
@@ -376,7 +385,11 @@ it('routes an inbound order_status message to the whatsapp pay handler', functio
         ],
     ];
 
-    app(\App\Http\Controllers\Api\V1\PaymentController::class)->handleWhatsAppPayStatus(
+    $connection = ApiConnection::factory()->connected()->create(['company_id' => $company->id]);
+    $payment->update(['raw_payload' => ['connection_id' => $connection->id, 'configuration' => 'store']]);
+    Http::fake(['graph.facebook.com/*' => Http::response(['reference_id' => 'wapay-inbound-ref', 'currency' => 'INR', 'amount' => $payment->amount, 'status' => 'captured'])]);
+
+    app(PaymentController::class)->handleWhatsAppPayStatus(
         data_get($inboundMessage, 'order_status.reference_id'),
         ['payment_status' => [
             'status' => data_get($inboundMessage, 'order_status.order.status'),

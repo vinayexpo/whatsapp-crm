@@ -15,6 +15,7 @@ use App\Models\CampaignRecipient;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\Payment;
 use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Models\WhatsappCall;
@@ -22,6 +23,8 @@ use App\Models\WhatsappTemplate;
 use App\Scopes\CompanyScope;
 use App\Services\ChatFlow\ChatMenuFlowEngine;
 use App\Services\Commerce\CommerceOrderEngine;
+use App\Services\Commerce\NativeCatalogCart;
+use App\Services\Commerce\Payments\WhatsAppPayPaymentService;
 use App\Services\Messaging\WhatsAppMediaDownloader;
 use App\Services\Notifications\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -59,6 +62,15 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 }
 
                 foreach (data_get($value, 'statuses', []) as $status) {
+                    if (($status['type'] ?? null) === 'payment' && data_get($status, 'payment.reference_id')) {
+                        $connection = ApiConnection::query()->where('phone_number_id', data_get($value, 'metadata.phone_number_id'))->where('channel', 'whatsapp')->first();
+                        $payment = Payment::query()->where('company_id', $connection?->company_id)->where('provider_reference', data_get($status, 'payment.reference_id'))->where('method', 'gateway:whatsapp')->first();
+                        if ($connection && $payment) {
+                            app(WhatsAppPayPaymentService::class)->verify($payment);
+                        }
+
+                        continue;
+                    }
                     $this->applyStatusUpdate($status);
                 }
             }
@@ -175,6 +187,9 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
 
             $type = $inboundMessage['type'] ?? 'text';
             $text = data_get($inboundMessage, 'text.body') ?? data_get($inboundMessage, "{$type}.caption", '');
+            if ($type === 'order') {
+                $text = 'Catalog cart received ('.count(data_get($inboundMessage, 'order.product_items', [])).' items).';
+            }
             $sentAt = isset($inboundMessage['timestamp'])
                 ? now()->createFromTimestamp((int) $inboundMessage['timestamp'])
                 : now();
@@ -287,7 +302,9 @@ class ProcessInboundWhatsAppMessage implements ShouldQueue
                 ['conversationId' => $conversation->uuid],
             ));
 
-        $handledByCommerce = app(CommerceOrderEngine::class)->handle($conversation, $message);
+        $handledByCommerce = ($inboundMessage['type'] ?? '') === 'order'
+            ? app(NativeCatalogCart::class)->receive($conversation, $inboundMessage['order'] ?? [])
+            : app(CommerceOrderEngine::class)->handle($conversation, $message);
 
         if (! $handledByCommerce) {
             $handledByChatFlow = app(ChatMenuFlowEngine::class)->handle($conversation, $message);

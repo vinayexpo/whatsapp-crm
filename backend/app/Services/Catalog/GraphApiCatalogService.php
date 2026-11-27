@@ -10,18 +10,25 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
     public function fetchProducts(ApiConnection $connection, string $catalogId): array
     {
         $products = [];
-        $url = "https://graph.facebook.com/v20.0/{$catalogId}/products";
+        $url = $this->base()."/{$catalogId}/products";
         $params = [
-            'fields' => 'id,retailer_id,name,description,price,availability,image_url,url,condition,gtin,mpn',
+            'fields' => 'id,retailer_id,name,description,price,currency,availability,image_url,url,condition,gtin,mpn,brand',
             'limit' => 100,
+            'locale' => 'en_US',
         ];
 
-        while ($url) {
-            $response = Http::withToken($connection->access_token)->get($url, $params)->throw();
+        $pages = 0;
+        do {
+            if (++$pages > 1000) {
+                throw new \RuntimeException('Catalog pagination limit reached; no partial import was applied.');
+            }
+            $response = Http::withToken($connection->access_token)->connectTimeout(5)->timeout(30)->get($url, $params)->throw();
 
             foreach ($response->json('data', []) as $item) {
                 $products[] = [
                     'retailer_id' => (string) ($item['retailer_id'] ?? $item['id']),
+                    'currency' => $item['currency'] ?? (explode(' ', trim($item['price'] ?? '0 INR'))[1] ?? 'INR'),
+                    'brand' => $item['brand'] ?? null,
                     'name' => $item['name'] ?? '',
                     'description' => $item['description'] ?? null,
                     'price_minor' => $this->parsePriceMinor($item['price'] ?? null),
@@ -34,19 +41,24 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
                 ];
             }
 
-            $url = $response->json('paging.next');
-            $params = [];
-        }
+            // Rebuild trusted Graph URLs: never follow a provider-supplied URL with our bearer token.
+            $after = $response->json('paging.next') ? $response->json('paging.cursors.after') : null;
+            if ($response->json('paging.next') && ! $after) {
+                throw new \RuntimeException('Meta returned incomplete catalog pagination.');
+            }
+            $params['after'] = $after;
+        } while ($after);
 
         return $products;
     }
 
     public function pushProduct(ApiConnection $connection, string $catalogId, array $item): void
     {
-        $url = "https://graph.facebook.com/v20.0/{$catalogId}/items_batch";
+        $url = $this->base()."/{$catalogId}/items_batch";
 
-        Http::asForm()->withToken($connection->access_token)->post($url, [
+        $response = Http::asForm()->withToken($connection->access_token)->connectTimeout(5)->timeout(30)->post($url, [
             'item_type' => 'PRODUCT_ITEM',
+            'allow_upsert' => true,
             'requests' => json_encode([
                 [
                     'method' => 'UPDATE',
@@ -54,7 +66,8 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
                         'retailer_id' => $item['retailer_id'],
                         'name' => $item['name'],
                         'description' => $item['description'] ?? '',
-                        'price' => number_format($item['price_minor'] / 100, 2, '.', '') . ' ' . ($item['currency'] ?? 'USD'),
+                        'price' => number_format($item['price_minor'] / 100, 2, '.', '').' '.($item['currency'] ?? 'INR'),
+                        'brand' => $item['brand'] ?? '',
                         'availability' => $this->denormalizeAvailability($item['availability'] ?? 'in_stock'),
                         'image_url' => $item['image_url'] ?? '',
                         'url' => $item['product_url'] ?? '',
@@ -65,6 +78,24 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
                 ],
             ]),
         ])->throw();
+        if ($response->json('validation_status.0.errors') || ! $response->json('handles')) {
+            throw new \RuntimeException('Meta did not accept the product batch. Check required product fields and catalog permissions.');
+        }
+        // Acceptance is not completion: the reconciler confirms by reading the remote product back.
+    }
+
+    public function deleteProduct(ApiConnection $connection, string $catalogId, string $retailerId): void
+    {
+        Http::asForm()->withToken($connection->access_token)->connectTimeout(5)->timeout(30)
+            ->post($this->base()."/{$catalogId}/items_batch", [
+                'item_type' => 'PRODUCT_ITEM',
+                'requests' => json_encode([['method' => 'DELETE', 'data' => ['retailer_id' => $retailerId]]]),
+            ])->throw();
+    }
+
+    private function base(): string
+    {
+        return 'https://graph.facebook.com/'.config('services.meta.graph_version', 'v25.0');
     }
 
     private function parsePriceMinor(?string $price): int
@@ -74,6 +105,8 @@ class GraphApiCatalogService implements CatalogSyncServiceInterface
         }
 
         [$amount] = explode(' ', trim($price), 2) + [null, null];
+
+        $amount = preg_replace('/[^0-9.\-]/', '', (string) $amount);
 
         return (int) round((float) $amount * 100);
     }

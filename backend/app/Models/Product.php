@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\BelongsToCompany;
 use App\Concerns\HasUuid;
+use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    /** @use HasFactory<\Database\Factories\ProductFactory> */
+    /** @use HasFactory<ProductFactory> */
     use BelongsToCompany, HasFactory, HasUuid, SoftDeletes;
 
     protected $fillable = [
@@ -23,6 +24,7 @@ class Product extends Model
         'sku',
         'meta_retailer_id',
         'meta_synced_at',
+        'meta_snapshot', 'meta_sync_state', 'meta_sync_error',
         'description',
         'images',
         'base_price',
@@ -53,6 +55,7 @@ class Product extends Model
             'is_service' => 'boolean',
             'is_active' => 'boolean',
             'meta_synced_at' => 'datetime',
+            'meta_snapshot' => 'array',
         ];
     }
 

@@ -51,9 +51,7 @@ export function CategoryListPanel({ categories, onChanged }: CategoryListPanelPr
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   {category.name}
                 </Typography>
-                {parentName(category) && (
-                  <Chip label={`in ${parentName(category)}`} size="small" variant="outlined" />
-                )}
+                {parentName(category) && <Chip label={`in ${parentName(category)}`} size="small" variant="outlined" />}
                 {!category.isActive && <Chip label="Inactive" size="small" />}
               </Stack>
               <IconButton size="small" onClick={() => handleDelete(category)}>

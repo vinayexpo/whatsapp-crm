@@ -113,7 +113,7 @@ function clearAuthToken(): void {
   window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 }
 
-async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   if (options.body) {

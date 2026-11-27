@@ -58,9 +58,9 @@ export function DeliveryZonesPanel({ branch }: DeliveryZonesPanelProps) {
         branchId: branch.id,
         name: name.trim(),
         radiusKm: radiusKm.trim() ? Number(radiusKm) : null,
-        deliveryCharge: deliveryCharge.trim() ? Number(deliveryCharge) : 0,
-        freeDeliveryThreshold: freeDeliveryThreshold.trim() ? Number(freeDeliveryThreshold) : null,
-        minOrderAmount: minOrderAmount.trim() ? Number(minOrderAmount) : null,
+        deliveryCharge: deliveryCharge.trim() ? Math.round(Number(deliveryCharge) * 100) : 0,
+        freeDeliveryThreshold: freeDeliveryThreshold.trim() ? Math.round(Number(freeDeliveryThreshold) * 100) : null,
+        minOrderAmount: minOrderAmount.trim() ? Math.round(Number(minOrderAmount) * 100) : null,
       });
       setZones((prev) => [...prev, zone].sort((a, b) => a.sortOrder - b.sortOrder));
       setName("");
@@ -117,8 +117,11 @@ export function DeliveryZonesPanel({ branch }: DeliveryZonesPanelProps) {
                     {zone.name}
                   </Typography>
                   <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                    {zone.radiusKm != null ? `${zone.radiusKm} km radius` : "Flat zone"} · charge {zone.deliveryCharge}
-                    {zone.freeDeliveryThreshold != null ? ` · free above ${zone.freeDeliveryThreshold}` : ""}
+                    {zone.radiusKm != null ? `${zone.radiusKm} km radius` : "Flat zone"} · charge ₹
+                    {(zone.deliveryCharge / 100).toFixed(2)}
+                    {zone.freeDeliveryThreshold != null
+                      ? ` · free above ₹${(zone.freeDeliveryThreshold / 100).toFixed(2)}`
+                      : ""}
                   </Typography>
                 </Stack>
                 <Stack direction="row" sx={{ alignItems: "center" }}>
@@ -160,7 +163,7 @@ export function DeliveryZonesPanel({ branch }: DeliveryZonesPanelProps) {
             fullWidth
             size="small"
             type="number"
-            label="Delivery charge"
+            label="Delivery charge (₹)"
             value={deliveryCharge}
             onChange={(e) => setDeliveryCharge(e.target.value)}
           />
@@ -170,7 +173,7 @@ export function DeliveryZonesPanel({ branch }: DeliveryZonesPanelProps) {
             fullWidth
             size="small"
             type="number"
-            label="Free delivery above"
+            label="Free delivery above (₹)"
             value={freeDeliveryThreshold}
             onChange={(e) => setFreeDeliveryThreshold(e.target.value)}
           />
@@ -180,7 +183,7 @@ export function DeliveryZonesPanel({ branch }: DeliveryZonesPanelProps) {
             fullWidth
             size="small"
             type="number"
-            label="Minimum order amount"
+            label="Minimum order amount (₹)"
             value={minOrderAmount}
             onChange={(e) => setMinOrderAmount(e.target.value)}
           />

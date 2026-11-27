@@ -6,6 +6,7 @@ use App\Models\Message;
 use App\Models\OrderSession;
 use App\Services\Commerce\CartContext;
 use App\Services\Commerce\CommerceMessageSender;
+use App\Services\Commerce\CommerceMoney;
 
 class CartReviewStepHandler implements StepHandlerInterface
 {
@@ -53,7 +54,9 @@ class CartReviewStepHandler implements StepHandlerInterface
                 ->map(fn ($a) => " + {$a['name']}")
                 ->implode('');
 
-            return "{$line['quantity']}x {$line['name']}{$addonsText} — {$line['line_total']}";
+            $amount = CommerceMoney::format($line['line_total']);
+
+            return "{$line['quantity']}x {$line['name']}{$addonsText} — {$amount}";
         })->implode("\n");
 
         $buttons = [
@@ -61,9 +64,10 @@ class CartReviewStepHandler implements StepHandlerInterface
             ['id' => 'cart:browse', 'label' => 'Add more items'],
         ];
 
+        $total = CommerceMoney::format($cart->total(), $session->branch?->currency ?? 'INR');
         $this->sender->send(
             $session->conversation,
-            "Your cart:\n{$lines}\n\nTotal: {$cart->total()}",
+            "Your cart:\n{$lines}\n\nItems total: {$total}. Delivery and tax are added at checkout.",
             $buttons
         );
 

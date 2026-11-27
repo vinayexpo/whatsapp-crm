@@ -9,6 +9,7 @@ use App\Models\ApiConnection;
 use App\Models\Branch;
 use App\Models\BranchPrice;
 use App\Models\BranchProduct;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Http\JsonResponse;
@@ -74,6 +75,10 @@ class BranchController extends Controller
     public function destroy(Branch $branch): JsonResponse
     {
         $this->authorize('delete', $branch);
+
+        if (Order::where('branch_id', $branch->id)->exists()) {
+            return response()->json(['message' => 'This location has orders. Set it inactive to preserve order history.'], 422);
+        }
 
         $branch->delete();
 

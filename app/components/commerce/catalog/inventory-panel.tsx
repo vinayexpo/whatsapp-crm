@@ -155,7 +155,9 @@ export function InventoryPanel() {
                             value={row.stockQuantity}
                             onChange={(e) => {
                               const value = Number(e.target.value);
-                              setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, stockQuantity: value } : r)));
+                              setRows((prev) =>
+                                prev.map((r) => (r.id === row.id ? { ...r, stockQuantity: value } : r)),
+                              );
                             }}
                             onBlur={(e) => handleStockChange(row, Number(e.target.value))}
                             disabled={savingId === row.id}

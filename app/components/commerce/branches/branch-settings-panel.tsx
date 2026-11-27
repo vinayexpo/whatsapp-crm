@@ -24,10 +24,10 @@ export function BranchSettingsPanel({ branch, onUpdated, onDelete }: BranchSetti
   const [active, setActive] = useState(branch.status === "active");
   const [isDefault, setIsDefault] = useState(branch.isDefault);
   const [minOrderAmount, setMinOrderAmount] = useState(
-    branch.minOrderAmount != null ? String(branch.minOrderAmount) : "",
+    branch.minOrderAmount != null ? String(branch.minOrderAmount / 100) : "",
   );
   const [defaultDeliveryCharge, setDefaultDeliveryCharge] = useState(
-    branch.defaultDeliveryCharge != null ? String(branch.defaultDeliveryCharge) : "",
+    branch.defaultDeliveryCharge != null ? String(branch.defaultDeliveryCharge / 100) : "",
   );
   const [deliveryRadiusKm, setDeliveryRadiusKm] = useState(
     branch.deliveryRadiusKm != null ? String(branch.deliveryRadiusKm) : "",
@@ -46,8 +46,8 @@ export function BranchSettingsPanel({ branch, onUpdated, onDelete }: BranchSetti
         phone: phone.trim() || null,
         status: active ? "active" : "inactive",
         isDefault,
-        minOrderAmount: minOrderAmount.trim() ? Number(minOrderAmount) : null,
-        defaultDeliveryCharge: defaultDeliveryCharge.trim() ? Number(defaultDeliveryCharge) : null,
+        minOrderAmount: minOrderAmount.trim() ? Math.round(Number(minOrderAmount) * 100) : null,
+        defaultDeliveryCharge: defaultDeliveryCharge.trim() ? Math.round(Number(defaultDeliveryCharge) * 100) : null,
         deliveryRadiusKm: deliveryRadiusKm.trim() ? Number(deliveryRadiusKm) : null,
       });
       onUpdated(updated);
@@ -59,13 +59,13 @@ export function BranchSettingsPanel({ branch, onUpdated, onDelete }: BranchSetti
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Delete "${branch.name}"? This cannot be undone.`)) return;
     setDeleting(true);
     setError(null);
     try {
       await onDelete();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to delete branch.");
+    } finally {
       setDeleting(false);
     }
   }
@@ -93,7 +93,7 @@ export function BranchSettingsPanel({ branch, onUpdated, onDelete }: BranchSetti
           <TextField
             fullWidth
             type="number"
-            label="Minimum order amount"
+            label="Minimum order amount (₹)"
             value={minOrderAmount}
             onChange={(e) => setMinOrderAmount(e.target.value)}
           />
@@ -102,7 +102,7 @@ export function BranchSettingsPanel({ branch, onUpdated, onDelete }: BranchSetti
           <TextField
             fullWidth
             type="number"
-            label="Default delivery charge"
+            label="Default delivery charge (₹)"
             value={defaultDeliveryCharge}
             onChange={(e) => setDefaultDeliveryCharge(e.target.value)}
           />
@@ -129,7 +129,13 @@ export function BranchSettingsPanel({ branch, onUpdated, onDelete }: BranchSetti
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
           Deleting this branch permanently removes it and its pricing/availability/inventory overrides.
         </Typography>
-        <Button color="error" variant="outlined" onClick={handleDelete} disabled={deleting} sx={{ alignSelf: "flex-start" }}>
+        <Button
+          color="error"
+          variant="outlined"
+          onClick={handleDelete}
+          disabled={deleting}
+          sx={{ alignSelf: "flex-start" }}
+        >
           Delete branch
         </Button>
       </Stack>

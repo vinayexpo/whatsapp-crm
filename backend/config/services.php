@@ -36,6 +36,7 @@ return [
     ],
 
     'meta' => [
+        'graph_version' => env('META_GRAPH_VERSION', 'v25.0'),
         'whatsapp_driver' => env('META_WHATSAPP_DRIVER', 'fake'),
         'instagram_driver' => env('META_INSTAGRAM_DRIVER', 'fake'),
         'app_id' => env('META_APP_ID'),

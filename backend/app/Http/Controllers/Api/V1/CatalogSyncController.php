@@ -3,130 +3,68 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\ApiConnection;
+use App\Jobs\SyncCommerceCatalog;
 use App\Models\CommerceSetting;
 use App\Models\Product;
-use App\Services\Catalog\CatalogDriverResolver;
+use App\Services\Catalog\GraphApiCatalogService;
+use App\Services\Catalog\TwoWayCatalogSync;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CatalogSyncController extends Controller
 {
-    public function sync(Request $request, CatalogDriverResolver $resolver): JsonResponse
+    public function sync(Request $request): JsonResponse
     {
         $this->authorize('create', Product::class);
+        $settings = $this->settings($request);
+        SyncCommerceCatalog::dispatch($settings->id);
 
-        $companyId = $request->user()->company_id;
-
-        $settings = CommerceSetting::query()->where('company_id', $companyId)->first();
-
-        if (! $settings || ! $settings->meta_catalog_id) {
-            return response()->json([
-                'message' => 'No Meta catalog ID is configured for this company.',
-            ], 422);
-        }
-
-        $connection = ApiConnection::query()
-            ->where('company_id', $companyId)
-            ->where('channel', 'whatsapp')
-            ->first();
-
-        $items = $resolver->forConnection($connection)->fetchProducts($connection ?? new ApiConnection(), $settings->meta_catalog_id);
-
-        $created = 0;
-        $updated = 0;
-        $skipped = 0;
-
-        foreach ($items as $item) {
-            $product = Product::query()
-                ->where('company_id', $companyId)
-                ->where('sku', $item['retailer_id'])
-                ->first();
-
-            if ($product && $product->meta_synced_at && $product->updated_at->gt($product->meta_synced_at)) {
-                $skipped++;
-
-                continue;
-            }
-
-            $fields = [
-                'name' => $item['name'],
-                'description' => $item['description'],
-                'base_price' => $item['price_minor'],
-                'is_active' => $item['availability'] === 'in_stock',
-                'availability' => $item['availability'],
-                'condition' => $item['condition'] ?? 'new',
-                'product_url' => $item['product_url'] ?? null,
-                'gtin' => $item['gtin'] ?? null,
-                'mpn' => $item['mpn'] ?? null,
-                'images' => $item['image_url'] ? [$item['image_url']] : [],
-                'meta_retailer_id' => $item['retailer_id'],
-                'meta_synced_at' => now(),
-            ];
-
-            if ($product) {
-                $product->update($fields);
-                $updated++;
-            } else {
-                $product = new Product($fields);
-                $product->company_id = $companyId;
-                $product->sku = $item['retailer_id'];
-                $product->save();
-                $created++;
-            }
-        }
-
-        return response()->json([
-            'data' => [
-                'created' => $created,
-                'updated' => $updated,
-                'skipped' => $skipped,
-                'total' => count($items),
-            ],
-        ]);
+        return response()->json(['data' => ['queued' => true]], 202);
     }
 
-    public function push(Request $request, Product $product, CatalogDriverResolver $resolver): JsonResponse
+    public function push(Request $request, Product $product, TwoWayCatalogSync $sync, GraphApiCatalogService $service): JsonResponse
     {
         $this->authorize('update', $product);
+        $settings = $this->settings($request);
+        $local = $sync->local($product, $settings->currency);
+        $sync->validateForPush($local);
+        $key = $product->meta_retailer_id ?: ($product->sku ?: $product->uuid);
+        $service->pushProduct($settings->apiConnection, $settings->meta_catalog_id, ['retailer_id' => $key] + $local);
+        $product->update(['meta_retailer_id' => $key, 'meta_sync_state' => 'pending', 'meta_sync_error' => null]);
 
-        $companyId = $request->user()->company_id;
+        return response()->json(['data' => ['pushed' => true, 'status' => 'pending']], 202);
+    }
 
-        $settings = CommerceSetting::query()->where('company_id', $companyId)->first();
+    public function resolve(Request $request, Product $product, TwoWayCatalogSync $sync, GraphApiCatalogService $service): JsonResponse
+    {
+        $this->authorize('update', $product);
+        $data = $request->validate(['source' => ['required', 'in:local,meta']]);
+        $settings = $this->settings($request);
+        $remote = collect($service->fetchProducts($settings->apiConnection, $settings->meta_catalog_id))->firstWhere('retailer_id', $product->meta_retailer_id ?: $product->sku);
+        if ($data['source'] === 'meta') {
+            if (! $remote || $remote['currency'] !== $settings->currency) {
+                throw ValidationException::withMessages(['product' => 'The Meta product is missing or uses another currency.']);
+            }
+            DB::transaction(fn () => $sync->import($product, $sync->canonical($remote), $remote['retailer_id']));
+        } else {
+            $result = $this->push($request, $product, $sync, $service);
+            $product->update(['meta_snapshot' => $remote ? $sync->canonical($remote) : null]);
 
-        if (! $settings || ! $settings->meta_catalog_id) {
-            return response()->json([
-                'message' => 'No Meta catalog ID is configured for this company.',
-            ], 422);
+            return $result;
         }
 
-        $connection = ApiConnection::query()
-            ->where('company_id', $companyId)
-            ->where('channel', 'whatsapp')
-            ->first();
+        return response()->json(['data' => ['resolved' => true]]);
+    }
 
-        $item = [
-            'retailer_id' => $product->meta_retailer_id ?? $product->sku,
-            'name' => $product->name,
-            'description' => $product->description,
-            'price_minor' => $product->base_price,
-            'availability' => $product->availability,
-            'condition' => $product->condition,
-            'product_url' => $product->product_url,
-            'gtin' => $product->gtin,
-            'mpn' => $product->mpn,
-            'image_url' => $product->images[0] ?? null,
-        ];
+    private function settings(Request $request): CommerceSetting
+    {
+        $settings = CommerceSetting::where('company_id', $request->user()->company_id)->first();
+        if (! $settings?->meta_catalog_id || ! $settings->apiConnection?->access_token || $settings->apiConnection->company_id !== $settings->company_id) {
+            throw ValidationException::withMessages(['catalog' => 'Configure your company WhatsApp connection and Meta catalog in Commerce setup first.']);
+        }
 
-        $resolver->forConnection($connection)->pushProduct($connection ?? new ApiConnection(), $settings->meta_catalog_id, $item);
-
-        $product->update([
-            'meta_retailer_id' => $item['retailer_id'],
-            'meta_synced_at' => now(),
-        ]);
-
-        return response()->json([
-            'data' => ['pushed' => true],
-        ]);
+        return $settings;
     }
 }

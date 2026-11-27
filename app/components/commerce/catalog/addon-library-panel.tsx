@@ -40,7 +40,10 @@ export function AddonLibraryPanel() {
     setCreating(true);
     setError(null);
     try {
-      await apiClient.createAddonDefinition({ name: name.trim(), price: price.trim() ? Number(price) : 0 });
+      await apiClient.createAddonDefinition({
+        name: name.trim(),
+        price: price.trim() ? Math.round(Number(price) * 100) : 0,
+      });
       setName("");
       setPrice("0");
       refresh();
@@ -82,7 +85,7 @@ export function AddonLibraryPanel() {
         <TextField
           size="small"
           type="number"
-          label="Price"
+          label="Price (₹)"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           sx={{ flex: 1 }}
@@ -110,7 +113,7 @@ export function AddonLibraryPanel() {
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {addon.name}
                   </Typography>
-                  <Chip label={`+${addon.price}`} size="small" variant="outlined" />
+                  <Chip label={`+₹${(addon.price / 100).toFixed(2)}`} size="small" variant="outlined" />
                   {!addon.isActive && <Chip label="Inactive" size="small" />}
                 </Stack>
                 <IconButton size="small" onClick={() => handleDelete(addon.id)}>
