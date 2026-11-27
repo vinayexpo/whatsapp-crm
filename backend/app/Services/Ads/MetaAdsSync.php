@@ -150,8 +150,7 @@ class MetaAdsSync
         }
         $rules = ['name' => ['sometimes', 'required', 'string', 'max:150']];
         if ($kind === 'adset') {
-            $rules += ['daily_budget' => ['sometimes', 'required', 'integer', 'min:100', 'max:100000000'], 'end_time' => ['sometimes', 'required', 'date', 'after:now'], 'targeting' => ['sometimes', 'array:geo_locations,age_min,age_max'], 'targeting.geo_locations' => ['required_with:targeting', 'array:countries'], 'targeting.geo_locations.countries' => ['required_with:targeting', 'array', 'min:1', 'max:10'], 'targeting.geo_locations.countries.*' => ['string', 'regex:/^[A-Z]{2}
-$/', 'distinct'], 'targeting.age_min' => ['required_with:targeting', 'integer', 'min:18', 'max:65'], 'targeting.age_max' => ['required_with:targeting', 'integer', 'gte:targeting.age_min', 'max:65']];
+            $rules += ['daily_budget' => ['sometimes', 'required', 'integer', 'min:100', 'max:100000000'], 'end_time' => ['sometimes', 'required', 'date', 'after:now'], 'targeting' => ['sometimes', 'array:geo_locations,age_min,age_max'], 'targeting.geo_locations' => ['required_with:targeting', 'array:countries'], 'targeting.geo_locations.countries' => ['required_with:targeting', 'array', 'min:1', 'max:10'], 'targeting.geo_locations.countries.*' => ['string', 'regex:/^[A-Z]{2}$/', 'distinct'], 'targeting.age_min' => ['required_with:targeting', 'integer', 'min:18', 'max:65'], 'targeting.age_max' => ['required_with:targeting', 'integer', 'gte:targeting.age_min', 'max:65']];
         }
         if (array_diff(array_keys($changes), array_keys($rules))) {
             $this->invalid('This field cannot be edited here. Other Meta settings are preserved.');

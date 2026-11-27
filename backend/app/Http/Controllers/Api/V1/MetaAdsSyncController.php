@@ -109,8 +109,7 @@ class MetaAdsSyncController extends Controller
     public function ai(Request $r, AdsAiDraft $ai)
     {
         $this->access($r);
-        $v = $r->validate(['accountId' => 'required|uuid', 'brief' => 'required|string|min:15|max:5000', 'destination' => 'required|in:website,whatsapp', 'dailyBudget' => 'required|integer|min:100|max:100000000', 'durationDays' => 'required|integer|min:1|max:90', 'countries' => 'required|array|min:1|max:10', 'countries.*' => ['required', 'regex:/^[A-Z]{2}
-$/', 'distinct'], 'placements' => 'required|array|min:1|max:2', 'placements.*' => 'required|in:facebook,instagram', 'imageUrl' => 'nullable|url:https|max:2000', 'websiteUrl' => 'nullable|required_if:destination,website|url:https|max:2000']);
+        $v = $r->validate(['accountId' => 'required|uuid', 'brief' => 'required|string|min:15|max:5000', 'destination' => 'required|in:website,whatsapp', 'dailyBudget' => 'required|integer|min:100|max:100000000', 'durationDays' => 'required|integer|min:1|max:90', 'countries' => 'required|array|min:1|max:10', 'countries.*' => ['required', 'regex:/^[A-Z]{2}$/', 'distinct'], 'placements' => 'required|array|min:1|max:2', 'placements.*' => 'required|in:facebook,instagram', 'imageUrl' => 'nullable|url:https|max:2000', 'websiteUrl' => 'nullable|required_if:destination,website|url:https|max:2000']);
         $a = PaidAdAccount::where('company_id', $r->user()->company_id)->where('uuid', $v['accountId'])->firstOrFail();
         abort_unless($a->verified_at, 422, 'Verify the ad account first.');
         if (in_array('instagram', $v['placements']) && ! $a->instagram_id) {
