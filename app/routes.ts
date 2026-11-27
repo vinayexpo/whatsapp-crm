@@ -17,6 +17,7 @@ export default [
   route("phonebook", "routes/phonebook.tsx"),
   route("pipeline", "routes/pipeline.tsx"),
   route("campaigns", "routes/campaigns.tsx"),
+  route("meta-ads", "routes/meta-ads.tsx"),
   route("analytics", "routes/analytics.tsx"),
   route("automations", "routes/automations.tsx"),
   route("ai-assistant", "routes/ai-assistant.tsx"),

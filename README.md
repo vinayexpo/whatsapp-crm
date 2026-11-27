@@ -11,6 +11,7 @@ Creative Connects is an AI-powered customer communication and business managemen
 - **Voice and calling:** Use configured AI voice agents, call workflows and WhatsApp calling to support customer enquiries and follow-up.
 - **Commerce:** Set up fulfillment locations, products, inventory and delivery. Sync product details, prices and availability with Meta catalogs in both directions, review conflicts, and manage WhatsApp orders.
 - **WhatsApp payments:** Configure company-specific India/Razorpay checkout, send payment requests, verify provider receipts and track payment status.
+- **Meta Ads:** Connect an ad account, build single-image Facebook and Instagram campaigns for website visits or WhatsApp conversations, publish paused, manage delivery and budgets, and review Meta performance reports. Requires approved Meta permissions and connected business assets.
 - **Analytics:** Review conversation activity, campaign performance, sales pipeline and commerce reports.
 - **Team management:** Manage team members, roles, permissions and company settings.
 - **Platform management:** Superadmins manage companies, users, account status, usage and activity history.

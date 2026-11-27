@@ -22,6 +22,7 @@ import ContactsRoundedIcon from "@mui/icons-material/ContactsRounded";
 import ContactPhoneRoundedIcon from "@mui/icons-material/ContactPhoneRounded";
 import ViewKanbanRoundedIcon from "@mui/icons-material/ViewKanbanRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
+import AdsClickRoundedIcon from "@mui/icons-material/AdsClickRounded";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
@@ -56,6 +57,7 @@ const NAV_ITEMS = [
   { label: "Phonebook", to: "/phonebook", icon: ContactPhoneRoundedIcon, hideForAgent: true, commerceOnly: true },
   { label: "Pipeline", to: "/pipeline", icon: ViewKanbanRoundedIcon, commerceOnly: true },
   { label: "Campaigns", to: "/campaigns", icon: CampaignRoundedIcon, hideForAgent: true, commerceOnly: true },
+  { label: "Meta Ads", to: "/meta-ads", icon: AdsClickRoundedIcon, hideForAgent: true, hideForStaff: true, commerceOnly: true },
   { label: "Analytics", to: "/analytics", icon: BarChartRoundedIcon, hideForAgent: true, commerceOnly: true },
   { label: "Automations", to: "/automations", icon: BoltRoundedIcon, hideForAgent: true, commerceOnly: true },
   { label: "AI Assistant", to: "/ai-assistant", icon: SmartToyRoundedIcon, commerceOnly: true },

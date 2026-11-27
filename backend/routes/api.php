@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\ConversationController;
 use App\Http\Controllers\Api\V1\DailyMetricController;
 use App\Http\Controllers\Api\V1\DeliveryZoneController;
 use App\Http\Controllers\Api\V1\InventoryController;
+use App\Http\Controllers\Api\V1\MetaAdsController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\OrderController;
@@ -110,6 +111,24 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', EnsureActiveAccount::class])->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::prefix('ads')->middleware('throttle:30,1')->group(function () {
+            Route::get('/accounts', [MetaAdsController::class, 'accounts']);
+            Route::post('/accounts', [MetaAdsController::class, 'saveAccount']);
+            Route::patch('/accounts/{id}', [MetaAdsController::class, 'saveAccount']);
+            Route::delete('/accounts/{id}', [MetaAdsController::class, 'deleteAccount']);
+            Route::post('/accounts/{id}/verify', [MetaAdsController::class, 'verify']);
+            Route::post('/accounts/{id}/sync', [MetaAdsController::class, 'sync']);
+            Route::get('/campaigns', [MetaAdsController::class, 'index']);
+            Route::post('/campaigns', [MetaAdsController::class, 'save']);
+            Route::patch('/campaigns/{id}', [MetaAdsController::class, 'save']);
+            Route::delete('/campaigns/{id}', [MetaAdsController::class, 'delete']);
+            Route::post('/campaigns/{id}/duplicate', [MetaAdsController::class, 'duplicate']);
+            Route::post('/campaigns/{id}/publish', [MetaAdsController::class, 'publish']);
+            Route::get('/campaigns/{id}/details', [MetaAdsController::class, 'details']);
+            Route::patch('/campaigns/{id}/status', [MetaAdsController::class, 'status']);
+            Route::patch('/campaigns/{id}/budget', [MetaAdsController::class, 'budget']);
+            Route::patch('/campaigns/{id}/objects/status', [MetaAdsController::class, 'objectStatus']);
+        });
         Route::post('/auth/profile', [AuthController::class, 'updateProfile']);
 
         Route::get('/pipeline-stages', [PipelineStageController::class, 'index']);
