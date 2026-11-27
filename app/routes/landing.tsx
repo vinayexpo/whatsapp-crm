@@ -28,7 +28,7 @@ export function meta() {
     {
       name: "description",
       content:
-        "Bring AI replies, voice agents, WhatsApp and Instagram conversations, automated workflows, campaigns, CRM and commerce into one connected workspace.",
+        "Connect AI replies, voice agents, WhatsApp and Instagram, automation, CRM, Meta catalog sync and WhatsApp orders with India/Razorpay payments in one workspace.",
     },
     { property: "og:title", content: "Creative Connects — Your AI team. Always connected." },
     { property: "og:description", content: "Conversations, AI and automation. Working together." },
@@ -98,11 +98,11 @@ const features = [
     name: "Commerce",
     icon: StorefrontRounded,
     title: "From a message to an order.",
-    copy: "Keep products, branch operations and orders in the same workspace as your customers. Manage your catalog and track the order journey.",
+    copy: "Sync product details, prices and availability with Meta in both directions. Turn WhatsApp carts into orders and track payments through delivery.",
     bullets: [
-      "Product catalog and inventory",
-      "Branches, delivery zones and payments",
-      "Order management and commerce reports",
+      "Two-way Meta catalog sync with conflict review",
+      "Locations, inventory and delivery zones",
+      "India/Razorpay checkout and verified payment status",
     ],
   },
   {
@@ -136,10 +136,10 @@ const journeys = [
     steps: [
       "Open a shopping menu",
       "Let them browse the catalog",
-      "Guide their product selection",
-      "Bring the team in when needed",
+      "Review their cart and delivery choice",
+      "Offer configured payment options",
     ],
-    result: "Product discovery stays in the conversation.",
+    result: "From product discovery to a WhatsApp order.",
   },
   {
     name: "Guide a support request",
@@ -170,6 +170,14 @@ const faqs = [
   [
     "Can I bring my existing contacts?",
     "Yes. Import CSV or Excel (.xlsx) files into phonebooks, organize your contacts, and use phonebooks or tags to choose campaign audiences.",
+  ],
+  [
+    "Can I sync my Meta catalog?",
+    "Yes. Connect your WhatsApp business account and Meta catalog to keep product details, prices and availability updated in both places. Review conflicting edits before choosing which version to keep.",
+  ],
+  [
+    "Can customers pay inside WhatsApp?",
+    "India/Razorpay checkout is supported for eligible WhatsApp business accounts. Connect Razorpay in WhatsApp Manager and configure Commerce setup after Meta activates your account. Payment status is confirmed against provider receipts. Availability depends on your account approval and configuration.",
   ],
   [
     "How do I get started?",
@@ -456,8 +464,8 @@ function FeaturePreview({ active }: { active: number }) {
           <div>
             <span>ORDER #CC-2048</span>
             <h3>Everyday essentials</h3>
-            <p>2 items · Central branch</p>
-            <span className={s.smallTag}>Confirmed</span>
+            <p>2 items · Central location</p>
+            <span className={s.smallTag}>Payment verified</span>
           </div>
         </div>
         <div className={s.orderSteps}>
@@ -468,7 +476,7 @@ function FeaturePreview({ active }: { active: number }) {
             </div>
           ))}
         </div>
-        <div className={s.previewBottom}>Catalog → conversation → order</div>
+        <div className={s.previewBottom}>Meta catalog → WhatsApp order → payment</div>
       </div>
     );
   return (
@@ -758,12 +766,12 @@ export default function Landing() {
               {
                 icon: StorefrontRounded,
                 title: "Keep business moving",
-                text: "Manage your commerce operations and review the results from the same workspace.",
+                text: "Connect your Meta catalog, manage WhatsApp orders and track payments through fulfillment.",
                 items: [
-                  "Branches & catalogs",
-                  "Inventory & orders",
-                  "Payments & delivery zones",
-                  "Analytics & reports",
+                  "Two-way Meta catalog sync",
+                  "Locations, inventory & delivery",
+                  "India/Razorpay payments",
+                  "Orders & commerce reports",
                 ],
               },
             ].map((g) => (
