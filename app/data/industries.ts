@@ -802,8 +802,8 @@ const additionalIndustries: Industry[] = [
       },
     ],
     setup: ["Add agency service information and project FAQs.", "Configure enquiry menus, lead stages and assignments.", "Organize opted-in audiences and approved templates."],
-    boundary: "Examples cover messaging, lead organization and team follow-up. Ad buying, social publishing, attribution and project management require your existing tools; separate client workspaces and permissions must be configured appropriately.",
-    faq: ["Does this manage ads across every marketing platform?", "These workflows use Creative Connects messaging and CRM features. They do not imply automatic ad-platform integration, campaign optimization or cross-platform attribution."],
+    boundary: "Messaging, CRM and supported Meta Ads workflows are available in the workspace. Other ad networks, social publishing, cross-platform attribution and project management require your existing tools. Configure client workspaces and permissions appropriately.",
+    faq: ["Does this manage ads across every marketing platform?", "The Meta Ads module supports single-image Facebook and Instagram campaigns for website visits or WhatsApp conversations, editable AI drafts and two-way sync with review. It requires eligible connected assets and approved permissions. Other ad platforms and automatic campaign optimization are not included."],
   },
 ];
 

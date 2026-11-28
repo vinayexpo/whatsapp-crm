@@ -14,6 +14,8 @@ import Paper from "@mui/material/Paper";
 import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
 import InsertDriveFileRoundedIcon from "@mui/icons-material/InsertDriveFileRounded";
+import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
+import { TemplateAiPanel } from "./template-ai-panel";
 import { apiClient, ApiError } from "~/utils/api-client";
 import type { WhatsappTemplate } from "~/data/types";
 
@@ -23,6 +25,7 @@ interface TemplateBuilderDialogProps {
   template: WhatsappTemplate | null;
   onClose: () => void;
   onSaved: (template: WhatsappTemplate) => void;
+  aiFirst?: boolean;
 }
 
 const CATEGORIES = ["utility", "marketing", "authentication"];
@@ -37,7 +40,16 @@ const HEADER_ACCEPT: Record<HeaderFormat, string | undefined> = {
   DOCUMENT: "application/pdf",
 };
 
-export function TemplateBuilderDialog({ open, connectionId, template, onClose, onSaved }: TemplateBuilderDialogProps) {
+export function TemplateBuilderDialog({
+  open,
+  connectionId,
+  template,
+  onClose,
+  onSaved,
+  aiFirst = false,
+}: TemplateBuilderDialogProps) {
+  const [aiOpen, setAiOpen] = useState(false);
+  const [sampleValues, setSampleValues] = useState<Record<string, string>>({});
   const [name, setName] = useState("");
   const [language, setLanguage] = useState("en_US");
   const [category, setCategory] = useState("utility");
@@ -55,6 +67,12 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
 
   useEffect(() => {
     if (!open) return;
+    setAiOpen(aiFirst);
+    const existingVariables = Array.from(
+      new Set(Array.from((template?.body ?? "").matchAll(/\{\{\s*(\w+)\s*\}\}/g)).map((m) => m[1])),
+    );
+    const existingExamples = template?.components?.find((c) => c.type === "BODY")?.example?.body_text?.[0] ?? [];
+    setSampleValues(Object.fromEntries(existingVariables.map((v, i) => [v, existingExamples[i] ?? ""])));
     if (template) {
       setName(template.name);
       setLanguage(template.language);
@@ -63,7 +81,7 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
       const headerComponent = template.components?.find((c) => c.type === "HEADER");
       const format = (headerComponent?.format ?? "NONE") as HeaderFormat;
       setHeaderFormat(headerComponent ? format : "NONE");
-      setHeaderText(format === "TEXT" ? headerComponent?.text ?? "" : "");
+      setHeaderText(format === "TEXT" ? (headerComponent?.text ?? "") : "");
       setHeaderHandle(null);
       setHeaderPreviewUrl(null);
       setHeaderFileName(null);
@@ -85,7 +103,7 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
       setFooterText("");
     }
     setError(null);
-  }, [open, template]);
+  }, [open, template, aiFirst]);
 
   const variables = Array.from(new Set(Array.from(bodyText.matchAll(/\{\{\s*(\w+)\s*\}\}/g)).map((m) => m[1])));
 
@@ -127,7 +145,13 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
         example: { header_handle: [headerHandle] },
       });
     }
-    components.push({ type: "BODY" as const, text: bodyText.trim() });
+    components.push({
+      type: "BODY" as const,
+      text: bodyText.trim(),
+      ...(variables.length && variables.every((v) => sampleValues[v]?.trim())
+        ? { example: { body_text: [variables.map((v) => sampleValues[v].trim())] } }
+        : {}),
+    });
     if (footerText.trim()) components.push({ type: "FOOTER" as const, text: footerText.trim() });
     return components;
   }
@@ -136,7 +160,14 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
     headerFormat !== "NONE" && headerFormat !== "TEXT" && !headerHandle && !hasExistingMediaHeader;
 
   async function handleSave() {
-    if (!bodyText.trim() || !name.trim() || headerNeedsUpload || uploadingHeader) return;
+    if (
+      !bodyText.trim() ||
+      !name.trim() ||
+      headerNeedsUpload ||
+      uploadingHeader ||
+      variables.some((v) => !sampleValues[v]?.trim())
+    )
+      return;
     setSaving(true);
     setError(null);
     try {
@@ -168,7 +199,6 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
         <Stack direction={{ xs: "column", md: "row" }} spacing={3} sx={{ mt: 1 }}>
           <Stack spacing={2} sx={{ flex: 1.4, minWidth: 0 }}>
             {error && <Alert severity="error">{error}</Alert>}
-
             <TextField
               label="Template name"
               value={name}
@@ -177,7 +207,7 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
               fullWidth
             />
 
-            <Stack direction="row" spacing={2}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 select
                 label="Language"
@@ -205,6 +235,36 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
                 ))}
               </TextField>
             </Stack>
+
+            {!template && connectionId && (
+              <>
+                <Button startIcon={<AutoAwesomeRounded />} onClick={() => setAiOpen((v) => !v)} aria-expanded={aiOpen}>
+                  {aiOpen ? "Hide AI assistant" : "Draft with AI"}
+                </Button>
+                {aiOpen && (
+                  <TemplateAiPanel
+                    connectionId={connectionId}
+                    language={language}
+                    category={category}
+                    onApply={(draft) => {
+                      setName(draft.name);
+                      setLanguage(draft.language);
+                      setCategory(draft.category);
+                      setBodyText(draft.body);
+                      setHeaderFormat(draft.headerText ? "TEXT" : "NONE");
+                      setHeaderText(draft.headerText);
+                      setHeaderHandle(null);
+                      setHeaderPreviewUrl(null);
+                      setHeaderFileName(null);
+                      setHasExistingMediaHeader(false);
+                      setFooterText(draft.footerText);
+                      setSampleValues(Object.fromEntries(draft.bodyExamples.map((value, i) => [String(i + 1), value])));
+                      setAiOpen(false);
+                    }}
+                  />
+                )}
+              </>
+            )}
 
             <TextField
               select
@@ -274,6 +334,25 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
               onChange={(e) => setFooterText(e.target.value)}
               fullWidth
             />
+            {variables.length > 0 && (
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2">Sample values for Meta review</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Use fictional examples. These are not sent as customer messages.
+                </Typography>
+                {variables.map((v) => (
+                  <TextField
+                    key={v}
+                    label={`Example for {{${v}}}`}
+                    value={sampleValues[v] ?? ""}
+                    onChange={(e) => setSampleValues((prev) => ({ ...prev, [v]: e.target.value }))}
+                    fullWidth
+                    required
+                    slotProps={{ htmlInput: { maxLength: 200 } }}
+                  />
+                ))}
+              </Stack>
+            )}
           </Stack>
 
           <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
@@ -349,7 +428,14 @@ export function TemplateBuilderDialog({ open, connectionId, template, onClose, o
         <Button
           variant="contained"
           onClick={handleSave}
-          disabled={saving || uploadingHeader || !name.trim() || !bodyText.trim() || headerNeedsUpload}
+          disabled={
+            saving ||
+            uploadingHeader ||
+            !name.trim() ||
+            !bodyText.trim() ||
+            headerNeedsUpload ||
+            variables.some((v) => !sampleValues[v]?.trim())
+          }
         >
           {template ? "Save changes" : "Save draft"}
         </Button>

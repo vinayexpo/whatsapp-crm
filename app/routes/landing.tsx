@@ -28,7 +28,7 @@ export function meta() {
     {
       name: "description",
       content:
-        "Connect AI replies, voice agents, WhatsApp and Instagram, automation, CRM, Meta catalog sync and WhatsApp orders with India/Razorpay payments in one workspace.",
+        "Connect AI replies, template and ad drafting, WhatsApp and Instagram, automation, CRM, two-way Meta Ads and catalog sync, and India/Razorpay payments in one workspace.",
     },
     { property: "og:title", content: "Creative Connects — Your AI team. Always connected." },
     { property: "og:description", content: "Conversations, AI and automation. Working together." },
@@ -76,7 +76,7 @@ const features = [
     name: "Campaigns",
     icon: CampaignRounded,
     title: "Reach the right people. Make it personal.",
-    copy: "Turn your phonebook into a focused audience. Create template-based campaigns, schedule sends and follow delivery, reads and replies.",
+    copy: "Turn your phonebook into a focused audience. Draft messages with AI, submit templates for Meta review, schedule approved sends and follow delivery, reads and replies.",
     bullets: [
       "CSV and Excel phonebook imports",
       "Phonebook and tag-based audiences",
@@ -103,6 +103,28 @@ const features = [
       "Two-way Meta catalog sync with conflict review",
       "Locations, inventory and delivery zones",
       "India/Razorpay checkout and verified payment status",
+    ],
+  },
+  {
+    name: "AI templates",
+    icon: AutoAwesomeRounded,
+    title: "A brief becomes your next message.",
+    copy: "Describe what you want to say. AI suggests a WhatsApp template in your chosen language and tone, ready for your team to edit and submit for Meta review.",
+    bullets: [
+      "Utility and marketing drafts",
+      "Editable copy and fictional variable examples",
+      "Your AI provider. Your review before submission.",
+    ],
+  },
+  {
+    name: "Meta Ads",
+    icon: CampaignRounded,
+    title: "From first impression to a conversation.",
+    copy: "Build single-image Facebook and Instagram ads for website visits or WhatsApp conversations. Use AI to prepare editable campaign drafts, then publish paused when you are ready.",
+    bullets: [
+      "Two-way sync with conflict review",
+      "Approve supported budget, schedule and audience edits",
+      "Five-minute Meta pulls and performance reports",
     ],
   },
   {
@@ -155,6 +177,14 @@ const journeys = [
 ];
 
 const faqs = [
+  [
+    "Can AI create my WhatsApp templates?",
+    "Yes. Use your configured company AI provider to draft utility and marketing templates from a brief, with your chosen language and tone. Review and edit the copy and fictional variable examples, save a draft, then submit it separately. Meta decides approval; AI generation does not send messages or submit templates.",
+  ],
+  [
+    "Can I manage Facebook, Instagram and WhatsApp ads here?",
+    "Connect an eligible Meta ad account to build single-image Facebook and Instagram campaigns for website visits or click-to-WhatsApp conversations. AI can prepare editable drafts. Pull changes from Meta automatically, resolve conflicting edits and approve supported changes back to Meta. Publishing creates paused ads; activation is a separate action. Approved permissions, business assets and ad-account access are required.",
+  ],
   [
     "What can I automate?",
     "Create keyword-triggered workflows, button and list menus, and chatbot conversations. Configure AI assistance with business knowledge, and use voice agents for call workflows. Your available actions depend on the channels and integrations configured for your account.",
@@ -412,7 +442,7 @@ function FeaturePreview({ active }: { active: number }) {
           </span>
         </div>
         <div className={s.campaignSteps}>
-          {["Choose a phonebook", "Select a template", "Schedule your send"].map((t, i) => (
+          {["Choose a phonebook", "Draft, review & approve", "Schedule your send"].map((t, i) => (
             <span key={t}>
               <b>{i + 1}</b>
               {t}
@@ -477,6 +507,41 @@ function FeaturePreview({ active }: { active: number }) {
           ))}
         </div>
         <div className={s.previewBottom}>Meta catalog → WhatsApp order → payment</div>
+      </div>
+    );
+  if (active === 4 || active === 5)
+    return (
+      <div className={s.campaignPreview}>
+        <div className={s.previewHeading}>
+          <strong>{active === 4 ? "Appointment reminder" : "Your next collection"}</strong>
+          <span className={s.smallTag}>Illustrative AI draft</span>
+        </div>
+        <div className={s.campaignEnvelope}>
+          <AutoAwesomeRounded />
+          <span>{active === 4 ? "A useful message. In your voice." : "Turn interest into a conversation."}</span>
+          <p>
+            {active === 4
+              ? "Hi {{1}}, a reminder about your appointment on {{2}}. Reply if you need help changing your booking."
+              : "Explore the collection and ask our team about the details that matter to you."}
+          </p>
+        </div>
+        <div className={s.campaignSteps}>
+          {(active === 4
+            ? ["Describe your message", "Edit copy & examples", "Save, then submit to Meta"]
+            : ["Brief your AI", "Review budget & audience", "Publish paused"]
+          ).map((step, index) => (
+            <span key={step}>
+              <b>{index + 1}</b>
+              {step}
+              <CheckRounded />
+            </span>
+          ))}
+        </div>
+        <div className={s.previewBottom}>
+          {active === 4
+            ? "Your provider · Your edits · Meta review"
+            : "Meta ↔ workspace · Conflicts reviewed before push"}
+        </div>
       </div>
     );
   return (
@@ -748,14 +813,19 @@ export default function Landing() {
               {
                 icon: AutoAwesomeRounded,
                 title: "Let AI do the groundwork",
-                text: "Configure your assistant, build chatbots, and use business knowledge to guide replies.",
-                items: ["AI assistant", "Channel chatbots", "Knowledge & training", "Voice agents"],
+                text: "Use business knowledge for replies, guide voice calls, and turn briefs into editable templates and ad drafts.",
+                items: ["AI assistant & chatbots", "Knowledge & training", "Voice agents", "AI template & ad drafting"],
               },
               {
                 icon: AccountTreeRounded,
                 title: "Build your customer journeys",
                 text: "Connect conversations to the next action with flows, menus and targeted campaigns.",
-                items: ["Visual automations", "Chat menus & buttons", "Approved templates", "Scheduled campaigns"],
+                items: [
+                  "Visual automations",
+                  "Chat menus & buttons",
+                  "Templates & scheduled sends",
+                  "Meta Ads with two-way sync",
+                ],
               },
               {
                 icon: PeopleOutlineRounded,

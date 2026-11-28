@@ -760,6 +760,24 @@ async function syncTemplates(connectionId: string): Promise<WhatsappTemplate[]> 
   return data;
 }
 
+export interface AiTemplateProposal {
+  name: string;
+  language: string;
+  category: string;
+  body: string;
+  headerText: string;
+  footerText: string;
+  bodyExamples: string[];
+}
+
+async function generateTemplateDraft(connectionId: string, input: { brief: string; language: string; category: string; tone: string }) {
+  const { data } = await apiRequest<{ data: { proposal: AiTemplateProposal; rationale: string; warnings: string[] } }>(
+    `/api/v1/api-connections/${connectionId}/templates/ai-draft`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+  return data;
+}
+
 async function createTemplate(
   connectionId: string,
   input: {
@@ -2276,6 +2294,7 @@ export const apiClient = {
   listTemplates,
   syncTemplates,
   createTemplate,
+  generateTemplateDraft,
   updateTemplate,
   submitTemplate,
   pushTemplateToMeta,

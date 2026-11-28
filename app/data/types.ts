@@ -149,7 +149,7 @@ export interface WhatsappTemplateComponent {
   type: "HEADER" | "BODY" | "FOOTER" | "BUTTONS";
   format?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT";
   text?: string;
-  example?: { header_handle?: string[] };
+  example?: { header_handle?: string[]; body_text?: string[][] };
   buttons?: { type: string; text: string; url?: string; phone_number?: string }[];
 }
 

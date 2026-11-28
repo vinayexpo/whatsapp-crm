@@ -1,0 +1,11 @@
+# Message Templates
+
+Preserve the teal MUI app shell, template list, existing builder and WhatsApp preview. The AI creation entry point opens the builder with an optional brief panel below the language/category selectors. Users choose a tone, generate a suggestion, explicitly apply it to the editor, edit copy and fictional sample values, then save a local draft. Meta submission remains a separate existing action. Generation never saves, submits or sends messages.
+
+AI supports utility and marketing templates using the company's configured AI Assistant provider. Authentication formats remain outside AI drafting. The endpoint requires campaign management permission and an explicitly matching company-owned WhatsApp connection; provider settings are queried by company. No Meta tokens or customer database records are sent to AI. Validate output length, field types, sequential numbered body placeholders and matching example counts; user language and category override any AI output. Missing configuration, provider failures and malformed output return actionable errors without fake drafts.
+
+Body variable examples remain editable and are saved in BODY.example.body_text for Meta review. Existing examples reload when editing saved drafts. The landing page includes separate AI template and Meta Ads feature tabs, illustrative previews and FAQs. Marketing-agency boundaries reflect the supported Meta Ads module. All descriptions preserve the limits of single-image ads, reviewed pushes, paused publishing and Meta approval.
+
+Better Design's monthly cap prevented a new automated review; retain existing design tokens and verify rendered mobile and desktop behavior locally.
+
+Validation: 25 backend tests (75 assertions), all 66 frontend tests, typecheck and production build passed. Browser fixtures cover six states at 390, 1440 and 1728: brief, suggestion, editable draft, provider error and both new landing previews. Checks verified explicit apply, edited sample-value persistence, no automatic saves/submissions, no document overflow and no page errors. Mobile language/category selectors stack to keep their values readable. No real Meta submission, customer message or AI provider call was made during verification.

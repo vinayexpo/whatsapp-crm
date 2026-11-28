@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\V1\PlatformUserController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PushSubscriptionController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
+use App\Http\Controllers\Api\V1\TemplateAiController;
 use App\Http\Controllers\Api\V1\VoiceAgentController;
 use App\Http\Controllers\Api\V1\VoiceCallController;
 use App\Http\Controllers\Api\V1\WhatsappCallController;
@@ -201,6 +202,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/api-connections/{apiConnection}/templates/sync', [WhatsappTemplateController::class, 'sync']);
         Route::post('/api-connections/{apiConnection}/templates', [WhatsappTemplateController::class, 'store']);
         Route::post('/api-connections/{apiConnection}/templates/media', [WhatsappTemplateController::class, 'uploadHeaderMedia']);
+        Route::post('/api-connections/{apiConnection}/templates/ai-draft', TemplateAiController::class)->middleware('throttle:6,1');
         Route::patch('/templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'update']);
         Route::post('/templates/{whatsappTemplate}/submit', [WhatsappTemplateController::class, 'submit']);
         Route::post('/templates/{whatsappTemplate}/push-meta', [WhatsappTemplateController::class, 'push']);

@@ -15,6 +15,16 @@ function openLanding() {
 }
 
 describe("public landing page", () => {
+  it("explains AI templates and Meta Ads with separate interactive previews", () => {
+    openLanding();
+    fireEvent.click(screen.getByRole("tab", { name: "AI templates" }));
+    expect(screen.getByText("A brief becomes your next message.")).toBeTruthy();
+    expect(screen.getByText("Save, then submit to Meta")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Meta Ads" }));
+    expect(screen.getByText("From first impression to a conversation.")).toBeTruthy();
+    expect(screen.getByText("Publish paused")).toBeTruthy();
+    expect(screen.getByText("Two-way sync with conflict review")).toBeTruthy();
+  });
   it("switches AI demonstrations with keyboard navigation and changes the sample reply", () => {
     openLanding();
     fireEvent.click(screen.getByRole("button", { name: "Browse products" }));

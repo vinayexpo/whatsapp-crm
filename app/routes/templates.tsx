@@ -21,6 +21,7 @@ import Select from "@mui/material/Select";
 import { AppLayout } from "~/components/app-layout/app-layout";
 import { RoleGuard } from "~/components/role-guard/role-guard";
 import { TemplateBuilderDialog } from "~/components/templates/template-builder-dialog";
+import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
 import { PaginatedListFooter } from "~/components/common/paginated-list-footer";
 import { apiClient, ApiError } from "~/utils/api-client";
 import { useCrmStore } from "~/hooks/use-crm-store";
@@ -49,6 +50,7 @@ export default function Templates() {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [aiFirst, setAiFirst] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WhatsappTemplate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -69,13 +71,16 @@ export default function Templates() {
   }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    apiClient.listApiConnections().then((list) => {
-      setConnections(list);
-      const first = list.find((c) => c.channel === "whatsapp");
-      if (first) setConnectionId(first.id);
-    }).catch(() => {
-      // connections list stays empty on failure
-    });
+    apiClient
+      .listApiConnections()
+      .then((list) => {
+        setConnections(list);
+        const first = list.find((c) => c.channel === "whatsapp");
+        if (first) setConnectionId(first.id);
+      })
+      .catch(() => {
+        // connections list stays empty on failure
+      });
   }, []);
 
   useEffect(() => {
@@ -104,15 +109,19 @@ export default function Templates() {
       .catch(() => {
         if (!cancelled) setError("Could not refresh message templates. Please try again.");
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [connectionId, page, debouncedSearch, statusFilter, templatesRevision]);
 
   function openCreate() {
+    setAiFirst(false);
     setEditingTemplate(null);
     setBuilderOpen(true);
   }
 
   function openEdit(template: WhatsappTemplate) {
+    setAiFirst(false);
     setEditingTemplate(template);
     setBuilderOpen(true);
   }
@@ -183,14 +192,23 @@ export default function Templates() {
                 Create WhatsApp message templates and submit them to Meta for review.
               </Typography>
             </Stack>
-            <Button
-              variant="contained"
-              startIcon={<AddRoundedIcon />}
-              onClick={openCreate}
-              disabled={!connectionId}
-            >
-              New Template
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", sm: "auto" } }}>
+              <Button
+                variant="outlined"
+                startIcon={<AutoAwesomeRounded />}
+                disabled={!connectionId}
+                onClick={() => {
+                  setEditingTemplate(null);
+                  setAiFirst(true);
+                  setBuilderOpen(true);
+                }}
+              >
+                Create with AI
+              </Button>
+              <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={openCreate} disabled={!connectionId}>
+                New Template
+              </Button>
+            </Stack>
           </Stack>
 
           {error && (
@@ -341,6 +359,7 @@ export default function Templates() {
           open={builderOpen}
           connectionId={connectionId || null}
           template={editingTemplate}
+          aiFirst={aiFirst}
           onClose={() => setBuilderOpen(false)}
           onSaved={handleSaved}
         />
