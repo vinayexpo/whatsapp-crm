@@ -196,7 +196,10 @@ function AdsWorkspace() {
     });
   }
   return (
-    <Box data-ads-review sx={{ p: { xs: 2, md: 4 }, maxWidth: 1600, mx: "auto", width: "100%", minWidth: 0 }}>
+    <Box
+      data-ads-review
+      sx={{ p: { xs: 2, md: 4 }, maxWidth: 1600, mx: "auto", width: "100%", minWidth: 0, flex: 1, minHeight: 0, overflowY: "auto" }}
+    >
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={2}
